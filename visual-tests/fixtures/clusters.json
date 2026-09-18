@@ -1,0 +1,9 @@
+{
+  "clusters": [
+    { "name": "Core",   "color": "#e7298a", "particles": [0,1,2,3,4,5,6,7] },
+    { "name": "Shell",  "color": "#1b9e77", "particles": [8,9,10,11,12,13,14,15] },
+    { "name": "Tail",   "color": "#7570b3", "particles": [16,17,18,19,20,21,22,23] },
+    { "name": "Strays", "particles": [24,25,26,27] },
+    { "name": "Ghost",  "color": "#ff0000", "particles": [9999] }
+  ]
+}

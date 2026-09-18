@@ -15,7 +15,7 @@ import { getParticleColors } from "../../colors";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";
-import { getClusterAppearance } from "../../utils/clusterAppearance";
+import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
 
 // Base-type colors matching oxdna-viewer nucleosideColors
 const BASE_COLORS = {
@@ -39,7 +39,7 @@ function OxDNANucleotides() {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
   const { selectedParticles, sphereSegments } = useUIStore();
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors } = useClusteringStore();
 
   const bbRef = useRef();
   const nsRef = useRef();
@@ -126,11 +126,12 @@ function OxDNANucleotides() {
         showOnlyHighlightedClusters,
         dimNonSelectedClusters,
         baseColor: strandColor,
+        clusterColor: clusterColorFor(clusterColors, i, THREE),
       });
     }
     return out;
   }, [count, positions, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, strandColors]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, strandColors]);
 
   const scratch = useMemo(() => ({
     p: new THREE.Vector3(),

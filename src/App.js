@@ -136,7 +136,7 @@ function App() {
     // would highlight unrelated particles in the new structure — or index past
     // its end.
     useUIStore.getState().setSelectedParticles([]);
-    useClusteringStore.getState().clearHighlighting();
+    useClusteringStore.getState().resetClusters();
     setTopData(null);
     setPositions([]);
     setTrajFile(null);

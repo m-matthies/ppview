@@ -6,7 +6,7 @@ import { getParticleColors } from "../../colors";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import { useClusteringStore } from "../../store/clusteringStore";
-import { getClusterAppearance } from "../../utils/clusterAppearance";
+import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";
@@ -26,7 +26,7 @@ function Particles() {
   const { selectedParticles, sphereSegments } = useUIStore();
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors } = useClusteringStore();
   const meshRef = useRef();
 
   const count = positions?.length ?? 0;
@@ -89,6 +89,7 @@ function Particles() {
       showOnlyHighlightedClusters,
       dimNonSelectedClusters,
       baseColor: data.typeColor,
+      clusterColor: clusterColorFor(clusterColors, i, THREE),
     });
 
     // A raspberry particle is drawn by its beads, so its centre sphere is
@@ -106,7 +107,7 @@ function Particles() {
     setColor(color);
     return true;
   }, [particleData, positions, boxSize, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, scratch]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, scratch]);
 
   // The sphere mesh is clickable except where a raspberry particle's hidden
   // centre sits — those clicks belong to the beads.

@@ -497,6 +497,36 @@ the dimmed marker is the one exception, because one sphere at the particle's cen
 better than a swarm of shrunken beads. `RepulsionSites` collapses its beads whenever the particle
 is `hidden` *or* `dimmed` so the two never draw at once.
 
+### Cluster colours
+Each cluster gets its own colour, cycling the active scheme's palette, and each
+row in the pane has a swatch that overrides it. Highlighting previously kept
+every particle's *type* colour, which made two adjacent clusters
+indistinguishable — usually the exact thing you are trying to see.
+
+The colours reach the renderers as `clusteringStore.clusterColors`, a
+`Map<particleIndex, '#rrggbb'>`. Per particle rather than per cluster because
+that is how renderers consume it: each walks its instances and needs a colour
+for a given particle without knowing which cluster it came from.
+`clusterColorFor()` caches the hex→`THREE.Color` conversion, since these are
+written per instance per update.
+
+### Clusters from a file
+The pane can load clusters computed elsewhere instead of running DBSCAN
+(`utils/clusterFile.js`). While a file is loaded the DBSCAN controls are
+disabled, because they cannot change clusters that came from a file.
+
+```json
+{ "clusters": [ { "name": "Core", "color": "#e7298a", "particles": [0, 1, 2] } ] }
+```
+
+A bare array works too, and the particle list may be `particles`, `indices` or
+`ids` — analysis scripts in this space spell it all three ways. `color` is
+optional and falls back to the palette. A malformed entry is skipped with a
+warning rather than failing the whole file, but a cluster with any *invalid*
+index is rejected outright: silently dropping one would misreport its membership.
+Indices past the end of the current system are reported, since that usually
+means the file belongs to a different trajectory.
+
 **`utils/clusterAppearance.js` is the single source of these rules.** Three renderers draw parts
 of the same patchy particle — the sphere (`Particles.js`), the raspberry repulsion beads
 (`RepulsionSites.js`) and the patch cones (`Patches.js`) — and each used to decide appearance for

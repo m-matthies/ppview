@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore } from '../../store/clusteringStore';
 import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
 import { dbscan, generateHistogram } from '../../utils/clustering';
+import { parseClusterFile } from '../../utils/clusterFile';
+import { getParticleColors } from '../../colors';
 import { CloseIcon } from '../Icons';
 import './ClusteringPane.css';
 
@@ -17,13 +19,21 @@ function ClusteringPane() {
   // reads. A second local flag here let the two disagree about whether the
   // pane was open.
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
+  const fileClusters = useClusteringStore(state => state.fileClusters);
+  const setFileClusters = useClusteringStore(state => state.setFileClusters);
+  const colorScheme = useUIStore(state => state.currentColorScheme);
+  const fileInputRef = useRef(null);
+  const [fileError, setFileError] = useState(null);
+  const [fileWarnings, setFileWarnings] = useState([]);
+  // Per-cluster colour overrides, keyed by cluster index in the active list.
+  const [colorOverrides, setColorOverrides] = useState({});
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
   const [selectedClusters, setSelectedClusters] = useState(new Set());
   const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   // Compute clusters when parameters change
-  const clusters = useMemo(() => {
+  const computedClusters = useMemo(() => {
     if (!positions || positions.length === 0) return [];
     
     try {
@@ -33,6 +43,51 @@ function ClusteringPane() {
       return [];
     }
   }, [positions, epsilon, minPoints]);
+
+  // A loaded file replaces the computed clusters while it is present, so the
+  // rest of the pane does not need to care where the clusters came from.
+  const clusters = useMemo(
+    () => (fileClusters ? fileClusters.map(c => c.indices) : computedClusters),
+    [fileClusters, computedClusters],
+  );
+
+  // Every cluster gets its own colour. Highlighting used to paint every cluster
+  // in its particles' type colours, which made two adjacent clusters
+  // indistinguishable — usually the exact thing you are trying to see.
+  const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
+  const clusterColorAt = useCallback((index) => (
+    colorOverrides[index]
+      ?? fileClusters?.[index]?.color
+      ?? palette[index % palette.length]
+  ), [colorOverrides, fileClusters, palette]);
+
+  const handleClusterFile = useCallback(async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';           // allow re-picking the same file
+    if (!file) return;
+    try {
+      const { clusters: loaded, warnings } = parseClusterFile(await file.text(), {
+        particleCount: positions?.length ?? 0,
+      });
+      setFileClusters(loaded);
+      setColorOverrides({});
+      setSelectedClusters(new Set(loaded.map((_, i) => i)));
+      setShowOnlySelected(true);
+      setFileError(null);
+      setFileWarnings(warnings);
+    } catch (error) {
+      setFileError(error.message);
+      setFileWarnings([]);
+    }
+  }, [positions, setFileClusters]);
+
+  const clearClusterFile = useCallback(() => {
+    setFileClusters(null);
+    setColorOverrides({});
+    setSelectedClusters(new Set());
+    setFileError(null);
+    setFileWarnings([]);
+  }, [setFileClusters]);
 
   // Compute statistics
   const statistics = useMemo(() => {
@@ -113,19 +168,22 @@ function ClusteringPane() {
   // Notify store about highlighted clusters
   useEffect(() => {
     const highlightedParticleIndices = new Set();
-    
+    const colors = new Map();
+
     if (showOnlySelected && selectedClusters.size > 0) {
       selectedClusters.forEach(clusterIndex => {
-        if (clusters[clusterIndex]) {
-          clusters[clusterIndex].forEach(particleIndex => {
-            highlightedParticleIndices.add(particleIndex);
-          });
-        }
+        const members = clusters[clusterIndex];
+        if (!members) return;
+        const color = clusterColorAt(clusterIndex);
+        members.forEach(particleIndex => {
+          highlightedParticleIndices.add(particleIndex);
+          colors.set(particleIndex, color);
+        });
       });
     }
-    
-    highlightClusters(highlightedParticleIndices, showOnlySelected);
-  }, [clusters, selectedClusters, showOnlySelected, highlightClusters]);
+
+    highlightClusters(highlightedParticleIndices, showOnlySelected, colors);
+  }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt]);
   
   // Early return if no positions loaded
   if (!positions || positions.length === 0) {
@@ -148,8 +206,35 @@ function ClusteringPane() {
 
       <div className="clustering-body">
 
+      {/* Clusters computed elsewhere can be loaded instead of running DBSCAN. */}
+      <div className="cluster-source">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          style={{ display: 'none' }}
+          onChange={handleClusterFile}
+        />
+        {fileClusters ? (
+          <div className="cluster-source-loaded">
+            <span>{fileClusters.length} clusters from file</span>
+            <button className="select-button" onClick={clearClusterFile}>
+              Use DBSCAN again
+            </button>
+          </div>
+        ) : (
+          <button className="select-button" onClick={() => fileInputRef.current?.click()}>
+            Load clusters from file
+          </button>
+        )}
+        {fileError && <p className="cluster-source-error">{fileError}</p>}
+        {fileWarnings.map((warning, i) => (
+          <p className="cluster-source-warning" key={i}>{warning}</p>
+        ))}
+      </div>
+
       {/* Clustering Parameters */}
-      <div className="clustering-controls">
+      <div className={`clustering-controls ${fileClusters ? 'is-disabled' : ''}`}>
         <div className="parameter-control">
           <label htmlFor="epsilon-slider">
             Epsilon Distance: {epsilon.toFixed(2)}
@@ -328,8 +413,19 @@ function ClusteringPane() {
                 .sort((a, b) => b.cluster.length - a.cluster.length) // Sort by size (largest first)
                 .map(({ cluster, originalIndex }, sortedIndex) => (
                   <div key={originalIndex} className="cluster-item">
+                    <input
+                      className="cluster-swatch"
+                      type="color"
+                      value={clusterColorAt(originalIndex)}
+                      onChange={(e) => setColorOverrides(previous => ({
+                        ...previous, [originalIndex]: e.target.value,
+                      }))}
+                      title="Colour for this cluster"
+                      aria-label={`Colour for cluster ${originalIndex + 1}`}
+                    />
                     <span className="cluster-info">
-                      Cluster {originalIndex + 1} ({cluster.length} particles)
+                      {fileClusters?.[originalIndex]?.name ?? `Cluster ${originalIndex + 1}`}
+                      {' '}({cluster.length} particles)
                     </span>
                     <label className="cluster-checkbox">
                       <input

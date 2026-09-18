@@ -44,6 +44,10 @@ export function getClusterAppearance({
   showOnlyHighlightedClusters = false,
   dimNonSelectedClusters = false,
   baseColor,
+  // The highlighted cluster's own colour, when it has one. Highlighting used to
+  // keep the particle's type colour, which made two adjacent clusters
+  // indistinguishable — the thing you most often want to tell apart.
+  clusterColor = null,
   // Patches keep their patch-ID colour when their particle is selected —
   // turning them yellow would throw away the identity the colour encodes.
   allowSelectionColor = true,
@@ -52,7 +56,7 @@ export function getClusterAppearance({
     return { color: allowSelectionColor ? SELECTED_COLOR : baseColor, scaleFactor: 1 };
   }
   if (isInHighlightedCluster && hasHighlightedClusters) {
-    return { color: baseColor, scaleFactor: CLUSTER_HIGHLIGHT_SCALE };
+    return { color: clusterColor ?? baseColor, scaleFactor: CLUSTER_HIGHLIGHT_SCALE };
   }
   if (showOnlyHighlightedClusters && !shouldShow) {
     return dimNonSelectedClusters
@@ -60,4 +64,23 @@ export function getClusterAppearance({
       : { color: baseColor, scaleFactor: CLUSTER_HIDDEN_SCALE, hidden: true };
   }
   return { color: baseColor, scaleFactor: 1 };
+}
+
+/**
+ * Resolves the per-particle cluster colour into a reusable THREE.Color.
+ *
+ * The store holds hex strings, but the renderers write colours per instance and
+ * must not allocate one per particle per update, so conversions are cached.
+ */
+const colorCache = new Map();
+
+export function clusterColorFor(clusterColors, particleIndex, THREE) {
+  const hex = clusterColors?.get(particleIndex);
+  if (!hex) return null;
+  let color = colorCache.get(hex);
+  if (!color) {
+    color = new THREE.Color(hex);
+    colorCache.set(hex, color);
+  }
+  return color;
 }

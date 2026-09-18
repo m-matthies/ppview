@@ -6,7 +6,7 @@ import { useClusteringStore } from "../../store/clusteringStore";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox, rotationMatrixOf } from "../../rendering/transforms";
-import { getClusterAppearance } from "../../utils/clusterAppearance";
+import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
 
 /**
  * Repulsion-site beads for raspberry particles.
@@ -19,7 +19,7 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const meshRef = useRef();
   const { selectedParticles, sphereSegments } = useUIStore();
   const particleRadius = useParticleStore(state => state.particleRadius);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors } = useClusteringStore();
 
   // Bead sizes and offsets come from the topology. Scaling both by the same
   // factor resizes the whole raspberry particle while preserving the shape the
@@ -55,10 +55,11 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
         showOnlyHighlightedClusters,
         dimNonSelectedClusters,
         baseColor: typeColor,
+        clusterColor: clusterColorFor(clusterColors, globalIndex, THREE),
       });
     });
   }, [particles, globalIndices, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, typeColor, hasValidData]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, typeColor, hasValidData]);
 
   const scratch = useMemo(() => ({
     centre: new THREE.Vector3(),
