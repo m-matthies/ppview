@@ -10,11 +10,12 @@
  */
 const fs = require('fs');
 const path = require('path');
-const { connect } = require('./driver');
+const { connect, openPage } = require('./driver');
 const { wrap } = require('./probe');
 const { FORMATS, SCENARIOS } = require('./scenarios');
 
-const URL = process.env.PPVIEW_URL || 'http://localhost:3111/ppview';
+const APP_URL = process.env.PPVIEW_URL || 'http://localhost:3111/ppview';
+const APP_ORIGIN = new URL(APP_URL).origin;
 const BASELINE = path.join(__dirname, 'baseline.json');
 const SHOTS = path.join(__dirname, 'shots');
 const UPDATE = process.argv.includes('--update');
@@ -25,48 +26,70 @@ const UPDATE = process.argv.includes('--update');
 const TOLERANCE = 0.02;
 const ABSOLUTE_SLACK = 6;
 const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1];
+// Scenarios are independent, so they run in parallel tabs. The suite is
+// dominated by waiting for the app, not by CPU, so concurrency helps a lot —
+// though every worker shares one software-rasterised GPU, so more is not
+// linearly better.
+const WORKERS = Number(
+  (process.argv.find(a => a.startsWith('--workers=')) || '').split('=')[1] || process.env.PPVIEW_WORKERS || 4,
+);
 
 async function run() {
   fs.mkdirSync(SHOTS, { recursive: true });
-  const cdp = await connect();
-  const results = {};
-  const errors = [];
-
   const formats = ONLY ? FORMATS.filter(f => f.name === ONLY) : FORMATS;
 
+  // Flatten to a work queue so every worker stays busy regardless of how much
+  // each individual scenario costs.
+  const jobs = [];
   for (const format of formats) {
     for (const [scenario, body] of Object.entries(SCENARIOS)) {
-      const key = `${format.name}/${scenario}`;
-      process.stdout.write(`  ${key} … `);
-      try {
-        // Fresh page per scenario: localStorage carries colour scheme, lighting
-        // and panel positions, so scenarios would otherwise contaminate each other.
-        await cdp.goto('about:blank', 300);
-        await cdp.goto(URL, 2500);
-        await cdp.evaluate('localStorage.clear()');
-        await cdp.goto(URL, 2500);
-        await cdp.dropFiles(format.files);
-
-        const value = await cdp.evaluate(wrap(body));
-        results[key] = value;
-        await cdp.screenshot(path.join(SHOTS, `${format.name}-${scenario}.png`));
-
-        const bad = cdp.logs.filter(l =>
-          l.level === 'exception' || l.level === 'error' ||
-          /mismatch|failed/i.test(l.text));
-        if (bad.length) {
-          errors.push(`${key}: ${bad.map(b => b.text).join(' | ').slice(0, 200)}`);
-        }
-        console.log('ok');
-      } catch (e) {
-        console.log('FAILED');
-        errors.push(`${key}: ${e.message}`);
-        results[key] = { error: e.message };
-      }
+      jobs.push({ format, scenario, body });
     }
   }
-  cdp.close();
-  return { results, errors };
+
+  const results = {};
+  const errors = [];
+  const timings = [];
+  let next = 0;
+
+  const worker = async (id) => {
+    const cdp = await connect(9222, await openPage(9222));
+    try {
+      for (;;) {
+        const index = next++;
+        if (index >= jobs.length) return;
+        const { format, scenario, body } = jobs[index];
+        const key = `${format.name}/${scenario}`;
+        const started = Date.now();
+        try {
+          // Fresh state per scenario: localStorage carries colour scheme,
+          // lighting and panel positions, so scenarios would otherwise
+          // contaminate each other.
+          await cdp.clearStorage(APP_ORIGIN);
+          await cdp.goto(APP_URL);
+          await cdp.dropFiles(format.files);
+
+          results[key] = await cdp.evaluate(wrap(body));
+          await cdp.screenshot(path.join(SHOTS, `${format.name}-${scenario}.png`));
+
+          const bad = cdp.logs.filter(l =>
+            l.level === 'exception' || l.level === 'error' || /mismatch|failed/i.test(l.text));
+          if (bad.length) errors.push(`${key}: ${bad.map(b => b.text).join(' | ').slice(0, 200)}`);
+        } catch (e) {
+          errors.push(`${key}: ${e.message}`);
+          results[key] = { error: e.message };
+        }
+        const ms = Date.now() - started;
+        timings.push({ key, ms });
+        console.log(`  [w${id}] ${key} ${ms}ms`);
+      }
+    } finally {
+      cdp.close();
+    }
+  };
+
+  await Promise.all(Array.from({ length: Math.min(WORKERS, jobs.length) }, (_, i) => worker(i + 1)));
+  return { results, errors, timings };
 }
 
 function compare(current, baseline) {
@@ -94,8 +117,16 @@ function compare(current, baseline) {
 }
 
 (async () => {
-  console.log(`visual regression against ${URL}`);
-  const { results, errors } = await run();
+  console.log(`visual regression against ${APP_URL}`);
+  const startedAll = Date.now();
+  const { results, errors, timings } = await run();
+  fs.writeFileSync(path.join(__dirname, 'last-run.json'), JSON.stringify(results, null, 2) + '\n');
+
+  const total = ((Date.now() - startedAll) / 1000).toFixed(1);
+  const slowest = [...timings].sort((a, b) => b.ms - a.ms).slice(0, 3)
+    .map(t => `${t.key} ${t.ms}ms`).join(', ');
+  console.log(`\n${timings.length} scenarios in ${total}s across ${WORKERS} workers` +
+    (slowest ? ` — slowest: ${slowest}` : ''));
 
   if (UPDATE) {
     // Merge, so --only --update refreshes one format without dropping the rest.

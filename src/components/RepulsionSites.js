@@ -1,26 +1,35 @@
-import React, { useRef, useEffect, useMemo } from "react";
+import React, { useMemo, useRef, useCallback } from "react";
 import * as THREE from 'three';
 import { useUIStore } from "../store/uiStore";
 import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../store/particleStore";
 import { useClusteringStore } from "../store/clusteringStore";
+import InstancedLayer from "../rendering/InstancedLayer";
+import { useRegisterPickable } from "../rendering/pickingService";
+import { centreOnBox, rotationMatrixOf } from "../rendering/transforms";
 import { getClusterAppearance } from "../utils/clusterAppearance";
-import { useThree } from "@react-three/fiber";
 
-// Renders repulsion site beads for raspberry particles.
-// Click/double-click handling is delegated to Particles.js via onRegister —
-// this component just manages transforms and colors.
-function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale = 1.0, typeColor, globalIndices, typeIndex, onRegister }) {
+/**
+ * Repulsion-site beads for raspberry particles.
+ *
+ * Each particle is drawn as several beads rather than one sphere, so this layer
+ * holds `numBeads` instances per particle and maps them back to a particle index
+ * for picking.
+ */
+function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale = 1.0, typeColor, globalIndices, typeIndex }) {
   const meshRef = useRef();
-  const particlePositionsRef = useRef([]); // stable ref — updated every frame without re-registering
   const { selectedParticles, sphereSegments } = useUIStore();
-  const { invalidate } = useThree();
   const particleRadius = useParticleStore(state => state.particleRadius);
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+
   // Bead sizes and offsets come from the topology. Scaling both by the same
   // factor resizes the whole raspberry particle while preserving the shape the
   // file describes.
   const radiusScale = particleRadius / DEFAULT_PARTICLE_RADIUS;
 
-  const geometry = useMemo(() => new THREE.SphereGeometry(1, sphereSegments, sphereSegments), [sphereSegments]);
+  const geometry = useMemo(
+    () => new THREE.SphereGeometry(1, sphereSegments, sphereSegments),
+    [sphereSegments],
+  );
   const material = useMemo(() => new THREE.MeshStandardMaterial({
     metalness: 0.1,
     roughness: 0.7,
@@ -30,12 +39,9 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const numBeads = repulsionSiteData?.length ?? 0;
   const totalBeads = hasValidData ? particles.length * numBeads : 0;
 
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
-
-  // Cluster appearance per particle, resolved once and reused by both the
-  // transform and the colour effect so the two can never disagree. Raspberry
-  // particles are drawn entirely as beads, so without this they were the one
-  // patchy format that ignored cluster highlighting completely.
+  // Cluster appearance per particle, resolved once and shared by every bead of
+  // that particle. Raspberry is drawn entirely as beads, so without this it was
+  // the one patchy format that ignored cluster highlighting completely.
   const appearance = useMemo(() => {
     if (!hasValidData) return [];
     return particles.map((_, i) => {
@@ -54,102 +60,64 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   }, [particles, globalIndices, selectedParticles, highlightedClusters,
       showOnlyHighlightedClusters, dimNonSelectedClusters, typeColor, hasValidData]);
 
-  // Register mesh + metadata with parent for centralized raycasting.
-  // Pass particlePositionsRef so Particles.js always reads the latest positions
-  // without causing a re-registration on every trajectory frame.
-  useEffect(() => {
-    if (onRegister && meshRef.current && hasValidData) {
-      onRegister(typeIndex, { mesh: meshRef.current, numBeads, globalIndices, particlePositionsRef });
-    }
-    return () => {
-      if (onRegister) onRegister(typeIndex, null);
-    };
-  }, [onRegister, typeIndex, hasValidData, numBeads, globalIndices]);
+  const scratch = useMemo(() => ({
+    centre: new THREE.Vector3(),
+    local: new THREE.Vector3(),
+    rot: new THREE.Matrix3(),
+  }), []);
 
-  // Set bead transforms (positions + scales).
-  // Reuses localPos/rotMat objects across iterations to reduce GC pressure.
-  useEffect(() => {
-    if (!meshRef.current || !hasValidData) return;
+  const write = useMemo(() => (index, dummy, setColor) => {
+    const i = Math.floor(index / numBeads);
+    const j = index % numBeads;
+    const particle = particles[i];
+    const site = repulsionSiteData[j];
+    if (!particle || !site) return false;
 
-    const mesh = meshRef.current;
-    const dummy = new THREE.Object3D();
-    const localPos = new THREE.Vector3(); // reused across inner loop
-    const rotMat = new THREE.Matrix3();   // reused across particles
-    const positions = [];
-    let index = 0;
+    const entry = appearance[i];
+    // Beads collapse both when the particle is hidden and when it is dimmed: in
+    // the dimmed case the centre sphere in Particles.js draws the marker
+    // instead, so drawing shrunken beads too would double up.
+    if (entry?.hidden || entry?.dimmed) return false;
 
-    for (let i = 0; i < particles.length; i++) {
-      const particle = particles[i];
-      const px = particle.x - boxSize[0] / 2;
-      const py = particle.y - boxSize[1] / 2;
-      const pz = particle.z - boxSize[2] / 2;
-      positions.push(new THREE.Vector3(px, py, pz));
+    const clusterScale = entry?.scaleFactor ?? 1;
+    const siteScale = particleScale * radiusScale * clusterScale;
 
-      const hasRotation = !!particle.rotationMatrix;
-      if (hasRotation) rotMat.fromArray(particle.rotationMatrix.elements);
+    centreOnBox(scratch.centre, particle, boxSize);
+    scratch.local.set(
+      site.position.x * siteScale,
+      site.position.y * siteScale,
+      site.position.z * siteScale,
+    );
+    const rotation = rotationMatrixOf(particle, scratch.rot);
+    if (rotation) scratch.local.applyMatrix3(rotation);
 
-      // Scale bead offsets and radii together so a highlighted particle grows
-      // as a whole and a hidden one collapses to nothing, exactly like a plain
-      // sphere does, instead of its beads drifting apart or lingering as
-      // shrunken specks.
-      // Beads collapse both when the particle is hidden and when it is dimmed:
-      // in the dimmed case the centre sphere in Particles.js draws the marker
-      // instead, so drawing shrunken beads too would double up.
-      const entry = appearance[i];
-      const clusterScale = (entry?.hidden || entry?.dimmed) ? 0 : (entry?.scaleFactor ?? 1);
-      const siteScale = particleScale * radiusScale * clusterScale;
+    dummy.position.copy(scratch.local).add(scratch.centre);
+    dummy.scale.setScalar(site.radius * siteScale);
+    setColor(entry?.color ?? typeColor);
+    return true;
+  }, [particles, repulsionSiteData, numBeads, appearance, particleScale,
+      radiusScale, boxSize, typeColor, scratch]);
 
-      for (let j = 0; j < repulsionSiteData.length; j++) {
-        const site = repulsionSiteData[j];
-        localPos.set(
-          site.position.x * siteScale,
-          site.position.y * siteScale,
-          site.position.z * siteScale,
-        );
-        if (hasRotation) localPos.applyMatrix3(rotMat);
+  // Every bead of a particle resolves to that particle.
+  const resolveIndex = useCallback((instanceId) => {
+    const i = Math.floor(instanceId / numBeads);
+    if (appearance[i]?.hidden || appearance[i]?.dimmed) return null;
+    return globalIndices ? globalIndices[i] : i;
+  }, [numBeads, globalIndices, appearance]);
 
-        dummy.position.set(localPos.x + px, localPos.y + py, localPos.z + pz);
-        dummy.scale.setScalar(site.radius * siteScale);
-        dummy.updateMatrix();
-        mesh.setMatrixAt(index, dummy.matrix);
-        index++;
-      }
-    }
-
-    particlePositionsRef.current = positions;
-    mesh.instanceMatrix.needsUpdate = true;
-    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [particles, repulsionSiteData, particleScale, radiusScale, appearance, hasValidData, boxSize, geometry, invalidate]);
-
-  // Bead colours follow the shared cluster rule: yellow when selected, type
-  // colour otherwise. Hidden particles carry zero scale, so their colour is
-  // moot.
-  // Uses setColorAt to update the buffer in-place — avoids allocating a new
-  // InstancedBufferAttribute (and leaking the old GPU buffer) on every frame.
-  useEffect(() => {
-    if (!meshRef.current || !hasValidData) return;
-
-    const mesh = meshRef.current;
-
-    for (let i = 0; i < particles.length; i++) {
-      const color = appearance[i]?.color;
-      if (!color) continue;
-      for (let j = 0; j < numBeads; j++) {
-        mesh.setColorAt(i * numBeads + j, color);
-      }
-    }
-
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-    // `geometry` matters here even though this effect never reads it: changing it
-    // makes r3f rebuild the InstancedMesh, and a fresh mesh has instanceColor
-    // === null. Without this dep the beads keep the bare white material.
-  }, [particles, appearance, hasValidData, numBeads, geometry, invalidate]);
+  useRegisterPickable(`beads-${typeIndex}`, { meshRef, resolveIndex, enabled: hasValidData });
 
   if (!hasValidData) return null;
 
   return (
-    <instancedMesh ref={meshRef} args={[geometry, material, totalBeads]} castShadow receiveShadow />
+    <InstancedLayer
+      ref={meshRef}
+      geometry={geometry}
+      material={material}
+      count={totalBeads}
+      write={write}
+      deps={[write]}
+    />
   );
 }
 

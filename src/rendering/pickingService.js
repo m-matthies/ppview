@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useMemo, useRef, useCallback } from 'react';
 import * as THREE from 'three';
 import { useThree } from '@react-three/fiber';
 
@@ -98,4 +98,32 @@ export function applySelection(current, index, event) {
   const list = Array.isArray(current) ? current : [];
   if (!(event.ctrlKey || event.metaKey)) return [index];
   return list.includes(index) ? list.filter(i => i !== index) : [...list, index];
+}
+
+const PickingContext = createContext(null);
+
+/**
+ * Scene-level provider. Both rendering paths (patchy particles and oxDNA
+ * nucleotides) register into the same service, so precedence between them is
+ * decided by the ray rather than by which component mounted first.
+ */
+export function PickingProvider({ children, onPick, onFocus, onMiss }) {
+  const service = usePickingService({ onPick, onFocus, onMiss });
+  return <PickingContext.Provider value={service}>{children}</PickingContext.Provider>;
+}
+
+/**
+ * Register one instanced mesh as clickable.
+ *
+ * `resolveIndex` maps an instanceId to a particle index, or returns null for
+ * instances the layer is not currently drawing — a hidden particle is collapsed
+ * to zero scale but still present, and must not swallow clicks.
+ */
+export function useRegisterPickable(id, { meshRef, resolveIndex, enabled = true }) {
+  const service = useContext(PickingContext);
+  useEffect(() => {
+    if (!service || !enabled) return undefined;
+    service.register(id, { meshRef, resolveIndex });
+    return () => service.register(id, null);
+  }, [service, id, meshRef, resolveIndex, enabled]);
 }

@@ -659,41 +659,6 @@ export const parseOxDNANucleotideTopology = (content) => {
 };
 
 // Main function to parse the .top file (supports both Lorenzo's and Flavio's formats)
-export const parseTopFile = async (content, fileMap, detectedFormat = null, options = {}) => {
-  const lines = content.trim().split("\n");
-
-  // Use detected format if provided, otherwise fall back to original detection logic
-  if (detectedFormat === 'raspberry') {
-    return parseRaspberryTopology(content);
-  }
-
-  if (detectedFormat === 'srs_springs') {
-    return parseSRSSpringsTopology(content);
-  }
-
-  if (detectedFormat === 'oxdna_nucleotide') {
-    return parseOxDNANucleotideTopology(content);
-  }
-
-  let isFlavioFormat;
-  if (detectedFormat) {
-    isFlavioFormat = detectedFormat === 'flavio';
-    console.log(`Using detected topology format: ${detectedFormat}`);
-  } else {
-    // Original detection logic as fallback
-    isFlavioFormat = !lines[1].includes(".");
-    console.log(`Using fallback topology format detection: ${isFlavioFormat ? 'flavio' : 'lorenzo'}`);
-  }
-
-  if (isFlavioFormat) {
-    // Parse Flavio's topology
-    return await parseFlavioTopology(content, fileMap, options);
-  } else {
-    // Parse Lorenzo's topology
-    return await parseLorenzoTopology(lines, fileMap);
-  }
-};
-
 // Function to get particle type based on index
 export const getParticleType = (particleIndex, topologyData) => {
   // Check if this is Flavio format (has particleTypeMapping)

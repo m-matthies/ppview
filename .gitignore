@@ -131,3 +131,4 @@ dist
 
 # visual regression output
 visual-tests/shots/
+visual-tests/last-run.json

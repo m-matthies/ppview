@@ -17,12 +17,36 @@ const httpJson = (port, path) => new Promise((resolve, reject) => {
   }).on('error', reject);
 });
 
-async function connect(port = 9222) {
-  const targets = await httpJson(port, '/json');
-  const page = targets.find(t => t.type === 'page');
-  if (!page) throw new Error('no page target');
+/**
+ * Opens a fresh tab and returns its debugger URL. Scenarios are independent, so
+ * running several tabs at once is the single biggest speed-up available — the
+ * suite was almost entirely waiting, not computing.
+ */
+async function openPage(port = 9222) {
+  const version = await httpJson(port, '/json/version');
+  const browser = new WebSocket(version.webSocketDebuggerUrl, { perMessageDeflate: false });
+  await new Promise(r => browser.on('open', r));
+  const targetId = await new Promise((resolve, reject) => {
+    browser.on('message', raw => {
+      const msg = JSON.parse(raw);
+      if (msg.id === 1) msg.error ? reject(new Error(JSON.stringify(msg.error))) : resolve(msg.result.targetId);
+    });
+    browser.send(JSON.stringify({ id: 1, method: 'Target.createTarget', params: { url: 'about:blank' } }));
+  });
+  browser.close();
+  return `ws://127.0.0.1:${port}/devtools/page/${targetId}`;
+}
 
-  const ws = new WebSocket(page.webSocketDebuggerUrl, { perMessageDeflate: false });
+async function connect(port = 9222, wsUrl = null) {
+  let debuggerUrl = wsUrl;
+  if (!debuggerUrl) {
+    const targets = await httpJson(port, '/json');
+    const page = targets.find(t => t.type === 'page');
+    if (!page) throw new Error('no page target');
+    debuggerUrl = page.webSocketDebuggerUrl;
+  }
+
+  const ws = new WebSocket(debuggerUrl, { perMessageDeflate: false });
   let nextId = 0;
   const pending = new Map();
   const logs = [];
@@ -43,9 +67,19 @@ async function connect(port = 9222) {
     }
   });
 
+  // Without a timeout a scenario that wedges the page takes the whole suite
+  // with it, and the run just stops producing output.
+  const TIMEOUT_MS = Number(process.env.PPVIEW_CDP_TIMEOUT || 120000);
   const send = (method, params = {}) => new Promise((resolve, reject) => {
     const id = ++nextId;
-    pending.set(id, { resolve, reject });
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      reject(new Error(`${method} timed out after ${TIMEOUT_MS}ms`));
+    }, TIMEOUT_MS);
+    pending.set(id, {
+      resolve: (v) => { clearTimeout(timer); resolve(v); },
+      reject: (e) => { clearTimeout(timer); reject(e); },
+    });
     ws.send(JSON.stringify({ id, method, params }));
   });
 
@@ -59,13 +93,27 @@ async function connect(port = 9222) {
     send,
     close: () => ws.close(),
 
-    async goto(url, settleMs = 3500) {
-      logs.length = 0;
-      await send('Page.navigate', { url });
-      await new Promise(r => setTimeout(r, settleMs));
+    // Poll for the page to be genuinely ready rather than sleeping a guess.
+    async waitForSelector(selector, timeoutMs = 20000) {
+      const started = Date.now();
+      while (Date.now() - started < timeoutMs) {
+        const res = await send('Runtime.evaluate', {
+          expression: `!!document.querySelector(${JSON.stringify(selector)})`,
+          returnByValue: true,
+        });
+        if (res.result.value) return true;
+        await new Promise(r => setTimeout(r, 50));
+      }
+      throw new Error(`timed out waiting for ${selector}`);
     },
 
-    async dropFiles(paths, settleMs = 4500) {
+    async goto(url, readySelector = '.dropzone') {
+      logs.length = 0;
+      await send('Page.navigate', { url });
+      if (readySelector) await this.waitForSelector(readySelector);
+    },
+
+    async dropFiles(paths) {
       const doc = await send('DOM.getDocument');
       const node = await send('DOM.querySelector', {
         nodeId: doc.root.nodeId,
@@ -73,7 +121,17 @@ async function connect(port = 9222) {
       });
       if (!node.nodeId) throw new Error('drop zone not found');
       await send('DOM.setFileInputFiles', { nodeId: node.nodeId, files: paths });
-      await new Promise(r => setTimeout(r, settleMs));
+      // The controls bar only mounts once positions are in the store, so it is
+      // a reliable "the scene is up" signal.
+      await this.waitForSelector('.controls-panel');
+      await send('Runtime.evaluate', {
+        expression: `new Promise(r => setTimeout(() => requestAnimationFrame(() => r(1)), 250))`,
+        awaitPromise: true,
+      });
+    },
+
+    async clearStorage(origin) {
+      await send('Storage.clearDataForOrigin', { origin, storageTypes: 'local_storage' });
     },
 
     async evaluate(expression) {
@@ -95,4 +153,4 @@ async function connect(port = 9222) {
   };
 }
 
-module.exports = { connect };
+module.exports = { connect, openPage };

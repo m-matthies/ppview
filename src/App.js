@@ -11,7 +11,8 @@ import ClusteringPane from "./components/ClusteringPane";
 import LightingControlsModal from "./components/LightingControlsModal";
 import { analyzeFiles, categorizeFiles, parseInputFile } from "./utils/fileTypeDetector";
 import { readMGL, readMGLTrajectory, convertMGLToPPViewFormat } from "./utils/mglParser";
-import { parseTopFile, getParticleType } from "./utils/topologyParser";
+import { getParticleType } from "./utils/topologyParser";
+import { parseTopology } from "./formats/registry";
 import { buildTrajIndex, parseConfiguration } from "./utils/trajectoryLoader";
 import { applyPeriodicBoundary, applyPeriodicWrapping, computeRotationMatrix } from "./utils/geometryUtils";
 import { selectFallbackTrajectoryFile, createFileMap } from "./utils/fileLoader";
@@ -272,26 +273,30 @@ function App() {
       if (categorizedFiles.topology) {
         const topFile = categorizedFiles.topology.file;
         const topContent = await topFile.text();
-        const parsedTopData = await parseTopFile(topContent, fileMap, categorizedFiles.topology.format, {
-          particleFile: inputFileParams.particle_file,
-          patchFile: inputFileParams.patchy_file,
-        });
+        const { data: parsedTopData, format } = await parseTopology(
+          topContent,
+          fileMap,
+          categorizedFiles.topology.format,
+          {
+            particleFile: inputFileParams.particle_file,
+            patchFile: inputFileParams.patchy_file,
+          },
+        );
         setTopData(parsedTopData);
-        // SRS Springs format encodes per-particle radius in the topology
-        if (parsedTopData.srsParticleRadius !== undefined) {
-          setParticleRadius(parsedTopData.srsParticleRadius);
-        }
+        // Any format-specific store setup lives with the format, not here.
+        format?.onLoad?.(parsedTopData, { setParticleRadius });
         console.log(`Loaded ${categorizedFiles.topology.format} topology from ${topFile.name}`);
       } else {
         // Fallback: look for .top extension
         const topFile = files.find((file) => file.name.endsWith(".top"));
         if (topFile) {
           const topContent = await topFile.text();
-          const parsedTopData = await parseTopFile(topContent, fileMap, null, {
+          const { data: parsedTopData, format } = await parseTopology(topContent, fileMap, null, {
             particleFile: inputFileParams.particle_file,
             patchFile: inputFileParams.patchy_file,
           });
           setTopData(parsedTopData);
+          format?.onLoad?.(parsedTopData, { setParticleRadius });
           console.log(`Loaded topology from ${topFile.name} (fallback detection)`);
         } else {
           alert("No topology file detected! Please ensure you have a valid topology file.");

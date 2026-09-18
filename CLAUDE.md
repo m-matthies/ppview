@@ -12,10 +12,14 @@ PPView is a React-based 3D visualization tool for oxDNA molecular dynamics simul
 ## Development Commands
 
 ```bash
-npm start       # Dev server at http://localhost:3000
-npm test        # Jest tests in watch mode
-npm run build   # Production build
-npm run deploy  # Deploy to GitHub Pages
+npm start                        # Dev server at http://localhost:3000
+npm test                         # Jest tests in watch mode
+npm run build                    # Production build
+npm run deploy                   # Deploy to GitHub Pages
+npm run fixtures                 # Regenerate visual-test fixtures
+npm run test:visual              # Visual regression vs baseline
+npm run test:visual -- --update  # Re-record the baseline
+npm run test:visual -- --only=oxdna
 ```
 
 ## Architecture
@@ -152,6 +156,56 @@ iS <id> <k> <r0> <x> <y> <z>
 - Cylinder oriented with `setFromUnitVectors(up, dir)` between particle positions
 - All skipped instances (degenerate, out-of-range, or too-long) get explicit `makeScale(0,0,0)` matrix to prevent ghost cylinders at origin and stale matrices during translation
 
+## Rendering architecture
+
+Renderers used to be independent: each drew its own instanced meshes, attached
+its own canvas listeners, and opted into whichever cross-cutting features its
+author needed. The result was a ragged feature matrix — oxDNA nucleotides could
+not be cluster-highlighted, springs ignored selection *and* clustering, and
+`Patches` never requested a redraw at all. Those are now structural
+impossibilities rather than things to remember.
+
+### `src/rendering/InstancedLayer.js`
+One `InstancedMesh` and all the bookkeeping around it. A renderer supplies a
+`write(i, dummy, setColor)` callback that fills one instance and returns `false`
+to hide it; the layer owns matrix writes, `needsUpdate`, zero-scaling hidden
+instances, and the `invalidate()` that demand-mode rendering requires.
+
+Two traps are encoded here so no renderer can hit them again:
+- **Never guard on `instanceColor` being null.** Changing `geometry` changes the
+  mesh's `args`, so r3f rebuilds it, and a fresh `InstancedMesh` always starts
+  with `instanceColor === null`. `setColorAt` allocates it. Bailing out instead
+  leaves instances rendering as bare white material — which twice shipped as
+  "particles turn white", once for spheres and once for raspberry beads.
+- **Always `invalidate()`.** `frameloop="demand"` means buffer updates are
+  invisible until something requests a frame.
+
+`geometry` is part of the layer's dependency list, so a geometry change
+repopulates both matrices *and* colours.
+
+### `src/rendering/pickingService.js`
+One raycaster and one pair of canvas listeners for the whole scene, provided by
+`PickingProvider` in `ParticleScene`. Layers call `useRegisterPickable(id, {
+meshRef, resolveIndex })`; `resolveIndex` maps an instanceId to a particle index
+and returns `null` for instances the layer is not currently drawing, so a hidden
+particle cannot swallow a click. Which mesh wins is decided by ray distance
+rather than by which component attached its listener first.
+
+Selection and camera framing live in `ParticleScene`, not in renderers. Framing
+needs only an index — the position comes from the store — which removed the
+per-layer position bookkeeping the old code carried.
+
+### `src/formats/registry.js`
+Every supported topology format in one table: `id`, `parse`, `matches` (which
+recognises already-parsed topology so `rendererFor` can pick a renderer),
+`renderer`, and an optional `onLoad` for format-specific store setup. This
+replaced an if-chain in `parseTopFile` (now deleted) and an `isOxDNA` boolean in
+`ParticleScene`.
+
+### Adding a format
+Add a parser, then one entry in `FORMATS`, then detection in
+`utils/fileTypeDetector.js`. Do not add branches to `ParticleScene` or `App.js`.
+
 ## UI architecture
 
 ### Defaults (`uiStore.js`)
@@ -283,6 +337,23 @@ first is deliberate — a stale render target left bound would otherwise swallow
 - Periodic boundary conditions with automatic CoM centering
 - Patches rendered as outward-pointing cones (tip on surface, base outside)
 
+## Visual regression tests (`visual-tests/`)
+
+Headless Chrome drives the real app over CDP: 6 fixtures (one per format, each
+laid out as 5 DBSCAN-separable blobs) x 5 scenarios (load, detail/radius,
+clustering, selection, appearance). It records pixel-bucket counts rather than
+image hashes, so it tolerates antialiasing jitter but moves decisively when
+geometry appears, vanishes, resizes or loses its colour.
+
+- `edges` counts horizontal gradient: colour buckets cannot see white geometry
+  against a light background, which is exactly how the invisible-bead bug hid.
+- The `selection` scenario enlarges particles first. Only some elements are
+  clickable — an oxDNA backbone sphere is r=0.2 in a 60-unit box, roughly 4px —
+  so at default size it would measure marksmanship, not correctness. It also
+  settles after each click, because React commits selection asynchronously.
+- Stop any dev server on the port first; the runner refuses to run against one it
+  did not start, since that may be a different build.
+
 ## Performance Patterns
 
 - **Instanced rendering**: `THREE.InstancedMesh` for particles, patches, repulsion site beads, springs, and all four nucleotide mesh types
@@ -335,9 +406,15 @@ PPView detects iframe mode (`window.self !== window.top`) and hides controls. Su
 
 ## Adding Features
 
-**New file format**: extend `utils/fileTypeDetector.js` (add detection in `analyzeTopologyFile` — note the detection order above), add parser in `topologyParser.js`, dispatch in `parseTopFile`, add to the `categorizeFiles` switch in `fileTypeDetector.js`, handle any format-specific store initialization in `App.js`.
+**New file format**: add the parser in `topologyParser.js`, one entry in
+`src/formats/registry.js`, detection in `utils/fileTypeDetector.js`
+(`analyzeTopologyFile` — note the detection order above) and the `categorizeFiles`
+switch. Format-specific store setup goes in the entry's `onLoad`, not in `App.js`.
 
-**New particle type with custom geometry**: create a component like `RepulsionSites.js`, register its mesh with `Particles.js` via `onRegister` callback to consolidate raycasting, scale the main sphere to zero for that particle type.
+**New visual element**: render an `InstancedLayer` with a `write` callback. Call
+`useRegisterPickable` if it should be clickable, and run its colour and scale
+through `getClusterAppearance` so selection and clustering apply to it without
+extra wiring.
 
 **New analysis feature**: create component in `src/components/`, add state to appropriate store, integrate with `ParticleScene`, add to GLTF export if needed.
 

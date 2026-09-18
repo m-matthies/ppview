@@ -43,6 +43,16 @@ const get = (url) => new Promise((resolve, reject) => {
     process.exit(2);
   }
 
+  // A dev server already on this port would be serving a different build (or a
+  // different checkout), and the results would quietly describe that instead.
+  const portBusy = await new Promise(resolve => {
+    http.get(URL, res => { res.resume(); resolve(true); }).on('error', () => resolve(false));
+  });
+  if (portBusy) {
+    console.error(`Something is already serving ${URL}. Stop it first, or set PPVIEW_PORT.`);
+    process.exit(2);
+  }
+
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'ppview-visual-'));
   const children = [];
   const cleanup = () => {

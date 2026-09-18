@@ -1,16 +1,17 @@
-import React, { useRef, useEffect, useMemo } from "react";
+import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei/core/OrbitControls";
 import { Stats } from "@react-three/drei/core/Stats";
 import { Environment } from "@react-three/drei/core/Environment";
-import Particles from "./Particles";
 import Springs from "./Springs";
-import OxDNANucleotides from "./OxDNANucleotides";
+import { rendererFor } from "../formats/registry";
 import { EffectComposer, SSAO } from "@react-three/postprocessing";
 import * as THREE from "three";
 import { useParticleStore } from "../store/particleStore";
 import { useUIStore } from "../store/uiStore";
 import { isDarkBackground } from "../lighting";
+import { PickingProvider, applySelection } from "../rendering/pickingService";
+import { centredPosition } from "../rendering/transforms";
 
 // Coordinate Axis component using ArrowHelper - positioned at box corner
 function CoordinateAxis({ boxSize, isDark }) {
@@ -190,7 +191,7 @@ const ParticleScene = () => {
         showStats={showStats}
         lightingSettings={lightingSettings}
         sceneBackground={sceneBackground}
-        isOxDNA={!!(topData?.nucleotides?.length)}
+        topData={topData}
       />
     </Canvas>
   );
@@ -208,11 +209,14 @@ const SceneContent = React.memo(function SceneContent({
   showStats,
   lightingSettings,
   sceneBackground,
-  isOxDNA,
+  topData,
 }) {
   const controlsRef = useRef();
   const { scene, camera, invalidate, gl } = useThree();
   const ssaoEnabled = lightingSettings.ssaoEnabled;
+  const setSelectedParticles = useUIStore(state => state.setSelectedParticles);
+  // Which renderer draws this topology is the format registry's decision.
+  const Renderer = useMemo(() => rendererFor(topData), [topData]);
   const isDark = isDarkBackground(sceneBackground);
 
   // The scene owns its background so it lands in screenshots and is independent
@@ -263,8 +267,33 @@ const SceneContent = React.memo(function SceneContent({
     envMapIntensity: 0.4,
   }), [backdropColor]);
 
-  // Function to handle double-click on a particle
-  const handleParticleDoubleClick = (particlePosition) => {
+  const handlePick = useCallback((index, event) => {
+    const current = useUIStore.getState().selectedParticles;
+    const next = applySelection(current, index, event);
+    // Re-selecting the same single particle is a no-op; skip the store write so
+    // it does not re-run every layer's effects.
+    if (current?.length === next.length && next.every((v, i) => current[i] === v)) return;
+    setSelectedParticles(next);
+  }, [setSelectedParticles]);
+
+  const handleMiss = useCallback(() => {
+    // Only publish a change when there is something to clear. Pushing a fresh
+    // empty array on every click into empty space re-rendered every layer in
+    // the scene for nothing.
+    if (useUIStore.getState().selectedParticles?.length) setSelectedParticles([]);
+  }, [setSelectedParticles]);
+
+  // Framing a particle only needs its index: the position comes from the store,
+  // which removes the per-layer position bookkeeping the old code carried.
+  const handleFocus = useCallback((index) => {
+    const { positions, currentBoxSize } = useParticleStore.getState();
+    const particle = positions?.[index];
+    if (!particle) return;
+    animateCameraTo(centredPosition(particle, currentBoxSize));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const animateCameraTo = (particlePosition) => {
     // Animate camera position towards the particle
     const duration = 1; // Duration in seconds
     const startTime = performance.now();
@@ -373,12 +402,13 @@ const SceneContent = React.memo(function SceneContent({
         <CoordinateAxis boxSize={boxSize} isDark={isDark} />
       )}
 
-      {isOxDNA ? (
-        <OxDNANucleotides onParticleDoubleClick={handleParticleDoubleClick} />
-      ) : (
-        <Particles onParticleDoubleClick={handleParticleDoubleClick} />
-      )}
-      <Springs />
+      {/* One picking service for the whole scene: both rendering paths register
+          their meshes, so which one wins a click is decided by the ray rather
+          than by which component attached its listener first. */}
+      <PickingProvider onPick={handlePick} onFocus={handleFocus} onMiss={handleMiss}>
+        <Renderer />
+        <Springs />
+      </PickingProvider>
 
       {/* Screen-space ambient occlusion */}
       {ssaoEnabled && (

@@ -6,12 +6,16 @@
 //   - ns↔bb connector cylinder (r=0.1), colored by strand
 //   - bb→bb3' backbone connector (tapered r=0.1 to r=0.02), colored by strand
 
-import React, { useRef, useEffect, useMemo, useCallback } from "react";
-import { useThree } from "@react-three/fiber";
+import React, { useRef, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../store/particleStore";
 import { useUIStore } from "../store/uiStore";
+import { useClusteringStore } from "../store/clusteringStore";
 import { getParticleColors } from "../colors";
+import InstancedLayer from "../rendering/InstancedLayer";
+import { useRegisterPickable } from "../rendering/pickingService";
+import { centreOnBox } from "../rendering/transforms";
+import { getClusterAppearance } from "../utils/clusterAppearance";
 
 // Base-type colors matching oxdna-viewer nucleosideColors
 const BASE_COLORS = {
@@ -22,20 +26,20 @@ const BASE_COLORS = {
   U: new THREE.Color(0xFF3333), // Red (RNA uracil)
 };
 const DEFAULT_BASE_COLOR = new THREE.Color(0x888888);
-const SELECTED_COLOR = new THREE.Color("yellow");
 
 // Distance between backbone bead and nucleoside center for DNA
 const DNA_BBNS_DIST = 0.8147053;
 
-function OxDNANucleotides({ onParticleDoubleClick }) {
+const UP_Y = new THREE.Vector3(0, 1, 0);
+
+function OxDNANucleotides() {
   const positions = useParticleStore(state => state.positions);
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const topData = useParticleStore(state => state.topData);
   const particleRadius = useParticleStore(state => state.particleRadius);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
-  const { selectedParticles, setSelectedParticles, sphereSegments } = useUIStore();
-
-  const { gl, camera, invalidate } = useThree();
+  const { selectedParticles, sphereSegments } = useUIStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
 
   const bbRef = useRef();
   const nsRef = useRef();
@@ -51,7 +55,6 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
   // itself, so scaling those would misreport where the nucleotide sits.
   const radiusScale = particleRadius / DEFAULT_PARTICLE_RADIUS;
 
-  // Geometries — unit cylinder (height=1) is scaled per instance
   const bbGeo = useMemo(
     () => new THREE.SphereGeometry(0.2 * radiusScale, sphereSegments, sphereSegments),
     [sphereSegments, radiusScale],
@@ -64,7 +67,6 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
     () => new THREE.CylinderGeometry(0.1 * radiusScale, 0.1 * radiusScale, 1, sphereSegments),
     [sphereSegments, radiusScale],
   );
-  // tapered
   const bbconGeo = useMemo(
     () => new THREE.CylinderGeometry(0.1 * radiusScale, 0.02 * radiusScale, 1, sphereSegments),
     [sphereSegments, radiusScale],
@@ -75,245 +77,175 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
     roughness: 0.6,
   }), []);
 
-  // Helper: normalized mouse coords relative to canvas
-  const getNormalizedMouseCoords = useCallback((event) => {
-    if (!gl?.domElement) return null;
-    const canvas = gl.domElement;
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width <= 0 || rect.height <= 0) return null;
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-    if (x < 0 || x > rect.width || y < 0 || y > rect.height) return null;
-    return new THREE.Vector2((x / rect.width) * 2 - 1, -(y / rect.height) * 2 + 1);
-  }, [gl]);
+  const strandColors = useMemo(() => {
+    const palette = getParticleColors(currentColorScheme);
+    // oxdna-viewer cycles strand colours through the first four entries.
+    const cap = Math.min(4, palette.length);
+    return palette.slice(0, cap).map(hex => new THREE.Color(hex));
+  }, [currentColorScheme]);
 
-  // Click: select backbone sphere by instanceId
-  const handleClick = useCallback((event) => {
-    if (!bbRef.current || !camera) return;
-    const pointer = getNormalizedMouseCoords(event);
-    if (!pointer) return;
-
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(pointer, camera);
-
-    const intersects = raycaster.intersectObject(bbRef.current);
-    if (intersects.length > 0) {
-      const idx = intersects[0].instanceId;
-      if (idx >= 0 && idx < count) {
-        if (event.ctrlKey || event.metaKey) {
-          const current = Array.isArray(selectedParticles) ? selectedParticles : [];
-          if (current.includes(idx)) {
-            setSelectedParticles(current.filter(id => id !== idx));
-          } else {
-            setSelectedParticles([...current, idx]);
-          }
-        } else {
-          setSelectedParticles([idx]);
-        }
-        return;
-      }
-    }
-
-    // Miss — clear selection (non-ctrl only)
-    if (!event.ctrlKey && !event.metaKey) {
-      setSelectedParticles([]);
-    }
-  }, [camera, count, getNormalizedMouseCoords, selectedParticles, setSelectedParticles]);
-
-  // Double-click: animate camera to backbone position
-  const handleDoubleClick = useCallback((event) => {
-    if (!bbRef.current || !camera || !onParticleDoubleClick) return;
-    const pointer = getNormalizedMouseCoords(event);
-    if (!pointer) return;
-
-    const raycaster = new THREE.Raycaster();
-    raycaster.setFromCamera(pointer, camera);
-
-    const intersects = raycaster.intersectObject(bbRef.current);
-    if (intersects.length > 0) {
-      const idx = intersects[0].instanceId;
-      if (idx >= 0 && idx < count && positions?.[idx]) {
-        const pos = positions[idx];
-        onParticleDoubleClick(new THREE.Vector3(
-          pos.x - boxSize[0] / 2,
-          pos.y - boxSize[1] / 2,
-          pos.z - boxSize[2] / 2,
-        ));
-      }
-    }
-  }, [camera, count, positions, boxSize, onParticleDoubleClick, getNormalizedMouseCoords]);
-
-  // Register/unregister click listeners
-  useEffect(() => {
-    gl.domElement.addEventListener("click", handleClick);
-    gl.domElement.addEventListener("dblclick", handleDoubleClick);
-    return () => {
-      gl.domElement.removeEventListener("click", handleClick);
-      gl.domElement.removeEventListener("dblclick", handleDoubleClick);
-    };
-  }, [gl, handleClick, handleDoubleClick]);
-
-  // --- Main effect: geometry + base colors ---
-  useEffect(() => {
-    if (!bbRef.current || !nsRef.current || !conRef.current || !bbconRef.current) return;
-    if (!positions || positions.length === 0 || !nucleotides || count === 0) return;
-    if (positions.length < count) return;
-
-    const bbMesh = bbRef.current;
-    const nsMesh = nsRef.current;
-    const conMesh = conRef.current;
-    const bbconMesh = bbconRef.current;
-
-    const strandColors = getParticleColors(currentColorScheme);
-    const upY = new THREE.Vector3(0, 1, 0);
-    const dummy = new THREE.Object3D();
-    const zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
-
-    // --- Pass 1: pre-compute all backbone positions (needed for bbcon segments) ---
-    const bbPositions = new Array(count).fill(null);
+  // Backbone positions are needed twice — for the backbone sphere and for the
+  // connector to the 3' neighbour — so they are computed once per frame rather
+  // than recomputed inside each layer's write callback.
+  const backbones = useMemo(() => {
+    if (!positions?.length || !count) return null;
+    const out = new Array(count).fill(null);
+    const p = new THREE.Vector3();
+    const a1 = new THREE.Vector3();
+    const a3 = new THREE.Vector3();
+    const a2 = new THREE.Vector3();
     for (let i = 0; i < count; i++) {
       const pos = positions[i];
-      if (!pos || !pos.a1 || !pos.a3) continue;
-
-      const p = new THREE.Vector3(
-        pos.x - boxSize[0] / 2,
-        pos.y - boxSize[1] / 2,
-        pos.z - boxSize[2] / 2,
-      );
-      const a1 = new THREE.Vector3(pos.a1.x, pos.a1.y, pos.a1.z);
-      const a3 = new THREE.Vector3(pos.a3.x, pos.a3.y, pos.a3.z);
-      // a2 = -(a1 × a3).normalize() = (a3 × a1).normalize()
-      const a2 = new THREE.Vector3().crossVectors(a3, a1).normalize();
+      if (!pos?.a1 || !pos?.a3) continue;
+      centreOnBox(p, pos, boxSize);
+      a1.set(pos.a1.x, pos.a1.y, pos.a1.z);
+      a3.set(pos.a3.x, pos.a3.y, pos.a3.z);
+      // a2 = (a3 × a1).normalize()
+      a2.crossVectors(a3, a1).normalize();
       // DNA backbone: p + (-0.34*a1 + 0.3408*a2)
-      bbPositions[i] = p.clone().addScaledVector(a1, -0.34).addScaledVector(a2, 0.3408);
+      out[i] = p.clone().addScaledVector(a1, -0.34).addScaledVector(a2, 0.3408);
     }
+    return out;
+  }, [positions, count, boxSize]);
 
-    // --- Pass 2: fill instance matrices and colors ---
+  // Nucleotides now honour cluster highlighting. They previously ignored it
+  // entirely — the one rendering path that did — because the feature was wired
+  // per renderer instead of shared.
+  const appearance = useMemo(() => {
+    if (!count) return [];
+    const selected = Array.isArray(selectedParticles) ? selectedParticles : [];
+    const out = new Array(count);
     for (let i = 0; i < count; i++) {
-      const nuc = nucleotides[i];
-      const pos = positions[i];
-
-      if (!pos || !pos.a1 || !pos.a3 || !bbPositions[i]) {
-        bbMesh.setMatrixAt(i, zeroMatrix);
-        nsMesh.setMatrixAt(i, zeroMatrix);
-        conMesh.setMatrixAt(i, zeroMatrix);
-        bbconMesh.setMatrixAt(i, zeroMatrix);
-        continue;
-      }
-
-      const p = new THREE.Vector3(
-        pos.x - boxSize[0] / 2,
-        pos.y - boxSize[1] / 2,
-        pos.z - boxSize[2] / 2,
-      );
-      const a1 = new THREE.Vector3(pos.a1.x, pos.a1.y, pos.a1.z);
-      const a3 = new THREE.Vector3(pos.a3.x, pos.a3.y, pos.a3.z).normalize();
-      const bb = bbPositions[i];
-      const ns = p.clone().addScaledVector(a1, 0.34);
-
-      const strandColor = new THREE.Color(
-        strandColors[(pos.typeIndex ?? 0) % Math.min(4, strandColors.length)]
-      );
-      const baseColor = BASE_COLORS[nuc.base] ?? DEFAULT_BASE_COLOR;
-
-      // --- Backbone sphere ---
-      dummy.position.copy(bb);
-      dummy.quaternion.identity();
-      dummy.scale.set(1, 1, 1);
-      dummy.updateMatrix();
-      bbMesh.setMatrixAt(i, dummy.matrix);
-      bbMesh.setColorAt(i, strandColor);
-
-      // --- Nucleoside ellipsoid: Y-axis → a3, scaled [0.7, 0.3, 0.7] ---
-      const nsRotation = new THREE.Quaternion().setFromUnitVectors(upY, a3);
-      dummy.position.copy(ns);
-      dummy.quaternion.copy(nsRotation);
-      dummy.scale.set(0.7, 0.3, 0.7);
-      dummy.updateMatrix();
-      nsMesh.setMatrixAt(i, dummy.matrix);
-      nsMesh.setColorAt(i, baseColor);
-
-      // --- ns↔bb connector cylinder: Y-axis → (bb-ns), height = DNA_BBNS_DIST ---
-      const conDir = bb.clone().sub(ns).normalize();
-      const conCenter = bb.clone().add(ns).multiplyScalar(0.5);
-      const conRotation = new THREE.Quaternion().setFromUnitVectors(upY, conDir);
-      dummy.position.copy(conCenter);
-      dummy.quaternion.copy(conRotation);
-      dummy.scale.set(1, DNA_BBNS_DIST, 1);
-      dummy.updateMatrix();
-      conMesh.setMatrixAt(i, dummy.matrix);
-      conMesh.setColorAt(i, strandColor);
-
-      // --- Backbone connector: bb → n3-neighbor bb ---
-      const n3Idx = nuc.n3;
-      if (n3Idx >= 0 && n3Idx < count && bbPositions[n3Idx]) {
-        const bbN3 = bbPositions[n3Idx];
-        const spLen = bb.distanceTo(bbN3);
-        const hidden = spLen >= boxSize[0] * 0.9
-          || spLen >= boxSize[1] * 0.9
-          || spLen >= boxSize[2] * 0.9;
-
-        if (hidden || spLen < 1e-6) {
-          bbconMesh.setMatrixAt(i, zeroMatrix);
-        } else {
-          const spCenter = bb.clone().add(bbN3).multiplyScalar(0.5);
-          const spDir = bbN3.clone().sub(bb).normalize();
-          const spRotation = new THREE.Quaternion().setFromUnitVectors(upY, spDir);
-          dummy.position.copy(spCenter);
-          dummy.quaternion.copy(spRotation);
-          dummy.scale.set(1, spLen, 1);
-          dummy.updateMatrix();
-          bbconMesh.setMatrixAt(i, dummy.matrix);
-          bbconMesh.setColorAt(i, strandColor);
-        }
-      } else {
-        bbconMesh.setMatrixAt(i, zeroMatrix);
-      }
+      const inCluster = highlightedClusters.has(i);
+      const strandColor = strandColors[(positions?.[i]?.typeIndex ?? 0) % Math.max(strandColors.length, 1)];
+      out[i] = getClusterAppearance({
+        isSelected: selected.includes(i),
+        isInHighlightedCluster: inCluster,
+        shouldShow: !showOnlyHighlightedClusters || inCluster,
+        hasHighlightedClusters: highlightedClusters.size > 0,
+        showOnlyHighlightedClusters,
+        dimNonSelectedClusters,
+        baseColor: strandColor,
+      });
     }
+    return out;
+  }, [count, positions, selectedParticles, highlightedClusters,
+      showOnlyHighlightedClusters, dimNonSelectedClusters, strandColors]);
 
-    bbMesh.instanceMatrix.needsUpdate = true;
-    nsMesh.instanceMatrix.needsUpdate = true;
-    conMesh.instanceMatrix.needsUpdate = true;
-    bbconMesh.instanceMatrix.needsUpdate = true;
+  const scratch = useMemo(() => ({
+    p: new THREE.Vector3(),
+    a1: new THREE.Vector3(),
+    a3: new THREE.Vector3(),
+    ns: new THREE.Vector3(),
+    dir: new THREE.Vector3(),
+    centre: new THREE.Vector3(),
+  }), []);
 
-    if (bbMesh.instanceColor) bbMesh.instanceColor.needsUpdate = true;
-    if (nsMesh.instanceColor) nsMesh.instanceColor.needsUpdate = true;
-    if (conMesh.instanceColor) conMesh.instanceColor.needsUpdate = true;
-    if (bbconMesh.instanceColor) bbconMesh.instanceColor.needsUpdate = true;
-    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [positions, boxSize, nucleotides, count, currentColorScheme, invalidate, bbGeo, nsGeo, conGeo, bbconGeo]);
+  const ready = !!(backbones && positions?.length >= count && count > 0);
 
-  // --- Selection effect: update backbone sphere colors only ---
-  useEffect(() => {
-    if (!bbRef.current || !positions || !nucleotides || count === 0) return;
-    const mesh = bbRef.current;
-    if (!mesh.instanceColor) return; // main effect hasn't run yet
+  // --- Backbone sphere: strand coloured, and what picking hits ---------------
+  const writeBackbone = useMemo(() => (i, dummy, setColor) => {
+    const bb = backbones?.[i];
+    const entry = appearance[i];
+    if (!bb || entry?.hidden) return false;
+    dummy.position.copy(bb);
+    dummy.scale.setScalar(entry?.scaleFactor ?? 1);
+    setColor(entry?.color);
+    return true;
+  }, [backbones, appearance]);
 
-    const strandColors = getParticleColors(currentColorScheme);
+  // --- Nucleoside ellipsoid: base coloured, long axis along a3 ---------------
+  const writeNucleoside = useMemo(() => (i, dummy, setColor) => {
+    const pos = positions?.[i];
+    const entry = appearance[i];
+    if (!pos?.a1 || !pos?.a3 || entry?.hidden) return false;
 
-    for (let i = 0; i < count; i++) {
-      const pos = positions[i];
-      if (!pos) continue;
-      const isSelected = Array.isArray(selectedParticles) && selectedParticles.includes(i);
-      if (isSelected) {
-        mesh.setColorAt(i, SELECTED_COLOR);
-      } else {
-        mesh.setColorAt(i, new THREE.Color(
-          strandColors[(pos.typeIndex ?? 0) % Math.min(4, strandColors.length)]
-        ));
-      }
-    }
-    mesh.instanceColor.needsUpdate = true;
-  }, [selectedParticles, positions, nucleotides, count, currentColorScheme]);
+    centreOnBox(scratch.p, pos, boxSize);
+    scratch.a1.set(pos.a1.x, pos.a1.y, pos.a1.z);
+    scratch.a3.set(pos.a3.x, pos.a3.y, pos.a3.z).normalize();
+    scratch.ns.copy(scratch.p).addScaledVector(scratch.a1, 0.34);
 
-  if (!nucleotides || count === 0) return null;
+    const s = entry?.scaleFactor ?? 1;
+    dummy.position.copy(scratch.ns);
+    dummy.quaternion.setFromUnitVectors(UP_Y, scratch.a3);
+    dummy.scale.set(0.7 * s, 0.3 * s, 0.7 * s);
+    // A dimmed nucleotide takes the shared grey; otherwise the base colour,
+    // which is the whole point of this element.
+    setColor(entry?.dimmed ? entry.color : (BASE_COLORS[nucleotides[i].base] ?? DEFAULT_BASE_COLOR));
+    return true;
+  }, [positions, boxSize, appearance, nucleotides, scratch]);
+
+  // --- ns↔bb connector ------------------------------------------------------
+  const writeConnector = useMemo(() => (i, dummy, setColor) => {
+    const pos = positions?.[i];
+    const bb = backbones?.[i];
+    const entry = appearance[i];
+    if (!pos?.a1 || !bb || entry?.hidden) return false;
+
+    centreOnBox(scratch.p, pos, boxSize);
+    scratch.a1.set(pos.a1.x, pos.a1.y, pos.a1.z);
+    scratch.ns.copy(scratch.p).addScaledVector(scratch.a1, 0.34);
+
+    scratch.dir.copy(bb).sub(scratch.ns).normalize();
+    scratch.centre.copy(bb).add(scratch.ns).multiplyScalar(0.5);
+
+    const s = entry?.scaleFactor ?? 1;
+    dummy.position.copy(scratch.centre);
+    dummy.quaternion.setFromUnitVectors(UP_Y, scratch.dir);
+    dummy.scale.set(s, DNA_BBNS_DIST, s);
+    setColor(entry?.color);
+    return true;
+  }, [positions, backbones, boxSize, appearance, scratch]);
+
+  // --- Backbone connector to the 3' neighbour -------------------------------
+  const writeBackboneConnector = useMemo(() => (i, dummy, setColor) => {
+    const bb = backbones?.[i];
+    const entry = appearance[i];
+    const n3 = nucleotides?.[i]?.n3;
+    if (!bb || entry?.hidden || n3 == null || n3 < 0 || n3 >= count) return false;
+
+    const bbN3 = backbones[n3];
+    if (!bbN3) return false;
+    // Both ends must be drawn, or the bond dangles into hidden space.
+    if (appearance[n3]?.hidden) return false;
+
+    const length = bb.distanceTo(bbN3);
+    // A bond spanning most of the box has wrapped a periodic boundary.
+    if (length < 1e-6
+      || length >= boxSize[0] * 0.9
+      || length >= boxSize[1] * 0.9
+      || length >= boxSize[2] * 0.9) return false;
+
+    scratch.centre.copy(bb).add(bbN3).multiplyScalar(0.5);
+    scratch.dir.copy(bbN3).sub(bb).normalize();
+
+    const s = Math.min(entry?.scaleFactor ?? 1, appearance[n3]?.scaleFactor ?? 1);
+    dummy.position.copy(scratch.centre);
+    dummy.quaternion.setFromUnitVectors(UP_Y, scratch.dir);
+    dummy.scale.set(s, length, s);
+    setColor(entry?.color);
+    return true;
+  }, [backbones, appearance, nucleotides, count, boxSize, scratch]);
+
+  const resolveIndex = useCallback((instanceId) => {
+    if (instanceId < 0 || instanceId >= count) return null;
+    return appearance[instanceId]?.hidden ? null : instanceId;
+  }, [count, appearance]);
+
+  useRegisterPickable('nucleotides', { meshRef: bbRef, resolveIndex, enabled: ready });
+
+  if (!ready) return null;
 
   return (
     <>
-      <instancedMesh ref={bbRef} args={[bbGeo, material, count]} castShadow receiveShadow />
-      <instancedMesh ref={nsRef} args={[nsGeo, material, count]} castShadow receiveShadow />
-      <instancedMesh ref={conRef} args={[conGeo, material, count]} castShadow receiveShadow />
-      <instancedMesh ref={bbconRef} args={[bbconGeo, material, count]} castShadow receiveShadow />
+      <InstancedLayer ref={bbRef} geometry={bbGeo} material={material} count={count}
+        write={writeBackbone} deps={[writeBackbone]} />
+      <InstancedLayer ref={nsRef} geometry={nsGeo} material={material} count={count}
+        write={writeNucleoside} deps={[writeNucleoside]} />
+      <InstancedLayer ref={conRef} geometry={conGeo} material={material} count={count}
+        write={writeConnector} deps={[writeConnector]} />
+      <InstancedLayer ref={bbconRef} geometry={bbconGeo} material={material} count={count}
+        write={writeBackboneConnector} deps={[writeBackboneConnector]} />
     </>
   );
 }

@@ -42,10 +42,60 @@ const MEASURE = `
 })()
 `;
 
+// A sparse sample of the canvas — cheap enough to poll in a loop, dense enough
+// to notice any change worth waiting for.
+const QUICK_HASH = `
+(() => {
+  const canvas = document.querySelector('canvas');
+  if (!canvas) return 'none';
+  const c = document.createElement('canvas');
+  c.width = canvas.width; c.height = canvas.height;
+  c.getContext('2d').drawImage(canvas, 0, 0);
+  const d = c.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  let h = 0;
+  for (let i = 0; i < d.length; i += 256) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) | 0;
+  return h;
+})()
+`;
+
 // Small helpers the scenarios lean on, injected alongside each expression.
 const PRELUDE = `
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const measure = () => ${MEASURE};
+const quickHash = () => ${QUICK_HASH};
+
+/**
+ * Wait until the canvas stops changing, rather than guessing how long a redraw
+ * takes. frameloop is "demand", so once the scene has redrawn the pixels are
+ * final — two identical samples in a row means finished. Fixed sleeps were the
+ * entire cost of this suite.
+ */
+const settle = async (timeout = 4000) => {
+  const started = Date.now();
+  let previous = quickHash();
+  let stable = 0;
+  while (Date.now() - started < timeout) {
+    await new Promise(r => requestAnimationFrame(() => r()));
+    await sleep(30);
+    const next = quickHash();
+    if (next === previous) {
+      if (++stable >= 2) return;
+    } else {
+      stable = 0;
+      previous = next;
+    }
+  }
+};
+
+/** Poll a predicate instead of sleeping a guessed interval. */
+const waitFor = async (fn, timeout = 4000) => {
+  const started = Date.now();
+  while (Date.now() - started < timeout) {
+    if (fn()) return true;
+    await sleep(25);
+  }
+  return false;
+};
 const byLabel = (label) =>
   [...document.querySelectorAll('button')].find(b => b.getAttribute('aria-label') === label);
 const setNative = (el, value) => {
