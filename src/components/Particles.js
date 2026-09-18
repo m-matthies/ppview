@@ -15,7 +15,7 @@ function Particles({
   const positions = useParticleStore(state => state.positions);
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const particleRadius = useParticleStore(state => state.particleRadius);
-  const { selectedParticles, setSelectedParticles, isPathtracerEnabled } = useUIStore();
+  const { selectedParticles, setSelectedParticles, isPathtracerEnabled, sphereSegments } = useUIStore();
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
   const { highlightedClusters, showOnlyHighlightedClusters } = useClusteringStore();
@@ -33,26 +33,10 @@ function Particles({
     }
   }, []);
 
-  // Create geometry and material once
-  // Adaptive quality based on particle count to avoid memory overflow:
-  // - Small scenes (< 500 particles): 32x32 segments
-  // - Medium scenes (500-2000 particles): 24x24 segments  
-  // - Large scenes (> 2000 particles): 16x16 segments
-  const sphereSegments = useMemo(() => {
-    if (!isPathtracerEnabled) return 16;
-    const particleCount = positions?.length || 0;
-    if (particleCount < 500) return 32;
-    if (particleCount < 2000) return 24;
-    return 16; // Use same as standard for very large scenes
-  }, [isPathtracerEnabled, positions?.length]);
-  
+  // Create geometry — rebuilt when particleRadius or sphereSegments changes
   const geometry = useMemo(() => {
-    const geom = new THREE.SphereGeometry(particleRadius, sphereSegments, sphereSegments);
-    if (isPathtracerEnabled && positions?.length > 0) {
-      console.log(`Path tracer: Using ${sphereSegments}x${sphereSegments} sphere geometry with radius ${particleRadius} for ${positions.length} particles`);
-    }
-    return geom;
-  }, [particleRadius, sphereSegments, isPathtracerEnabled, positions?.length]);
+    return new THREE.SphereGeometry(particleRadius, sphereSegments, sphereSegments);
+  }, [particleRadius, sphereSegments]);
   
   // Use MeshPhysicalMaterial for better path tracing results
   const material = useMemo(
@@ -204,7 +188,7 @@ function Particles({
       if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
     }
-  }, [particleData, invalidate]);
+  }, [particleData, invalidate, geometry]);
 
   // Helper function to get normalized mouse coordinates relative to canvas
   const getNormalizedMouseCoords = useCallback((event) => {
@@ -407,7 +391,7 @@ function Particles({
       mesh.instanceColor.needsUpdate = true;
       mesh.instanceMatrix.needsUpdate = true;
     }
-  }, [selectedParticles, particleData, highlightedClusters, showOnlyHighlightedClusters]);
+  }, [selectedParticles, particleData, highlightedClusters, showOnlyHighlightedClusters, geometry]);
 
   // Group particles by type (tracking global indices for repulsion site selection)
   const particlesByType = useMemo(() => {

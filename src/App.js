@@ -101,6 +101,8 @@ function App() {
     setIsPathtracerConfigModalOpen,
     setPathtracerConfig,
     setIsLightingControlsModalOpen,
+    sphereSegments,
+    setSphereSegments,
   } = useUIStore();
 
   const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
@@ -830,6 +832,20 @@ function App() {
               <div className="controls-footer">
                 <div className="selectors-wrapper">
                   <ColorSchemeSelector />
+                  <div className="resolution-selector">
+                    <label className="scheme-label">Sphere Quality:</label>
+                    <select
+                      className="resolution-select"
+                      value={sphereSegments}
+                      onChange={(e) => setSphereSegments(parseInt(e.target.value))}
+                      title="Sphere geometry resolution"
+                    >
+                      <option value={8}>Low (8)</option>
+                      <option value={16}>Medium (16)</option>
+                      <option value={24}>High (24)</option>
+                      <option value={32}>Ultra (32)</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="actions-group">
                   <button className="action-btn" onClick={takeScreenshot} title="Take Screenshot (P)">

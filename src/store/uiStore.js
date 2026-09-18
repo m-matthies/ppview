@@ -59,7 +59,10 @@ export const useUIStore = create((set) => ({
   },
   pathtracerSamples: 0,
   pathtracerReset: 0, // Increment to trigger reset
-  
+
+  // Sphere geometry quality
+  sphereSegments: 16,
+
   // Actions
   setShowPatchLegend: (show) => set({ showPatchLegend: show }),
   setShowParticleLegend: (show) => set({ showParticleLegend: show }),
@@ -89,4 +92,5 @@ export const useUIStore = create((set) => ({
   setPathtracerConfig: (config) => set({ pathtracerConfig: config }),
   setPathtracerSamples: (samples) => set({ pathtracerSamples: samples }),
   resetPathtracer: () => set((state) => ({ pathtracerReset: state.pathtracerReset + 1, pathtracerSamples: 0 })),
+  setSphereSegments: (segments) => set({ sphereSegments: segments }),
 }));

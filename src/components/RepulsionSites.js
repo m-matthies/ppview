@@ -8,9 +8,9 @@ import { useUIStore } from "../store/uiStore";
 function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale = 1.0, typeColor, globalIndices, typeIndex, onRegister }) {
   const meshRef = useRef();
   const particlePositionsRef = useRef([]); // stable ref — updated every frame without re-registering
-  const { selectedParticles } = useUIStore();
+  const { selectedParticles, sphereSegments } = useUIStore();
 
-  const geometry = useMemo(() => new THREE.SphereGeometry(1, 8, 8), []);
+  const geometry = useMemo(() => new THREE.SphereGeometry(1, sphereSegments, sphereSegments), [sphereSegments]);
   const material = useMemo(() => new THREE.MeshStandardMaterial({
     metalness: 0.1,
     roughness: 0.7,
@@ -73,7 +73,7 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
 
     particlePositionsRef.current = positions;
     mesh.instanceMatrix.needsUpdate = true;
-  }, [particles, repulsionSiteData, particleScale, hasValidData, boxSize]);
+  }, [particles, repulsionSiteData, particleScale, hasValidData, boxSize, geometry]);
 
   // Update bead colors: yellow for selected particles, typeColor otherwise.
   // Uses setColorAt to update the buffer in-place — avoids allocating a new

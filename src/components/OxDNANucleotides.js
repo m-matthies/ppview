@@ -32,7 +32,7 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const topData = useParticleStore(state => state.topData);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
-  const { selectedParticles, setSelectedParticles } = useUIStore();
+  const { selectedParticles, setSelectedParticles, sphereSegments } = useUIStore();
 
   const { gl, camera, invalidate } = useThree();
 
@@ -45,8 +45,8 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
   const count = nucleotides?.length ?? 0;
 
   // Geometries — unit cylinder (height=1) is scaled per instance
-  const bbGeo = useMemo(() => new THREE.SphereGeometry(0.2, 10, 10), []);
-  const nsGeo = useMemo(() => new THREE.SphereGeometry(0.3, 10, 10), []);
+  const bbGeo = useMemo(() => new THREE.SphereGeometry(0.2, sphereSegments, sphereSegments), [sphereSegments]);
+  const nsGeo = useMemo(() => new THREE.SphereGeometry(0.3, sphereSegments, sphereSegments), [sphereSegments]);
   const conGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.1, 1, 8), []);
   const bbconGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.02, 1, 8), []); // tapered
 
@@ -261,7 +261,7 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
     if (conMesh.instanceColor) conMesh.instanceColor.needsUpdate = true;
     if (bbconMesh.instanceColor) bbconMesh.instanceColor.needsUpdate = true;
     invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [positions, boxSize, nucleotides, count, currentColorScheme, invalidate]);
+  }, [positions, boxSize, nucleotides, count, currentColorScheme, invalidate, bbGeo, nsGeo]);
 
   // --- Selection effect: update backbone sphere colors only ---
   useEffect(() => {
