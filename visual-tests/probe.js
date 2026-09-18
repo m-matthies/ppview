@@ -66,9 +66,16 @@ const QUICK_HASH = `
   const canvas0 = document.querySelector('canvas');
   if (!canvas0) return 'none';
   ${SAMPLE}
-  let acc = 0;
-  for (let i = 0; i < d.length; i += 16) acc = (acc * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) | 0;
-  return acc;
+  let acc = 0, lit = 0;
+  for (let i = 0; i < d.length; i += 16) {
+    acc = (acc * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) | 0;
+    if (d[i] | d[i + 1] | d[i + 2]) lit++;
+  }
+  // An entirely black canvas is never a real state in this app — the background
+  // is light, or #15171c when dark — so it means the read landed mid-redraw.
+  // Reporting it as a distinct value stops settle() from accepting two blank
+  // samples in a row as "settled" and recording zeros.
+  return lit === 0 ? 'blank' : acc;
 })()
 `;
 
@@ -94,7 +101,10 @@ const settle = async (timeout = 4000) => {
     // CDP timeout fired.
     await sleep(40);
     const next = quickHash();
-    if (next === previous) {
+    if (next === 'blank') {           // never settle on a blank frame
+      stable = 0;
+      previous = next;
+    } else if (next === previous) {
       if (++stable >= 2) return;
     } else {
       stable = 0;

@@ -199,7 +199,7 @@ x y z @ r C[color] [type_data]
 
 The application is configured for GitHub Pages deployment:
 - **Build Process**: Creates optimized production bundle
-- **Homepage**: Set to `https://zoombya.github.io/ppview`
+- **Homepage**: Set to `https://m-matthies.github.io/ppview`
 - **Asset Optimization**: Includes hash-based filenames for caching
 - **Static Hosting**: All processing happens client-side
 

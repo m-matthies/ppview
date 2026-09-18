@@ -152,7 +152,7 @@ See the section about [deployment](https://facebook.github.io/create-react-app/d
 
 ### `npm run deploy`
 
-Deploys to GitHub Pages at `https://zoombya.github.io/ppview`.
+Deploys to GitHub Pages at `https://m-matthies.github.io/ppview`.
 
 ### `npm run eject`
 

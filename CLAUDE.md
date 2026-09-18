@@ -7,7 +7,7 @@ PPView is a React-based 3D visualization tool for oxDNA molecular dynamics simul
 - **React 18.3.1** (Create React App)
 - **Three.js 0.168.0** + **React Three Fiber 8.17.7** + **@react-three/drei 9.113.0**
 - **Zustand** for state management (3 stores)
-- Deployed to GitHub Pages at `https://zoombya.github.io/ppview`
+- Deployed to GitHub Pages at `https://m-matthies.github.io/ppview`
 
 ## Development Commands
 

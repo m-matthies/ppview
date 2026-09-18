@@ -20,6 +20,11 @@ const FORMATS = [
 const SCENARIOS = {
   // Baseline render, plus the scene-furniture toggles.
   load: `
+    // Settle before the very first measurement too: every other reading in the
+    // suite follows an action that settles, but this one would otherwise
+    // capture whatever happened to be on screen the instant the scenario began,
+    // which is sometimes a frame mid-redraw.
+    await settle();
     const out = { loaded: measure() };
     byLabel('Simulation box').click(); await settle();
     out.boxOn = measure();
@@ -64,7 +69,8 @@ const SCENARIOS = {
     out.dimmedAll = measure();
     clusterBoxes()[1].click(); await settle();
 
-    const first = document.querySelector('.cluster-item input');
+    // Must name the checkbox: each row now leads with a colour swatch input.
+    const first = document.querySelector('.cluster-item input[type=checkbox]');
     if (first) { first.click(); await settle(); }
     out.oneSelected = measure();
 
