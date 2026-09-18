@@ -3,9 +3,6 @@
  * Supports both single MGL files and MGL trajectory files
  */
 
-// Scaling factor for MGL geometry
-const MGL_SCALE = 1.0;
-
 // Color mapping for MGL color names
 const MGL_COLORS = {
   'red': { r: 1.0, g: 0.0, b: 0.0 },
@@ -426,116 +423,6 @@ function parseSingleMGLShape(shapeStr) {
     } else {
       i++;
     }
-  }
-  
-  return particle;
-}
-
-/**
- * Parses a single MGL shape from a line (legacy format)
- * @param {string} shapeStr - Shape string
- * @returns {object|null} - Parsed particle object or null if invalid
- */
-function parseMGLShape(shapeStr) {
-  if (!shapeStr || shapeStr.trim() === '') return null;
-  
-  const tokens = shapeStr.split(/\s+/);
-  if (tokens.length < 7) return null; // Minimum required tokens
-  
-  const type = tokens[0];
-  const x = parseFloat(tokens[1]) * MGL_SCALE;
-  const y = parseFloat(tokens[2]) * MGL_SCALE;
-  const z = parseFloat(tokens[3]) * MGL_SCALE;
-  const radius = parseFloat(tokens[4]) * MGL_SCALE;
-  
-  // Basic validation
-  if (isNaN(x) || isNaN(y) || isNaN(z) || isNaN(radius)) return null;
-  
-  const particle = {
-    type,
-    position: { x, y, z },
-    radius,
-    color: { r: 0.5, g: 0.5, b: 0.5, opacity: 1.0 }, // Default color
-    patches: [],
-    properties: {}
-  };
-  
-  let tokenIndex = 5;
-  
-  // Parse based on particle type
-  switch (type.toUpperCase()) {
-    case 'S': // Sphere
-      particle.color = materialFromMGLColor(tokens.slice(tokenIndex).join(' '));
-      break;
-      
-    case 'M': // Patchy particle
-      // Parse patches
-      if (tokenIndex < tokens.length) {
-        try {
-          const patchCount = parseInt(tokens[tokenIndex]);
-          tokenIndex++;
-          
-          for (let i = 0; i < patchCount && tokenIndex + 6 < tokens.length; i++) {
-            const patch = {
-              position: {
-                x: parseFloat(tokens[tokenIndex]) * MGL_SCALE,
-                y: parseFloat(tokens[tokenIndex + 1]) * MGL_SCALE,
-                z: parseFloat(tokens[tokenIndex + 2]) * MGL_SCALE
-              },
-              color: materialFromMGLColor(`${tokens[tokenIndex + 3]} ${tokens[tokenIndex + 4]} ${tokens[tokenIndex + 5]}`),
-              patchId: i
-            };
-            particle.patches.push(patch);
-            tokenIndex += 6;
-          }
-        } catch (e) {
-          console.warn('Error parsing patches for patchy particle:', e);
-        }
-      }
-      // Remaining tokens are particle color
-      if (tokenIndex < tokens.length) {
-        particle.color = materialFromMGLColor(tokens.slice(tokenIndex).join(' '));
-      }
-      break;
-      
-    case 'C': // Cylinder
-      // Parse axis vector (next 3 tokens)
-      if (tokenIndex + 2 < tokens.length) {
-        particle.axis = {
-          x: parseFloat(tokens[tokenIndex]),
-          y: parseFloat(tokens[tokenIndex + 1]),
-          z: parseFloat(tokens[tokenIndex + 2])
-        };
-        tokenIndex += 3;
-      }
-      // Remaining tokens are color
-      if (tokenIndex < tokens.length) {
-        particle.color = materialFromMGLColor(tokens.slice(tokenIndex).join(' '));
-      }
-      break;
-      
-    case 'D': // Dipolar sphere
-      // Parse dipole vector (next 3 tokens)
-      if (tokenIndex + 2 < tokens.length) {
-        particle.dipole = {
-          x: parseFloat(tokens[tokenIndex]),
-          y: parseFloat(tokens[tokenIndex + 1]),
-          z: parseFloat(tokens[tokenIndex + 2])
-        };
-        tokenIndex += 3;
-      }
-      // Remaining tokens are color
-      if (tokenIndex < tokens.length) {
-        particle.color = materialFromMGLColor(tokens.slice(tokenIndex).join(' '));
-      }
-      break;
-      
-    default:
-      console.warn(`Unknown MGL particle type: ${type}`);
-      // Treat as sphere with remaining tokens as color
-      if (tokenIndex < tokens.length) {
-        particle.color = materialFromMGLColor(tokens.slice(tokenIndex).join(' '));
-      }
   }
   
   return particle;

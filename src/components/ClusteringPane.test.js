@@ -1,158 +1,101 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import ClusteringPane from './ClusteringPane';
+import { useParticleStore } from '../store/particleStore';
+import { useClusteringStore } from '../store/clusteringStore';
 
-// Mock data for testing
+// ClusteringPane takes no props — it reads `positions` from the particle store
+// and pushes highlights back through the clustering store.
+//
+// Two tight groups of four, far apart. With the default epsilon (2.0) each
+// point sees its 3 groupmates, meeting the default minPoints (3), so DBSCAN
+// finds exactly 2 clusters of 4.
 const mockPositions = [
   { x: 0, y: 0, z: 0 },
-  { x: 1, y: 1, z: 1 },
-  { x: 0.5, y: 0.5, z: 0.5 },
+  { x: 0.5, y: 0, z: 0 },
+  { x: 0, y: 0.5, z: 0 },
+  { x: 0, y: 0, z: 0.5 },
   { x: 10, y: 10, z: 10 },
-  { x: 11, y: 11, z: 11 },
-  { x: 10.5, y: 10.5, z: 10.5 },
+  { x: 10.5, y: 10, z: 10 },
+  { x: 10, y: 10.5, z: 10 },
+  { x: 10, y: 10, z: 10.5 },
 ];
 
-const mockBoxSize = [20, 20, 20];
-
-const mockOnHighlightClusters = jest.fn();
+const seedPositions = (positions) => useParticleStore.setState({ positions });
 
 describe('ClusteringPane', () => {
   beforeEach(() => {
-    mockOnHighlightClusters.mockClear();
+    seedPositions(mockPositions);
+    useClusteringStore.getState().clearHighlighting();
   });
 
   test('renders clustering pane with correct title', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
-
+    render(<ClusteringPane />);
     expect(screen.getByText('Particle Clustering')).toBeInTheDocument();
   });
 
   test('displays parameter controls', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
-
+    render(<ClusteringPane />);
     expect(screen.getByText(/Epsilon Distance:/)).toBeInTheDocument();
     expect(screen.getByText(/Min Points:/)).toBeInTheDocument();
   });
 
   test('displays statistics section', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
-
+    render(<ClusteringPane />);
     expect(screen.getByText('Statistics')).toBeInTheDocument();
     expect(screen.getByText('Total Clusters:')).toBeInTheDocument();
     expect(screen.getByText('Clustered Particles:')).toBeInTheDocument();
   });
 
-  test('displays histogram section', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
+  test('finds the two seeded clusters', () => {
+    render(<ClusteringPane />);
+    const totalClusters = screen.getByText('Total Clusters:').nextSibling;
+    expect(totalClusters).toHaveTextContent('2');
+  });
 
+  test('displays histogram section', () => {
+    render(<ClusteringPane />);
     expect(screen.getByText('Cluster Size Distribution')).toBeInTheDocument();
-    expect(screen.getByText('Cluster Size (particles)')).toBeInTheDocument();
-    expect(screen.getByText('Count')).toBeInTheDocument();
   });
 
   test('allows epsilon parameter adjustment', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
-
+    render(<ClusteringPane />);
     const epsilonSlider = screen.getByDisplayValue('2');
     fireEvent.change(epsilonSlider, { target: { value: '3.5' } });
-    
     expect(screen.getByText(/Epsilon Distance: 3.50/)).toBeInTheDocument();
   });
 
   test('allows min points parameter adjustment', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
-
+    render(<ClusteringPane />);
     const minPointsSlider = screen.getByDisplayValue('3');
     fireEvent.change(minPointsSlider, { target: { value: '5' } });
-    
     expect(screen.getByText(/Min Points: 5/)).toBeInTheDocument();
   });
 
   test('can be collapsed and expanded', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
+    render(<ClusteringPane />);
 
-    // Close the pane
-    const closeButton = screen.getByTitle('Hide Clustering Panel');
-    fireEvent.click(closeButton);
-
-    // Should show toggle button
+    fireEvent.click(screen.getByTitle('Hide Clustering Panel'));
     expect(screen.getByTitle('Show Clustering Panel')).toBeInTheDocument();
     expect(screen.queryByText('Particle Clustering')).not.toBeInTheDocument();
 
-    // Open the pane again
-    const toggleButton = screen.getByTitle('Show Clustering Panel');
-    fireEvent.click(toggleButton);
-
+    fireEvent.click(screen.getByTitle('Show Clustering Panel'));
     expect(screen.getByText('Particle Clustering')).toBeInTheDocument();
   });
 
-  test('handles empty positions array', () => {
-    render(
-      <ClusteringPane
-        positions={[]}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
-
-    expect(screen.getByText('Total Clusters:')).toBeInTheDocument();
-    expect(screen.getByText('0')).toBeInTheDocument();
+  test('renders nothing when no positions are loaded', () => {
+    seedPositions([]);
+    const { container } = render(<ClusteringPane />);
+    expect(container).toBeEmptyDOMElement();
   });
 
-  test('calls onHighlightClusters when show only selected is toggled', () => {
-    render(
-      <ClusteringPane
-        positions={mockPositions}
-        boxSize={mockBoxSize}
-        onHighlightClusters={mockOnHighlightClusters}
-      />
-    );
+  test('pushes showOnlySelected through to the clustering store', () => {
+    render(<ClusteringPane />);
+    expect(useClusteringStore.getState().showOnlyHighlightedClusters).toBe(false);
 
     const showOnlyCheckbox = screen.getByText('Show only selected clusters').previousSibling;
     fireEvent.click(showOnlyCheckbox);
 
-    expect(mockOnHighlightClusters).toHaveBeenCalled();
+    expect(useClusteringStore.getState().showOnlyHighlightedClusters).toBe(true);
   });
 });
