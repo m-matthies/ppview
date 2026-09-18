@@ -365,3 +365,20 @@ export function isMGLTrajectoryFile(lines) {
   // - OR has valid MGL content with potential for multiple frames
   return boxOrVolCount >= 1 || (hasMGLContent && boxOrVolCount >= 0);
 }
+
+/**
+ * A clusters file: JSON holding an array of clusters, each naming the particles
+ * that belong to it.
+ *
+ * Detected from content rather than the .json extension alone, so an unrelated
+ * JSON file dropped alongside a simulation is not mistaken for clustering.
+ * Only the head of the file is available here, so this looks for the shape
+ * rather than parsing — a large clusters file will be truncated mid-array.
+ */
+export function isClusterFile(lines, filename) {
+  const head = lines.join('\n');
+  if (!/\.json$/i.test(filename) && !/^\s*[[{]/.test(head)) return false;
+  const mentionsParticles = /"(particles|indices|ids)"\s*:\s*\[/.test(head);
+  const looksLikeClusters = /"clusters"\s*:\s*\[/.test(head) || /^\s*\[/.test(head);
+  return mentionsParticles && (looksLikeClusters || /\.json$/i.test(filename));
+}

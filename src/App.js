@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from "react";
+import React, { useEffect, useCallback, useRef, useState } from "react";
 import * as THREE from "three";
 import FileDropZone from "./components/FileDropZone";
 import FileDropOverlay from "./components/FileDropOverlay";
@@ -21,6 +21,7 @@ import { captureScreenshot, exportSceneAsGLTF } from "./utils/exportUtils";
 import { useParticleStore } from "./store/particleStore";
 import { useUIStore } from "./store/uiStore";
 import { useClusteringStore } from "./store/clusteringStore";
+import { parseClusterFile } from "./utils/clusterFile";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
@@ -94,6 +95,10 @@ function App() {
   // file read checks this before writing to the store, so dropping a second
   // simulation mid-load cannot be clobbered by the first one finishing late.
   const loadTokenRef = useRef(0);
+  // Clusters dropped alongside the simulation. They cannot be applied until the
+  // trajectory has produced positions, because parsing validates every index
+  // against the particle count, so the text waits here until then.
+  const [pendingClusterText, setPendingClusterText] = useState(null);
   const playbackIntervalRef = useRef(null);
   const speedPopupRef = useRef(null);
 
@@ -155,6 +160,19 @@ function App() {
       const categorizedFiles = categorizeFiles(filesWithTypes);
 
       console.log("File analysis results:", categorizedFiles);
+
+      // A clusters file may be dropped with the simulation; hold its text until
+      // positions exist.
+      setPendingClusterText(null);
+      if (categorizedFiles.clusterFile) {
+        try {
+          const clusterText = await categorizedFiles.clusterFile.text();
+          if (isStale()) return;
+          setPendingClusterText(clusterText);
+        } catch (error) {
+          console.warn('Could not read clusters file:', error);
+        }
+      }
 
       // Process input file if present
       let inputFileParams = {};
@@ -583,6 +601,27 @@ function App() {
   }, [exportGLTF, takeScreenshot]);
 
   useIframeBridge({ handleFilesReceived, makeOutputFiles, notify });
+
+  // Clusters dropped with the simulation are applied as soon as the first frame
+  // has produced positions — any earlier and every index would look
+  // out-of-range.
+  useEffect(() => {
+    if (!pendingClusterText || positions.length === 0) return;
+    try {
+      const { clusters, warnings } = parseClusterFile(pendingClusterText, {
+        particleCount: positions.length,
+      });
+      useClusteringStore.getState().setFileClusters(clusters);
+      // Open the pane so the loaded clusters can be seen and recoloured;
+      // otherwise the colours appear with no visible explanation.
+      useUIStore.getState().setShowClusteringPane(true);
+      warnings.forEach(w => console.warn('Clusters file:', w));
+    } catch (error) {
+      console.error('Could not use the clusters file:', error.message);
+      notify(`Clusters file ignored: ${error.message}`);
+    }
+    setPendingClusterText(null);
+  }, [pendingClusterText, positions.length, notify]);
 
   useKeyboardShortcuts({
     togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot,

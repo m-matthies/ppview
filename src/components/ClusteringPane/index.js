@@ -61,6 +61,18 @@ function ClusteringPane() {
       ?? palette[index % palette.length]
   ), [colorOverrides, fileClusters, palette]);
 
+  // Selection lives in this component, so clusters set from outside — a file
+  // dropped alongside the simulation — have to be adopted here too. Keyed on
+  // identity so re-renders do not keep re-selecting and fight manual changes.
+  const adoptedClustersRef = useRef(null);
+  useEffect(() => {
+    if (!fileClusters || adoptedClustersRef.current === fileClusters) return;
+    adoptedClustersRef.current = fileClusters;
+    setColorOverrides({});
+    setSelectedClusters(new Set(fileClusters.map((_, i) => i)));
+    setShowOnlySelected(true);
+  }, [fileClusters]);
+
   const handleClusterFile = useCallback(async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';           // allow re-picking the same file
@@ -70,9 +82,6 @@ function ClusteringPane() {
         particleCount: positions?.length ?? 0,
       });
       setFileClusters(loaded);
-      setColorOverrides({});
-      setSelectedClusters(new Set(loaded.map((_, i) => i)));
-      setShowOnlySelected(true);
       setFileError(null);
       setFileWarnings(warnings);
     } catch (error) {

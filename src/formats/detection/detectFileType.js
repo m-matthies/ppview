@@ -9,6 +9,7 @@ import {
   isInputFile,
   isMGLFile,
   isMGLTrajectoryFile,
+  isClusterFile,
 } from './signatures';
 
 export async function detectFileType(file) {
@@ -21,6 +22,12 @@ export async function detectFileType(file) {
     
     if (lines.length === 0) {
       return 'unknown';
+    }
+
+    // Clusters first: it is JSON, so none of the plain-text signatures below
+    // could claim it, but checking early keeps the intent obvious.
+    if (isClusterFile(lines, file.name)) {
+      return 'clusters';
     }
 
     // Check for trajectory file pattern

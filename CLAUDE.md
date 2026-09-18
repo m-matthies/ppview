@@ -72,6 +72,7 @@ src/
 | MGL (self-contained) | `.mgl` | `@` separator + optional `.Box:` header |
 | Trajectory | `.dat`, `.traj`, `.conf` | content keywords |
 | MGL Trajectory | `.mgl` with `.Box:` | multi-frame `.Box:` headers |
+| Clusters | `.json` | `clusters` array, or entries with `particles`/`indices`/`ids` |
 
 File type priority: `traj > last > init > conf`
 
@@ -511,8 +512,24 @@ for a given particle without knowing which cluster it came from.
 written per instance per update.
 
 ### Clusters from a file
-The pane can load clusters computed elsewhere instead of running DBSCAN
-(`utils/clusterFile.js`). While a file is loaded the DBSCAN controls are
+Clusters computed elsewhere can be used instead of running DBSCAN
+(`utils/clusterFile.js`), either from the pane's **Load clusters from file**
+button or by dropping the `.json` alongside the simulation at startup.
+
+The co-drop path has one ordering constraint: parsing validates every index
+against the particle count, which does not exist until the first frame has
+loaded. `App` therefore holds the file's *text* in `pendingClusterText` and
+applies it in an effect once `positions.length > 0` — applying it earlier would
+make every index look out of range. It then opens the clustering pane, so the
+colours do not appear with no visible explanation.
+
+Selection lives in `ClusteringPane`'s local state, so it adopts clusters set
+from outside via an effect keyed on the `fileClusters` identity. Keying on
+identity rather than a boolean matters: re-selecting on every render would fight
+manual changes.
+
+Detection is by content (`isClusterFile`), not the `.json` extension alone, so
+an unrelated JSON file dropped with a simulation is not mistaken for clustering. While a file is loaded the DBSCAN controls are
 disabled, because they cannot change clusters that came from a file.
 
 ```json
