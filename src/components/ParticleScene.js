@@ -1,6 +1,8 @@
 import React, { useRef, useEffect } from "react";
 import { Canvas, useThree, useFrame } from "@react-three/fiber";
-import { OrbitControls, Stats, Environment } from "@react-three/drei";
+import { OrbitControls } from "@react-three/drei/core/OrbitControls";
+import { Stats } from "@react-three/drei/core/Stats";
+import { Environment } from "@react-three/drei/core/Environment";
 import Particles from "./Particles";
 import Springs from "./Springs";
 import OxDNANucleotides from "./OxDNANucleotides";

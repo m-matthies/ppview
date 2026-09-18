@@ -427,12 +427,16 @@ export const parseRaspberryTopology = (content) => {
       const count = parseInt(tokens[2]);
       // A single -1 means "no patches" for this particle type
       const patchIds = (tokens[3] === '-1') ? [] : (tokens[3] ? tokens[3].split(',').map(Number) : []);
-      const repulsionIds = tokens[4] ? tokens[4].split(',').map(Number) : [];
+      // A single -1 (or a missing field) means "no repulsion sites listed" for
+      // this particle type; null signals "fall back to the full iR set".
+      const repulsionIds = (tokens[4] === undefined)
+        ? null
+        : (tokens[4] === '-1' ? [] : tokens[4].split(',').map(Number));
       corpuscles.push({ typeId, count, patchIds, repulsionIds });
     }
   }
 
-  const particleTypes = corpuscles.map(({ typeId, count, patchIds }) => {
+  const particleTypes = corpuscles.map(({ typeId, count, patchIds, repulsionIds }) => {
     const patchPositions = patchIds
       .map(id => {
         const patch = patchDefs.get(id);
@@ -448,9 +452,14 @@ export const parseRaspberryTopology = (content) => {
       })
       .filter(Boolean);
 
-    // Use all defined repulsion sites for every particle type.
-    // The iC repulsion ID list can be incomplete, so we rely on the full iR set.
-    const repulsionSiteData = repulsionSites.slice();
+    // Each particle type uses only the repulsion sites named in the last field
+    // of its iC line (iR sites are indexed by the order they appear in the file).
+    // If the field is absent entirely, fall back to the full iR set.
+    const repulsionSiteData = (repulsionIds === null)
+      ? repulsionSites.slice()
+      : repulsionIds
+          .map(id => repulsionSites[id])
+          .filter(Boolean);
 
     return {
       typeIndex: typeId,

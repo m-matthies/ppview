@@ -91,12 +91,13 @@ All positions computed from trajectory `a1`/`a3` vectors:
 # comments ignored
 iP <id> <strength> <color> <x,y,z> <a1x,a1y,a1z>   # patch definition
 iR <x,y,z> <radius>                                  # repulsion site (IDs by order)
-iC <type_id> <count> <patch_ids> <repulsion_ids>     # particle type; patch_ids = -1 means no patches
+iC <type_id> <count> <patch_ids> <repulsion_ids>     # particle type; -1 in either list means "none"
 ```
 - Uses standard oxDNA trajectory (`.dat`) alongside
 - Parsed by `parseRaspberryTopology` in `topologyParser.js`
 - Inner sphere (center particle) scaled to zero — invisible
 - Outer beads rendered as `RepulsionSites` instanced spheres (yellow when selected)
+- **Each particle type uses only the `iR` sites named in the last field of its `iC` line**, indexed by the order the `iR` lines appear. Types can therefore have different bead counts (e.g. `iC 0 128 0,1,2,3 0` → one bead; `iC 2 512 8,9 1,2,3` → three beads). Out-of-range ids are dropped; `-1` means no beads (the plain sphere renders instead); an entirely absent field falls back to the full `iR` set
 - All raycasting for bead selection is handled by `Particles.js` via `registerRepulsionMesh` callback
 
 #### Selection architecture for raspberry particles

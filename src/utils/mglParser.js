@@ -227,14 +227,14 @@ export function readMGLTrajectory(content) {
       const shapes = parseMGLLine(line);
       if (shapes) {
         // Handle grouped shapes (separated by G)
-        shapes.forEach(particle => {
+        for (const particle of shapes) {
           // Add frame-specific metadata
           particle.frameIndex = currentFrame.frameIndex;
           currentFrame.particles.push(particle);
-          
+
           // Update global bounding box
           updateBoundingBox(boundingBox, particle.position);
-        });
+        }
       }
     }
   }

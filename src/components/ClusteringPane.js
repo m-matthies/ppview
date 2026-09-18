@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParticleStore } from '../store/particleStore';
-import { useUIStore } from '../store/uiStore';
 import { useClusteringStore } from '../store/clusteringStore';
 import DraggablePanel from './DraggablePanel';
 import './ClusteringPane.css';
