@@ -419,6 +419,25 @@ This means a trajectory frame update only re-renders `Particles.js` (or `OxDNANu
 
 Ignored while a form field has focus.
 
+## Loading a second simulation
+
+`FileDropZone` unmounts once the first files land, so `FileDropOverlay` takes
+over: it listens on the window and reveals a drop target only while files are
+actually being dragged, which keeps it out of the way of the scene. It is
+enabled whenever `filesDropped && isDragDropEnabled`, so it is active during a
+load too, and disabled in iframe mode along with the rest of drag-and-drop.
+
+Two things a second load has to get right:
+
+- **Per-scene state is reset first.** `selectedParticles` and
+  `highlightedClusters` are particle *indices*; carrying them into a different
+  structure highlights unrelated particles or indexes past the end.
+- **`loadTokenRef` guards against a stale load finishing last.** Dropping a
+  second simulation while the first is still reading would otherwise let the
+  slower one overwrite the newer scene. Every `await` in `handleFilesReceived`
+  that precedes a store write is followed by an `isStale()` check — add one to
+  any new await in that path.
+
 ## Iframe Embedding
 
 PPView detects iframe mode (`window.self !== window.top`) and hides controls. Supports `postMessage` interface:

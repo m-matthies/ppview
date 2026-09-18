@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useRef } from "react";
 import * as THREE from "three";
 import FileDropZone from "./components/FileDropZone";
+import FileDropOverlay from "./components/FileDropOverlay";
 import ParticleScene from "./components/ParticleScene";
 import PatchLegend from "./components/PatchLegend";
 import ParticleLegend from "./components/ParticleLegend";
@@ -89,6 +90,10 @@ function App() {
   const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
 
   // Refs
+  // Identifies the most recent load. Anything older that is still awaiting a
+  // file read checks this before writing to the store, so dropping a second
+  // simulation mid-load cannot be clobbered by the first one finishing late.
+  const loadTokenRef = useRef(0);
   const playbackIntervalRef = useRef(null);
   const speedPopupRef = useRef(null);
 
@@ -120,8 +125,24 @@ function App() {
       return;
     }
 
+    const loadToken = ++loadTokenRef.current;
+    const isStale = () => loadToken !== loadTokenRef.current;
+
     // Set filesDropped to true to hide the drop zone immediately
     setFilesDropped(true);
+
+    // Loading a second simulation must not inherit the first one's state.
+    // Selection and cluster highlights are particle *indices*, so keeping them
+    // would highlight unrelated particles in the new structure — or index past
+    // its end.
+    useUIStore.getState().setSelectedParticles([]);
+    useClusteringStore.getState().clearHighlighting();
+    setTopData(null);
+    setPositions([]);
+    setTrajFile(null);
+    setConfigIndex([]);
+    setCurrentConfigIndex(0);
+    setTotalConfigs(0);
 
     // Set loading state to true before indexing
     setIsLoading(true);
@@ -130,6 +151,7 @@ function App() {
       // Analyze file types dynamically based on content
       console.log("Analyzing file types...");
       const filesWithTypes = await analyzeFiles(files);
+      if (isStale()) return;
       const categorizedFiles = categorizeFiles(filesWithTypes);
 
       console.log("File analysis results:", categorizedFiles);
@@ -161,6 +183,7 @@ function App() {
 
           if (categorizedFiles.mglFile) {
             const mglContent = await categorizedFiles.mglFile.text();
+            if (isStale()) return;
             console.log(`Processing MGL file: ${categorizedFiles.mglFile.name}`);
 
             mglData = readMGL(mglContent);
@@ -178,6 +201,7 @@ function App() {
             console.log(`Loaded MGL file with ${ppviewData.positions.length} particles`);
           } else {
             const mglTrajectoryContent = await categorizedFiles.mglTrajectory.text();
+            if (isStale()) return;
             console.log(`Processing MGL Trajectory file: ${categorizedFiles.mglTrajectory.name}`);
 
             mglData = readMGLTrajectory(mglTrajectoryContent);
@@ -236,6 +260,7 @@ function App() {
             patchFile: inputFileParams.patchy_file,
           },
         );
+        if (isStale()) return;
         setTopData(parsedTopData);
         // Any format-specific store setup lives with the format, not here.
         format?.onLoad?.(parsedTopData, { setParticleRadius });
@@ -249,6 +274,7 @@ function App() {
             particleFile: inputFileParams.particle_file,
             patchFile: inputFileParams.patchy_file,
           });
+          if (isStale()) return;
           setTopData(parsedTopData);
           format?.onLoad?.(parsedTopData, { setParticleRadius });
           console.log(`Loaded topology from ${topFile.name} (fallback detection)`);
@@ -299,6 +325,7 @@ function App() {
 
       if (trajectoryFileToUse) {
         const index = await buildTrajIndex(trajectoryFileToUse);
+        if (isStale()) return;
         setConfigIndex(index);
         setTotalConfigs(index.length);
       }
@@ -313,13 +340,14 @@ function App() {
       setIsLoading(false);
     } catch (error) {
       console.error("Error processing files:", error);
+      if (isStale()) return;
       alert("Error processing files. Please check the console for details.");
       setFilesDropped(false);
       setIsLoading(false);
     }
   }, [setFilesDropped, setIsLoading, setParticleRadius, setTopData, setPositions,
       setCurrentBoxSize, setCurrentTime, setCurrentEnergy, setConfigIndex,
-      setTotalConfigs, setTrajFile]);
+      setCurrentConfigIndex, setTotalConfigs, setTrajFile]);
 
   // Load configuration when topData, trajFile, and configIndex are available
   useEffect(() => {
@@ -581,6 +609,13 @@ function App() {
       )}
 
       {positions.length > 0 && <ParticleScene />}
+
+      {/* Once a scene is up the initial drop zone is gone, so dragging more
+          files anywhere over the window reveals a target for them. */}
+      <FileDropOverlay
+        onFilesReceived={handleFilesReceived}
+        enabled={filesDropped && isDragDropEnabled}
+      />
 
       {positions.length > 0 && !isLoading && !isIframeMode && <SceneBackgroundToggle />}
 
