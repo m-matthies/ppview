@@ -5,6 +5,7 @@ import { getParticleColors } from "../colors";
 import { useParticleStore } from "../store/particleStore";
 import { useUIStore } from "../store/uiStore";
 import { useClusteringStore } from "../store/clusteringStore";
+import { getClusterAppearance } from "../utils/clusterAppearance";
 import Patches from "./Patches";
 import RepulsionSites from "./RepulsionSites";
 
@@ -18,7 +19,7 @@ function Particles({
   const { selectedParticles, setSelectedParticles, sphereSegments } = useUIStore();
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
-  const { highlightedClusters, showOnlyHighlightedClusters } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
   const meshRef = useRef();
   const repulsionMeshDataRef = useRef(new Map()); // typeIndex → {mesh, numBeads, globalIndices, particlePositions}
   const count = Math.max(1, positions?.length || 0); // Ensure minimum count of 1
@@ -320,8 +321,6 @@ function Particles({
   useEffect(() => {
     if (meshRef.current && particleData.length > 0) {
       const mesh = meshRef.current;
-      const yellowColor = new THREE.Color("yellow");
-      const dimmedColor = new THREE.Color(0.3, 0.3, 0.3); // Dimmed color for non-highlighted particles
       const dummy = new THREE.Object3D();
 
       // Ensure we don't exceed the actual instance count
@@ -334,21 +333,26 @@ function Particles({
         const data = particleData[i];
         if (!data || !data.position) continue; // Skip if data is undefined or incomplete
 
-        let color;
-        let scale = data.hasRepulsionSites ? 0 : data.baseScale;
+        // Shared with RepulsionSites and Patches so one particle never gets
+        // drawn three different ways.
+        const { color, scaleFactor, dimmed } = getClusterAppearance({
+          isSelected: Array.isArray(selectedParticles) && selectedParticles.includes(i),
+          isInHighlightedCluster: data.isInHighlightedCluster,
+          shouldShow: data.shouldShow,
+          hasHighlightedClusters: highlightedClusters.size > 0,
+          showOnlyHighlightedClusters,
+          dimNonSelectedClusters,
+          baseColor: data.typeColor,
+        });
 
-        // Determine color based on selection and cluster highlighting
-        if (Array.isArray(selectedParticles) && selectedParticles.includes(i)) {
-          color = yellowColor; // Selected particles are yellow
-        } else if (data.isInHighlightedCluster && highlightedClusters.size > 0) {
-          color = data.typeColor; // Keep original particle color for highlighted clusters
-          if (!data.hasRepulsionSites) scale = data.baseScale * 1.3;
-        } else if (showOnlyHighlightedClusters && !data.shouldShow) {
-          color = dimmedColor; // Dimmed particles when showing only clusters
-          if (!data.hasRepulsionSites) scale = data.baseScale * 0.3;
-        } else {
-          color = data.typeColor; // Normal particle color
-        }
+        // A raspberry particle is normally drawn entirely by its beads, so its
+        // centre sphere is hidden. The one exception is the dimmed marker: one
+        // small sphere at the particle's centre reads far better than a swarm
+        // of shrunken beads, so the centre sphere takes over that job and
+        // RepulsionSites stands down.
+        const scale = data.hasRepulsionSites
+          ? (dimmed ? data.baseScale * scaleFactor : 0)
+          : data.baseScale * scaleFactor;
 
         // Safely set color and matrix
         try {
@@ -372,7 +376,7 @@ function Particles({
       mesh.instanceMatrix.needsUpdate = true;
       invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
     }
-  }, [selectedParticles, particleData, highlightedClusters, showOnlyHighlightedClusters, geometry, invalidate]);
+  }, [selectedParticles, particleData, highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, geometry, invalidate]);
 
   // Group particles by type (tracking global indices for repulsion site selection)
   const particlesByType = useMemo(() => {
@@ -422,7 +426,7 @@ function Particles({
       )}
 
       {showPatches && Array.from(particlesByType.values()).map(
-        ({ particleType, particles }, idx) => {
+        ({ particleType, particles, globalIndices }, idx) => {
           // Check if this particle type has valid patch data
           if (
             particleType &&
@@ -432,37 +436,22 @@ function Particles({
             particleType.patches.length > 0 &&
             particleType.patches.length === particleType.patchPositions.length
           ) {
-            // Filter particles based on cluster visibility
-            let filteredParticles = particles;
-            if (showOnlyHighlightedClusters) {
-              if (highlightedClusters.size > 0) {
-                // Only show patches for particles that are in highlighted clusters
-                filteredParticles = particles.filter((particle, index) => {
-                  // Find the global index of this particle
-                  const globalIndex = positions.findIndex(p =>
-                    p.x === particle.x && p.y === particle.y && p.z === particle.z
-                  );
-                  return highlightedClusters.has(globalIndex);
-                });
-              } else {
-                // If "show only selected" is enabled but no clusters are selected, show no patches
-                filteredParticles = [];
-              }
-            }
-
-            // Only render patches if there are visible particles
-            if (filteredParticles.length > 0) {
-              return (
-                <Patches
-                  key={`patches-${particleType.typeIndex}-${idx}`}
-                  particles={filteredParticles}
-                  patchPositions={particleType.patchPositions}
-                  patchIDs={particleType.patches}
-                  boxSize={boxSize}
-                  colorScheme={colorScheme}
-                />
-              );
-            }
+            // Patches are no longer filtered by cluster here. They dim with
+            // their particle instead of vanishing, which is what the spheres
+            // and beads do — and passing globalIndices lets Patches look the
+            // cluster up directly, replacing a findIndex float-comparison
+            // search that ran once per particle.
+            return (
+              <Patches
+                key={`patches-${particleType.typeIndex}-${idx}`}
+                particles={particles}
+                globalIndices={globalIndices}
+                patchPositions={particleType.patchPositions}
+                patchIDs={particleType.patches}
+                boxSize={boxSize}
+                colorScheme={colorScheme}
+              />
+            );
           }
           return null;
         },

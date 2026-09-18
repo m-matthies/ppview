@@ -111,6 +111,8 @@ function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
   const highlightClusters = useClusteringStore(state => state.highlightClusters);
+  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
+  const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
   // Visibility belongs to the UI store, which is what the control-bar toggle
   // reads. A second local flag here let the two disagree about whether the
   // pane was open.
@@ -395,6 +397,23 @@ function ClusteringPane() {
             />
             <span>Show only selected clusters</span>
           </label>
+
+          {/* Only meaningful once something is being hidden. */}
+          {showOnlySelected && (
+            <label className="highlight-checkbox indented">
+              <input
+                type="checkbox"
+                checked={dimNonSelectedClusters}
+                onChange={(e) => setDimNonSelectedClusters(e.target.checked)}
+              />
+              <span>
+                Keep the rest as faint markers
+                <span className="checkbox-hint">
+                  Draws one small grey sphere per hidden particle so you keep your bearings.
+                </span>
+              </span>
+            </label>
+          )}
         </div>
 
         {clusters.length > 0 && (

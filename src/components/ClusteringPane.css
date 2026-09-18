@@ -330,6 +330,27 @@
     cursor: pointer;
 }
 
+.highlight-checkbox {
+    align-items: flex-start;
+}
+
+.highlight-checkbox.indented {
+    margin-top: var(--space-2);
+    padding-left: var(--space-4);
+}
+
+.highlight-checkbox span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.checkbox-hint {
+    font-size: var(--text-xs);
+    line-height: 1.45;
+    color: var(--ink-mute);
+}
+
 .highlight-checkbox input,
 .cluster-checkbox input {
     width: 15px;

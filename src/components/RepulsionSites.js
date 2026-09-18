@@ -2,6 +2,8 @@ import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from 'three';
 import { useUIStore } from "../store/uiStore";
 import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../store/particleStore";
+import { useClusteringStore } from "../store/clusteringStore";
+import { getClusterAppearance } from "../utils/clusterAppearance";
 import { useThree } from "@react-three/fiber";
 
 // Renders repulsion site beads for raspberry particles.
@@ -27,6 +29,30 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const hasValidData = particles?.length > 0 && repulsionSiteData?.length > 0;
   const numBeads = repulsionSiteData?.length ?? 0;
   const totalBeads = hasValidData ? particles.length * numBeads : 0;
+
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+
+  // Cluster appearance per particle, resolved once and reused by both the
+  // transform and the colour effect so the two can never disagree. Raspberry
+  // particles are drawn entirely as beads, so without this they were the one
+  // patchy format that ignored cluster highlighting completely.
+  const appearance = useMemo(() => {
+    if (!hasValidData) return [];
+    return particles.map((_, i) => {
+      const globalIndex = globalIndices ? globalIndices[i] : i;
+      const isInHighlightedCluster = highlightedClusters.has(globalIndex);
+      return getClusterAppearance({
+        isSelected: Array.isArray(selectedParticles) && selectedParticles.includes(globalIndex),
+        isInHighlightedCluster,
+        shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
+        hasHighlightedClusters: highlightedClusters.size > 0,
+        showOnlyHighlightedClusters,
+        dimNonSelectedClusters,
+        baseColor: typeColor,
+      });
+    });
+  }, [particles, globalIndices, selectedParticles, highlightedClusters,
+      showOnlyHighlightedClusters, dimNonSelectedClusters, typeColor, hasValidData]);
 
   // Register mesh + metadata with parent for centralized raycasting.
   // Pass particlePositionsRef so Particles.js always reads the latest positions
@@ -62,17 +88,28 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
       const hasRotation = !!particle.rotationMatrix;
       if (hasRotation) rotMat.fromArray(particle.rotationMatrix.elements);
 
+      // Scale bead offsets and radii together so a highlighted particle grows
+      // as a whole and a hidden one collapses to nothing, exactly like a plain
+      // sphere does, instead of its beads drifting apart or lingering as
+      // shrunken specks.
+      // Beads collapse both when the particle is hidden and when it is dimmed:
+      // in the dimmed case the centre sphere in Particles.js draws the marker
+      // instead, so drawing shrunken beads too would double up.
+      const entry = appearance[i];
+      const clusterScale = (entry?.hidden || entry?.dimmed) ? 0 : (entry?.scaleFactor ?? 1);
+      const siteScale = particleScale * radiusScale * clusterScale;
+
       for (let j = 0; j < repulsionSiteData.length; j++) {
         const site = repulsionSiteData[j];
         localPos.set(
-          site.position.x * particleScale * radiusScale,
-          site.position.y * particleScale * radiusScale,
-          site.position.z * particleScale * radiusScale,
+          site.position.x * siteScale,
+          site.position.y * siteScale,
+          site.position.z * siteScale,
         );
         if (hasRotation) localPos.applyMatrix3(rotMat);
 
         dummy.position.set(localPos.x + px, localPos.y + py, localPos.z + pz);
-        dummy.scale.setScalar(site.radius * particleScale * radiusScale);
+        dummy.scale.setScalar(site.radius * siteScale);
         dummy.updateMatrix();
         mesh.setMatrixAt(index, dummy.matrix);
         index++;
@@ -82,31 +119,29 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
     particlePositionsRef.current = positions;
     mesh.instanceMatrix.needsUpdate = true;
     invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [particles, repulsionSiteData, particleScale, radiusScale, hasValidData, boxSize, geometry, invalidate]);
+  }, [particles, repulsionSiteData, particleScale, radiusScale, appearance, hasValidData, boxSize, geometry, invalidate]);
 
-  // Update bead colors: yellow for selected particles, typeColor otherwise.
+  // Bead colours follow the shared cluster rule: yellow when selected, type
+  // colour otherwise. Hidden particles carry zero scale, so their colour is
+  // moot.
   // Uses setColorAt to update the buffer in-place — avoids allocating a new
   // InstancedBufferAttribute (and leaking the old GPU buffer) on every frame.
   useEffect(() => {
     if (!meshRef.current || !hasValidData) return;
 
     const mesh = meshRef.current;
-    const yellowColor = new THREE.Color("yellow");
 
     for (let i = 0; i < particles.length; i++) {
-      const globalIndex = globalIndices ? globalIndices[i] : i;
-      const isSelected = Array.isArray(selectedParticles) && selectedParticles.includes(globalIndex);
-      const color = isSelected ? yellowColor : typeColor;
-
-      if (color) {
-        for (let j = 0; j < numBeads; j++) {
-          mesh.setColorAt(i * numBeads + j, color);
-        }
+      const color = appearance[i]?.color;
+      if (!color) continue;
+      for (let j = 0; j < numBeads; j++) {
+        mesh.setColorAt(i * numBeads + j, color);
       }
     }
 
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
-  }, [particles, typeColor, selectedParticles, globalIndices, hasValidData, numBeads]);
+    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
+  }, [particles, appearance, hasValidData, numBeads, invalidate]);
 
   if (!hasValidData) return null;
 

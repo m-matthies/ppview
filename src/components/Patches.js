@@ -5,8 +5,10 @@ import * as THREE from 'three';
 import { getColorForPatchID } from '../utils/colorUtils';
 import { useParticleStore } from '../store/particleStore';
 import { useUIStore } from '../store/uiStore';
+import { useClusteringStore } from '../store/clusteringStore';
+import { getClusterAppearance } from '../utils/clusterAppearance';
 
-function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = null }) {
+function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, colorScheme = null }) {
   const meshRef = useRef();
   const particleRadius = useParticleStore(state => state.particleRadius);
 
@@ -43,6 +45,29 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
       
   const totalPatches = hasValidPatchData ? particles.length * patchPositions.length : 0;
 
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+
+  // Patches follow their particle's cluster state. `allowSelectionColor` is off
+  // because a patch's colour encodes its patch ID — turning it yellow on
+  // selection would discard that. The scale factor still applies, so patches
+  // grow with a highlighted particle and vanish with a hidden one.
+  const appearance = useMemo(() => {
+    if (!hasValidPatchData) return [];
+    return particles.map((_, i) => {
+      const globalIndex = globalIndices ? globalIndices[i] : i;
+      const isInHighlightedCluster = highlightedClusters.has(globalIndex);
+      return getClusterAppearance({
+        isInHighlightedCluster,
+        shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
+        hasHighlightedClusters: highlightedClusters.size > 0,
+        showOnlyHighlightedClusters,
+        dimNonSelectedClusters,
+        baseColor: null, // resolved per patch below
+        allowSelectionColor: false,
+      });
+    });
+  }, [particles, globalIndices, highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, hasValidPatchData]);
+
   useEffect(() => {
     if (meshRef.current && hasValidPatchData) {
       const mesh = meshRef.current;
@@ -65,6 +90,12 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
           rotationMatrix = new THREE.Matrix3().fromArray(particle.rotationMatrix.elements);
         }
 
+        // Cluster state for this particle: grows the cone, or collapses it to
+        // nothing when the particle is hidden, and moves its tip so it stays on
+        // the surface of the resized sphere.
+        const clusterScale = appearance[i]?.scaleFactor ?? 1;
+        const clusterColor = appearance[i]?.color ?? null;
+
         for (let j = 0; j < patchPositions.length; j++) {
           const patchOffset = patchPositions[j];
           const patchID = patchIDs[j]; // Get patch ID
@@ -85,7 +116,7 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
           );
           if (patchVectorLength < 1e-9) { index++; continue; } // degenerate — skip
 
-          const scaleFactor = particleRadius / patchVectorLength;
+          const scaleFactor = (particleRadius * clusterScale) / patchVectorLength;
 
           const localPatchPosition = new THREE.Vector3(
             patchOffset.x,
@@ -122,12 +153,12 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
           const quaternion = new THREE.Quaternion();
           quaternion.setFromUnitVectors(upVector, inwardDirection);
           dummy.setRotationFromQuaternion(quaternion);
-          
+          dummy.scale.setScalar(clusterScale);
+
           dummy.updateMatrix();
           mesh.setMatrixAt(index, dummy.matrix);
 
-          // Assign color based on patch ID
-          const color = getColorForPatchID(patchID, colorScheme);
+          const color = clusterColor ?? getColorForPatchID(patchID, colorScheme);
           colors.push(color.r, color.g, color.b);
 
       // Remove debugging logs for better performance
@@ -192,7 +223,7 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
         mesh.material.needsUpdate = true;
       }
     }
-  }, [particles, patchPositions, patchIDs, boxSize, hasValidPatchData, colorScheme, particleRadius]);
+  }, [particles, patchPositions, patchIDs, boxSize, hasValidPatchData, colorScheme, particleRadius, appearance]);
 
   // Return null if no valid patch data
   if (!hasValidPatchData) {

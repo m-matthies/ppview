@@ -358,5 +358,42 @@ Stored in `localStorage` under key `ppview_color_scheme`.
 |-------|-------|-------|
 | Normal | type-based | 1.0× |
 | Highlighted cluster | type-based | 1.3× |
-| Dimmed (not in selected clusters) | gray | 0.3× |
+| Not in a selected cluster | — | 0 (hidden) |
 | Selected particle | yellow | — |
+
+*Show only selected clusters* hides the rest outright (zero scale, the pattern used everywhere
+else in this codebase) — which is what the control's name promises.
+
+A second checkbox, **Keep the rest as faint markers** (`clusteringStore.dimNonSelectedClusters`,
+off by default), brings them back as one small grey sphere each at `CLUSTER_DIMMED_SCALE`. It is
+only offered while *Show only selected clusters* is on, since it means nothing otherwise. Dense
+systems cluster into a single blob — the example raspberry file is 768 particles in a 15.7 box
+and DBSCAN returns exactly one cluster — so hiding everything leaves an empty scene, and the
+markers are how you keep your bearings.
+
+**A dimmed raspberry particle is drawn by its centre sphere, not its beads.** `Particles.js`
+normally scales that sphere to zero for raspberry types and lets `RepulsionSites` do the drawing;
+the dimmed marker is the one exception, because one sphere at the particle's centre reads far
+better than a swarm of shrunken beads. `RepulsionSites` collapses its beads whenever the particle
+is `hidden` *or* `dimmed` so the two never draw at once.
+
+**`utils/clusterAppearance.js` is the single source of these rules.** Three renderers draw parts
+of the same patchy particle — the sphere (`Particles.js`), the raspberry repulsion beads
+(`RepulsionSites.js`) and the patch cones (`Patches.js`) — and each used to decide appearance for
+itself, so raspberry particles ignored clustering entirely and patches were removed by a separate
+filter rather than following their particle. All three now call `getClusterAppearance`, which returns a colour and a scale **factor**
+to apply on top of whatever base size the renderer already uses. Returning a factor is what lets
+a sphere radius, a bead offset and a cone share one rule.
+
+- Raspberry beads scale offset and radius together, so a highlighted particle grows as a whole
+  and a hidden one collapses to nothing, instead of its beads drifting apart.
+- Patches pass `allowSelectionColor: false`: a patch's colour encodes its patch ID, so it keeps
+  that colour when the particle is selected, while still following the scale factor — so they
+  grow with a highlighted particle and vanish with a hidden one.
+- `Patches` receives `globalIndices` to look up cluster membership. It previously matched
+  particles by comparing floating-point coordinates with `positions.findIndex`, once per
+  particle.
+
+Note: `ClusteringPane` only populates `highlightedClusters` while *Show only selected clusters*
+is on, so the 1.3× highlight state never appears on its own — selecting a cluster with that box
+unchecked currently has no visual effect.
