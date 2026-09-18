@@ -22,7 +22,9 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build -f"
+    "deploy": "gh-pages -d build -f",
+    "fixtures": "node visual-tests/make-fixtures.js",
+    "test:visual": "node visual-tests/serve-and-run.js"
   },
   "eslintConfig": {
     "extends": [

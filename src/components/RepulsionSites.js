@@ -141,7 +141,10 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
 
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [particles, appearance, hasValidData, numBeads, invalidate]);
+    // `geometry` matters here even though this effect never reads it: changing it
+    // makes r3f rebuild the InstancedMesh, and a fresh mesh has instanceColor
+    // === null. Without this dep the beads keep the bare white material.
+  }, [particles, appearance, hasValidData, numBeads, geometry, invalidate]);
 
   if (!hasValidData) return null;
 
