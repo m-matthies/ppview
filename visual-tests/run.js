@@ -98,7 +98,9 @@ function compare(current, baseline) {
   const { results, errors } = await run();
 
   if (UPDATE) {
-    fs.writeFileSync(BASELINE, JSON.stringify(results, null, 2) + '\n');
+    // Merge, so --only --update refreshes one format without dropping the rest.
+    const previous = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, 'utf8')) : {};
+    fs.writeFileSync(BASELINE, JSON.stringify({ ...previous, ...results }, null, 2) + '\n');
     console.log(`\nbaseline written: ${Object.keys(results).length} scenarios`);
     if (errors.length) {
       console.log('\nconsole problems recorded while capturing:');
@@ -111,7 +113,12 @@ function compare(current, baseline) {
     console.error('no baseline; run with --update first');
     process.exit(2);
   }
-  const baseline = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
+  const full = JSON.parse(fs.readFileSync(BASELINE, 'utf8'));
+  // With --only, compare against just the slice that was actually run;
+  // everything else would otherwise read as "disappeared".
+  const baseline = ONLY
+    ? Object.fromEntries(Object.entries(full).filter(([k]) => k.startsWith(ONLY + '/')))
+    : full;
   const diffs = compare(results, baseline);
 
   if (errors.length) {

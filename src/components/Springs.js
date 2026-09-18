@@ -1,8 +1,11 @@
-import React, { useRef, useEffect, useMemo } from "react";
+import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useParticleStore } from "../store/particleStore";
 import { useUIStore } from "../store/uiStore";
-import { useThree } from "@react-three/fiber";
+import { useClusteringStore } from "../store/clusteringStore";
+import InstancedLayer from "../rendering/InstancedLayer";
+import { centreOnBox, crossesPeriodicBoundary } from "../rendering/transforms";
+import { getClusterAppearance } from "../utils/clusterAppearance";
 
 // Renders spring bonds between connected particles as instanced cylinders.
 // Spring connection topology comes from topData.springConnections, which is
@@ -13,8 +16,7 @@ function Springs() {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const topData = useParticleStore(state => state.topData);
   const sphereSegments = useUIStore(state => state.sphereSegments);
-  const { invalidate } = useThree();
-  const meshRef = useRef();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
 
   const springConnections = topData?.springConnections;
   const count = springConnections?.length ?? 0;
@@ -33,63 +35,66 @@ function Springs() {
     roughness: 0.6,
   }), []);
 
-  useEffect(() => {
-    if (!meshRef.current || !springConnections || springConnections.length === 0) return;
-    if (!positions || positions.length === 0) return;
+  // Reused across instances rather than allocated per spring.
+  const scratch = useMemo(() => ({
+    up: new THREE.Vector3(0, 1, 0),
+    v1: new THREE.Vector3(),
+    v2: new THREE.Vector3(),
+    dir: new THREE.Vector3(),
+  }), []);
 
-    const mesh = meshRef.current;
-    const dummy = new THREE.Object3D();
-    const up = new THREE.Vector3(0, 1, 0);
-    const zeroScale = new THREE.Matrix4().makeScale(0, 0, 0);
-    const halfBox = Math.min(boxSize[0], boxSize[1], boxSize[2]) / 2;
+  // A spring follows the cluster state of the particles it joins: it is drawn
+  // only when both ends are. Previously springs ignored clustering entirely and
+  // hung in space after their particles were hidden.
+  const appearanceOf = useMemo(() => (index) => getClusterAppearance({
+    isInHighlightedCluster: highlightedClusters.has(index),
+    shouldShow: !showOnlyHighlightedClusters || highlightedClusters.has(index),
+    hasHighlightedClusters: highlightedClusters.size > 0,
+    showOnlyHighlightedClusters,
+    dimNonSelectedClusters,
+    baseColor: null,
+    allowSelectionColor: false,
+  }), [highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters]);
 
-    for (let i = 0; i < springConnections.length; i++) {
-      const { p1, p2 } = springConnections[i];
+  const write = useMemo(() => (i, dummy) => {
+    const { p1, p2 } = springConnections[i];
+    if (p1 >= positions.length || p2 >= positions.length) return false;
 
-      if (p1 >= positions.length || p2 >= positions.length) {
-        mesh.setMatrixAt(i, zeroScale);
-        continue;
-      }
+    const a = appearanceOf(p1);
+    const b = appearanceOf(p2);
+    if (a.hidden || b.hidden) return false;
 
-      const pos1 = positions[p1];
-      const pos2 = positions[p2];
+    const pos1 = positions[p1];
+    const pos2 = positions[p2];
+    centreOnBox(scratch.v1, pos1, boxSize);
+    centreOnBox(scratch.v2, pos2, boxSize);
 
-      const v1 = new THREE.Vector3(
-        pos1.x - boxSize[0] / 2,
-        pos1.y - boxSize[1] / 2,
-        pos1.z - boxSize[2] / 2,
-      );
-      const v2 = new THREE.Vector3(
-        pos2.x - boxSize[0] / 2,
-        pos2.y - boxSize[1] / 2,
-        pos2.z - boxSize[2] / 2,
-      );
+    scratch.dir.copy(scratch.v2).sub(scratch.v1);
+    const distance = scratch.dir.length();
 
-      const dir = v2.clone().sub(v1);
-      const distance = dir.length();
+    // Hide degenerate springs, and those that wrap a periodic boundary — those
+    // would otherwise be drawn straight across the whole box.
+    if (distance < 1e-6 || crossesPeriodicBoundary(distance, boxSize)) return false;
 
-      // Hide degenerate or cross-boundary springs
-      if (distance < 1e-6 || distance > halfBox) {
-        mesh.setMatrixAt(i, zeroScale);
-        continue;
-      }
-
-      dir.normalize();
-      dummy.position.copy(v1).addScaledVector(dir, distance / 2);
-      dummy.quaternion.setFromUnitVectors(up, dir);
-      dummy.scale.set(springRadius, distance, springRadius);
-      dummy.updateMatrix();
-      mesh.setMatrixAt(i, dummy.matrix);
-    }
-
-    mesh.instanceMatrix.needsUpdate = true;
-    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [positions, boxSize, springConnections, springRadius, geometry, invalidate]);
+    scratch.dir.normalize();
+    // A dimmed spring thins with its particles rather than disappearing.
+    const thickness = springRadius * Math.min(a.scaleFactor, b.scaleFactor);
+    dummy.position.copy(scratch.v1).addScaledVector(scratch.dir, distance / 2);
+    dummy.quaternion.setFromUnitVectors(scratch.up, scratch.dir);
+    dummy.scale.set(thickness, distance, thickness);
+    return true;
+  }, [springConnections, positions, boxSize, springRadius, scratch, appearanceOf]);
 
   if (!springConnections || count === 0) return null;
 
   return (
-    <instancedMesh ref={meshRef} args={[geometry, material, count]} castShadow receiveShadow />
+    <InstancedLayer
+      geometry={geometry}
+      material={material}
+      count={count}
+      write={write}
+      deps={[write]}
+    />
   );
 }
 
