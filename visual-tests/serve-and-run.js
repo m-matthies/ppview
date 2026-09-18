@@ -73,6 +73,11 @@ const get = (url) => new Promise((resolve, reject) => {
   children.push(spawn(CHROME, [
     '--headless=new', '--disable-gpu', '--use-gl=swiftshader',
     '--enable-unsafe-swiftshader',
+    // Workers run in background tabs; without these Chrome throttles their
+    // timers and never fires rAF, which stalls whole scenarios.
+    '--disable-renderer-backgrounding',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-background-timer-throttling',
     // Retina-class pixel ratio: several past bugs only showed above dpr 1.
     '--force-device-scale-factor=2',
     `--remote-debugging-port=${DEBUG_PORT}`,

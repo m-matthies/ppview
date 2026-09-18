@@ -369,6 +369,14 @@ geometry appears, vanishes, resizes or loses its colour.
   settles after each click, because React commits selection asynchronously.
 - Stop any dev server on the port first; the runner refuses to run against one it
   did not start, since that may be a different build.
+- **It runs serially, and should stay that way.** Parallel tabs look like an easy
+  win — scenarios are independent and the suite looks like it is mostly waiting —
+  but every worker shares one software rasteriser. Three workers took the same
+  244s as one while stalling four scenarios past the CDP timeout on every run.
+  Serial finishes all 30 in ~260s with no failures. `--workers=N` is still there
+  for a machine with a real GPU.
+- `settle()` must not await `requestAnimationFrame`: it never fires in a
+  background tab, which is a trap if anyone re-enables workers.
 
 ## Performance Patterns
 

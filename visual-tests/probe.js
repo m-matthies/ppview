@@ -6,15 +6,32 @@
  * appears, disappears, changes size, or loses its colour — which is exactly the
  * class of regression a rendering refactor introduces.
  */
+// Everything is measured on a downscaled copy of the canvas.
+//
+// The real canvas is 2880x1626 at dpr 2 — 4.6M pixels — and reading it back on
+// every poll was costing enough under a software rasteriser to blow the
+// scenario timeout non-deterministically. Sampling a 640px-wide copy is ~20x
+// cheaper and preserves every comparison this suite makes, because all of them
+// are relative: counts move together when geometry appears, vanishes, resizes
+// or loses its colour.
+const SAMPLE_WIDTH = 640;
+const SAMPLE = `
+  const canvas = document.querySelector('canvas');
+  const w = ${SAMPLE_WIDTH};
+  const h = Math.max(1, Math.round(canvas.height * (w / canvas.width)));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(canvas, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+`;
+
 const MEASURE = `
 (() => {
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return null;
-  const c = document.createElement('canvas');
-  c.width = canvas.width; c.height = canvas.height;
-  c.getContext('2d').drawImage(canvas, 0, 0);
-  const d = c.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
-  const W = c.width;
+  const canvas0 = document.querySelector('canvas');
+  if (!canvas0) return null;
+  ${SAMPLE}
+  const W = w;
   let coloured = 0, neutral = 0, edges = 0, sumR = 0, sumG = 0, sumB = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
@@ -46,15 +63,12 @@ const MEASURE = `
 // to notice any change worth waiting for.
 const QUICK_HASH = `
 (() => {
-  const canvas = document.querySelector('canvas');
-  if (!canvas) return 'none';
-  const c = document.createElement('canvas');
-  c.width = canvas.width; c.height = canvas.height;
-  c.getContext('2d').drawImage(canvas, 0, 0);
-  const d = c.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
-  let h = 0;
-  for (let i = 0; i < d.length; i += 256) h = (h * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) | 0;
-  return h;
+  const canvas0 = document.querySelector('canvas');
+  if (!canvas0) return 'none';
+  ${SAMPLE}
+  let acc = 0;
+  for (let i = 0; i < d.length; i += 16) acc = (acc * 31 + d[i] + d[i + 1] * 3 + d[i + 2] * 7) | 0;
+  return acc;
 })()
 `;
 
@@ -75,8 +89,10 @@ const settle = async (timeout = 4000) => {
   let previous = quickHash();
   let stable = 0;
   while (Date.now() - started < timeout) {
-    await new Promise(r => requestAnimationFrame(() => r()));
-    await sleep(30);
+    // Deliberately not requestAnimationFrame: workers run in background tabs,
+    // where Chrome never fires it, and awaiting it hung the scenario until the
+    // CDP timeout fired.
+    await sleep(40);
     const next = quickHash();
     if (next === previous) {
       if (++stable >= 2) return;

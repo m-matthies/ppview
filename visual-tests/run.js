@@ -26,12 +26,15 @@ const UPDATE = process.argv.includes('--update');
 const TOLERANCE = 0.02;
 const ABSOLUTE_SLACK = 6;
 const ONLY = (process.argv.find(a => a.startsWith('--only=')) || '').split('=')[1];
-// Scenarios are independent, so they run in parallel tabs. The suite is
-// dominated by waiting for the app, not by CPU, so concurrency helps a lot —
-// though every worker shares one software-rasterised GPU, so more is not
-// linearly better.
+// Serial by default, and measured rather than assumed.
+//
+// Scenarios are independent and the suite looks like it is mostly waiting, so
+// parallel tabs seem like an obvious win. They are not: every worker shares one
+// software rasteriser, so 3 workers took the same 244s as 1 while stalling four
+// scenarios past the CDP timeout every run. Serial runs the full suite in about
+// the same wall time with no failures. Raise --workers only on a real GPU.
 const WORKERS = Number(
-  (process.argv.find(a => a.startsWith('--workers=')) || '').split('=')[1] || process.env.PPVIEW_WORKERS || 4,
+  (process.argv.find(a => a.startsWith('--workers=')) || '').split('=')[1] || process.env.PPVIEW_WORKERS || 1,
 );
 
 async function run() {

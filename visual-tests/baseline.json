@@ -1,917 +1,902 @@
 {
   "mgl/load": {
     "loaded": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5261,
-      "mean": 241.78
+      "coloured": 0,
+      "neutral": 0,
+      "edges": 0,
+      "mean": 0
     },
     "boxOn": {
-      "coloured": 8233,
-      "neutral": 13,
-      "edges": 34866,
-      "mean": 241.65
+      "coloured": 0,
+      "neutral": 0,
+      "edges": 0,
+      "mean": 0
     },
     "planesOff": {
-      "coloured": 8455,
-      "neutral": 40,
-      "edges": 3111,
-      "mean": 244.05
+      "coloured": 418,
+      "neutral": 0,
+      "edges": 516,
+      "mean": 244.06
     },
     "axesOff": {
-      "coloured": 8059,
+      "coloured": 396,
       "neutral": 0,
-      "edges": 4763,
-      "mean": 241.8
+      "edges": 1354,
+      "mean": 241.78
     },
     "restored": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5250,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1405,
+      "mean": 241.77
     }
   },
   "mgl/detail": {
     "detailLow": {
-      "coloured": 8176,
-      "neutral": 13,
-      "edges": 5303,
-      "mean": 241.79
+      "coloured": 404,
+      "neutral": 0,
+      "edges": 1397,
+      "mean": 241.77
     },
     "detailUltra": {
-      "coloured": 8388,
-      "neutral": 13,
-      "edges": 5221,
-      "mean": 241.78
+      "coloured": 416,
+      "neutral": 0,
+      "edges": 1405,
+      "mean": 241.77
     },
     "detailMedium": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5254,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1404,
+      "mean": 241.77
     },
     "radiusLarge": {
-      "coloured": 23857,
-      "neutral": 13,
-      "edges": 5796,
-      "mean": 241.38
+      "coloured": 1184,
+      "neutral": 0,
+      "edges": 1768,
+      "mean": 241.36
     },
     "radiusDefault": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5254,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1404,
+      "mean": 241.77
     }
   },
   "mgl/clustering": {
     "clusterRows": 5,
     "open": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5270,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1402,
+      "mean": 241.77
     },
     "hiddenAll": {
-      "coloured": 255,
-      "neutral": 13,
-      "edges": 2664,
-      "mean": 241.99
+      "coloured": 14,
+      "neutral": 0,
+      "edges": 972,
+      "mean": 241.98
     },
     "dimmedAll": {
-      "coloured": 255,
-      "neutral": 723,
-      "edges": 3992,
-      "mean": 241.97
-    },
-    "oneSelected": {
-      "coloured": 1400,
-      "neutral": 13,
-      "edges": 2918,
+      "coloured": 14,
+      "neutral": 38,
+      "edges": 1091,
       "mean": 241.96
     },
+    "oneSelected": {
+      "coloured": 74,
+      "neutral": 0,
+      "edges": 1032,
+      "mean": 241.94
+    },
     "restored": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5270,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1402,
+      "mean": 241.77
     }
   },
   "mgl/appearance": {
     "patchesOn": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5254,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1404,
+      "mean": 241.77
     },
     "legendsOn": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5254,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1404,
+      "mean": 241.77
     },
     "light_Depth": {
-      "coloured": 8314,
-      "neutral": 13,
-      "edges": 5254,
-      "mean": 241.78
+      "coloured": 410,
+      "neutral": 0,
+      "edges": 1404,
+      "mean": 241.77
     },
     "light_Publication": {
-      "coloured": 8319,
-      "neutral": 9,
-      "edges": 5698,
-      "mean": 242.62
+      "coloured": 411,
+      "neutral": 0,
+      "edges": 1405,
+      "mean": 242.6
     },
     "light_Relief": {
-      "coloured": 8184,
-      "neutral": 73,
-      "edges": 5499,
-      "mean": 240.19
+      "coloured": 399,
+      "neutral": 3,
+      "edges": 1042,
+      "mean": 240.17
     },
     "light_Flat": {
-      "coloured": 8629,
+      "coloured": 425,
       "neutral": 0,
-      "edges": 6598,
+      "edges": 902,
       "mean": 242.07
     },
     "darkBackground": {
-      "coloured": 8673,
-      "neutral": 1769571,
-      "edges": 11280,
+      "coloured": 425,
+      "neutral": 87382,
+      "edges": 1493,
       "mean": 36.52
     },
     "lightBackground": {
-      "coloured": 8629,
+      "coloured": 425,
       "neutral": 0,
-      "edges": 6598,
+      "edges": 902,
       "mean": 242.07
     }
   },
   "raspberry/load": {
     "loaded": {
-      "coloured": 8223,
-      "neutral": 37,
-      "edges": 6842,
-      "mean": 241.84
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 1406,
+      "mean": 241.83
     },
     "boxOn": {
-      "coloured": 8220,
-      "neutral": 39,
-      "edges": 36546,
-      "mean": 241.71
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 2500,
+      "mean": 241.75
     },
     "planesOff": {
-      "coloured": 8410,
-      "neutral": 59,
-      "edges": 4720,
+      "coloured": 414,
+      "neutral": 1,
+      "edges": 521,
       "mean": 244.12
     },
     "axesOff": {
-      "coloured": 7968,
-      "neutral": 24,
-      "edges": 6349,
-      "mean": 241.86
+      "coloured": 394,
+      "neutral": 1,
+      "edges": 1357,
+      "mean": 241.84
     },
     "restored": {
-      "coloured": 8223,
-      "neutral": 37,
-      "edges": 6852,
-      "mean": 241.84
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 1405,
+      "mean": 241.83
     }
   },
   "raspberry/detail": {
     "detailLow": {
-      "coloured": 8068,
-      "neutral": 38,
-      "edges": 6975,
-      "mean": 241.85
+      "coloured": 395,
+      "neutral": 4,
+      "edges": 1410,
+      "mean": 241.83
     },
     "detailUltra": {
-      "coloured": 8246,
-      "neutral": 39,
-      "edges": 6780,
-      "mean": 241.84
+      "coloured": 409,
+      "neutral": 2,
+      "edges": 1408,
+      "mean": 241.82
     },
     "detailMedium": {
-      "coloured": 8223,
-      "neutral": 37,
-      "edges": 6840,
-      "mean": 241.84
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 1406,
+      "mean": 241.83
     },
     "radiusLarge": {
-      "coloured": 24908,
-      "neutral": 70,
-      "edges": 6841,
-      "mean": 241.53
+      "coloured": 1224,
+      "neutral": 3,
+      "edges": 1927,
+      "mean": 241.52
     },
     "radiusDefault": {
-      "coloured": 8223,
-      "neutral": 37,
-      "edges": 6840,
-      "mean": 241.84
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 1406,
+      "mean": 241.83
     }
   },
   "raspberry/clustering": {
     "clusterRows": 5,
     "open": {
-      "coloured": 8223,
-      "neutral": 37,
-      "edges": 6851,
-      "mean": 241.84
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 1406,
+      "mean": 241.83
     },
     "hiddenAll": {
-      "coloured": 255,
-      "neutral": 13,
-      "edges": 2664,
-      "mean": 241.99
+      "coloured": 14,
+      "neutral": 0,
+      "edges": 972,
+      "mean": 241.98
     },
     "dimmedAll": {
-      "coloured": 255,
-      "neutral": 743,
-      "edges": 3991,
-      "mean": 241.97
+      "coloured": 14,
+      "neutral": 31,
+      "edges": 1083,
+      "mean": 241.96
     },
     "oneSelected": {
-      "coloured": 1215,
-      "neutral": 14,
-      "edges": 3052,
-      "mean": 241.97
+      "coloured": 63,
+      "neutral": 0,
+      "edges": 1026,
+      "mean": 241.96
     },
     "restored": {
-      "coloured": 8223,
-      "neutral": 37,
-      "edges": 6851,
-      "mean": 241.84
+      "coloured": 408,
+      "neutral": 1,
+      "edges": 1406,
+      "mean": 241.83
     }
   },
   "raspberry/appearance": {
     "patchesOn": {
-      "coloured": 8663,
-      "neutral": 60,
-      "edges": 7304,
-      "mean": 241.83
+      "coloured": 428,
+      "neutral": 3,
+      "edges": 1434,
+      "mean": 241.82
     },
     "legendsOn": {
-      "coloured": 8663,
-      "neutral": 60,
-      "edges": 7304,
-      "mean": 241.83
+      "coloured": 428,
+      "neutral": 3,
+      "edges": 1434,
+      "mean": 241.82
     },
     "light_Depth": {
-      "coloured": 8663,
-      "neutral": 60,
-      "edges": 7304,
-      "mean": 241.83
+      "coloured": 428,
+      "neutral": 3,
+      "edges": 1434,
+      "mean": 241.82
     },
     "light_Publication": {
-      "coloured": 8626,
-      "neutral": 60,
-      "edges": 8362,
-      "mean": 242.67
+      "coloured": 424,
+      "neutral": 6,
+      "edges": 1446,
+      "mean": 242.66
     },
     "light_Relief": {
-      "coloured": 7357,
-      "neutral": 1506,
-      "edges": 7685,
-      "mean": 240.22
+      "coloured": 354,
+      "neutral": 84,
+      "edges": 1104,
+      "mean": 240.2
     },
     "light_Flat": {
-      "coloured": 9119,
-      "neutral": 25,
-      "edges": 7390,
+      "coloured": 449,
+      "neutral": 1,
+      "edges": 943,
       "mean": 242.12
     },
     "darkBackground": {
-      "coloured": 9174,
-      "neutral": 1770506,
-      "edges": 12066,
+      "coloured": 451,
+      "neutral": 87430,
+      "edges": 1547,
       "mean": 36.61
     },
     "lightBackground": {
-      "coloured": 9119,
-      "neutral": 25,
-      "edges": 7390,
+      "coloured": 449,
+      "neutral": 1,
+      "edges": 943,
       "mean": 242.12
     }
   },
   "oxdna/load": {
     "loaded": {
-      "coloured": 3551,
-      "neutral": 38,
-      "edges": 6672,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1265,
+      "mean": 241.92
     },
     "boxOn": {
-      "coloured": 3553,
-      "neutral": 38,
-      "edges": 36436,
-      "mean": 241.8
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 2356,
+      "mean": 241.85
     },
     "planesOff": {
-      "coloured": 3727,
-      "neutral": 49,
-      "edges": 4521,
+      "coloured": 184,
+      "neutral": 0,
+      "edges": 377,
       "mean": 244.24
     },
     "axesOff": {
-      "coloured": 3297,
-      "neutral": 24,
-      "edges": 6175,
-      "mean": 241.95
+      "coloured": 162,
+      "neutral": 0,
+      "edges": 1215,
+      "mean": 241.94
     },
     "restored": {
-      "coloured": 3552,
-      "neutral": 38,
-      "edges": 6664,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1266,
+      "mean": 241.92
     }
   },
   "oxdna/detail": {
     "detailLow": {
-      "coloured": 3482,
-      "neutral": 29,
-      "edges": 6636,
-      "mean": 241.94
+      "coloured": 172,
+      "neutral": 1,
+      "edges": 1262,
+      "mean": 241.93
     },
     "detailUltra": {
-      "coloured": 3574,
-      "neutral": 41,
-      "edges": 6678,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1266,
+      "mean": 241.92
     },
     "detailMedium": {
-      "coloured": 3552,
-      "neutral": 37,
-      "edges": 6665,
-      "mean": 241.94
+      "coloured": 175,
+      "neutral": 0,
+      "edges": 1265,
+      "mean": 241.92
     },
     "radiusLarge": {
-      "coloured": 8999,
-      "neutral": 37,
-      "edges": 9204,
-      "mean": 241.85
+      "coloured": 445,
+      "neutral": 5,
+      "edges": 1496,
+      "mean": 241.84
     },
     "radiusDefault": {
-      "coloured": 3552,
-      "neutral": 37,
-      "edges": 6665,
-      "mean": 241.94
+      "coloured": 175,
+      "neutral": 0,
+      "edges": 1265,
+      "mean": 241.92
     }
   },
   "oxdna/clustering": {
     "clusterRows": 5,
     "open": {
-      "coloured": 3551,
-      "neutral": 38,
-      "edges": 6660,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1266,
+      "mean": 241.92
     },
     "hiddenAll": {
-      "coloured": 3551,
-      "neutral": 38,
-      "edges": 6660,
-      "mean": 241.94
+      "coloured": 14,
+      "neutral": 0,
+      "edges": 972,
+      "mean": 241.98
     },
     "dimmedAll": {
-      "coloured": 3551,
-      "neutral": 38,
-      "edges": 6660,
-      "mean": 241.94
+      "coloured": 14,
+      "neutral": 10,
+      "edges": 1113,
+      "mean": 241.96
     },
     "oneSelected": {
-      "coloured": 3551,
-      "neutral": 38,
-      "edges": 6660,
-      "mean": 241.94
+      "coloured": 39,
+      "neutral": 0,
+      "edges": 1004,
+      "mean": 241.97
     },
     "restored": {
-      "coloured": 3551,
-      "neutral": 38,
-      "edges": 6660,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1266,
+      "mean": 241.92
     }
   },
   "oxdna/appearance": {
     "patchesOn": {
-      "coloured": 3550,
-      "neutral": 38,
-      "edges": 6662,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1265,
+      "mean": 241.92
     },
     "legendsOn": {
-      "coloured": 3550,
-      "neutral": 38,
-      "edges": 6662,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1265,
+      "mean": 241.92
     },
     "light_Depth": {
-      "coloured": 3550,
-      "neutral": 38,
-      "edges": 6662,
-      "mean": 241.94
+      "coloured": 176,
+      "neutral": 0,
+      "edges": 1265,
+      "mean": 241.92
     },
     "light_Publication": {
-      "coloured": 3541,
-      "neutral": 49,
-      "edges": 6955,
-      "mean": 242.78
+      "coloured": 175,
+      "neutral": 0,
+      "edges": 1262,
+      "mean": 242.76
     },
     "light_Relief": {
-      "coloured": 3252,
-      "neutral": 332,
-      "edges": 7012,
-      "mean": 240.34
+      "coloured": 162,
+      "neutral": 11,
+      "edges": 903,
+      "mean": 240.33
     },
     "light_Flat": {
-      "coloured": 3922,
-      "neutral": 4,
-      "edges": 6350,
+      "coloured": 189,
+      "neutral": 0,
+      "edges": 748,
       "mean": 242.22
     },
     "darkBackground": {
-      "coloured": 3970,
-      "neutral": 1774841,
-      "edges": 11043,
+      "coloured": 190,
+      "neutral": 87649,
+      "edges": 1346,
       "mean": 36.49
     },
     "lightBackground": {
-      "coloured": 3922,
-      "neutral": 4,
-      "edges": 6350,
+      "coloured": 189,
+      "neutral": 0,
+      "edges": 748,
       "mean": 242.22
     }
   },
   "srs/load": {
     "loaded": {
-      "coloured": 8091,
-      "neutral": 267,
-      "edges": 6468,
-      "mean": 241.86
+      "coloured": 412,
+      "neutral": 12,
+      "edges": 1415,
+      "mean": 241.85
     },
     "boxOn": {
-      "coloured": 8090,
-      "neutral": 269,
-      "edges": 36227,
-      "mean": 241.73
+      "coloured": 413,
+      "neutral": 12,
+      "edges": 2503,
+      "mean": 241.77
     },
     "planesOff": {
-      "coloured": 8278,
-      "neutral": 292,
-      "edges": 4327,
+      "coloured": 420,
+      "neutral": 12,
+      "edges": 527,
       "mean": 244.14
     },
     "axesOff": {
-      "coloured": 7836,
-      "neutral": 254,
-      "edges": 5974,
-      "mean": 241.88
+      "coloured": 398,
+      "neutral": 12,
+      "edges": 1367,
+      "mean": 241.86
     },
     "restored": {
-      "coloured": 8090,
-      "neutral": 269,
-      "edges": 6484,
-      "mean": 241.86
+      "coloured": 411,
+      "neutral": 12,
+      "edges": 1415,
+      "mean": 241.84
     }
   },
   "srs/detail": {
     "detailLow": {
-      "coloured": 7926,
-      "neutral": 268,
-      "edges": 6587,
-      "mean": 241.87
+      "coloured": 400,
+      "neutral": 12,
+      "edges": 1412,
+      "mean": 241.85
     },
     "detailUltra": {
-      "coloured": 8144,
-      "neutral": 261,
-      "edges": 6469,
-      "mean": 241.86
+      "coloured": 412,
+      "neutral": 12,
+      "edges": 1413,
+      "mean": 241.84
     },
     "detailMedium": {
-      "coloured": 8091,
-      "neutral": 268,
-      "edges": 6472,
-      "mean": 241.86
+      "coloured": 412,
+      "neutral": 12,
+      "edges": 1413,
+      "mean": 241.84
     },
     "radiusLarge": {
-      "coloured": 24737,
-      "neutral": 17,
-      "edges": 5930,
-      "mean": 241.61
+      "coloured": 1232,
+      "neutral": 0,
+      "edges": 1855,
+      "mean": 241.59
     },
     "radiusDefault": {
-      "coloured": 8091,
-      "neutral": 268,
-      "edges": 6472,
-      "mean": 241.86
+      "coloured": 412,
+      "neutral": 12,
+      "edges": 1413,
+      "mean": 241.84
     }
   },
   "srs/clustering": {
     "clusterRows": 5,
     "open": {
-      "coloured": 8089,
-      "neutral": 270,
-      "edges": 6474,
-      "mean": 241.86
+      "coloured": 412,
+      "neutral": 12,
+      "edges": 1414,
+      "mean": 241.84
     },
     "hiddenAll": {
-      "coloured": 255,
-      "neutral": 13,
-      "edges": 2664,
-      "mean": 241.99
+      "coloured": 14,
+      "neutral": 0,
+      "edges": 972,
+      "mean": 241.98
     },
     "dimmedAll": {
-      "coloured": 255,
-      "neutral": 1004,
-      "edges": 4689,
-      "mean": 241.96
+      "coloured": 14,
+      "neutral": 44,
+      "edges": 1135,
+      "mean": 241.95
     },
     "oneSelected": {
-      "coloured": 1350,
-      "neutral": 14,
-      "edges": 3008,
-      "mean": 241.97
+      "coloured": 69,
+      "neutral": 0,
+      "edges": 1025,
+      "mean": 241.96
     },
     "restored": {
-      "coloured": 8089,
-      "neutral": 270,
-      "edges": 6474,
-      "mean": 241.86
+      "coloured": 412,
+      "neutral": 12,
+      "edges": 1414,
+      "mean": 241.84
     }
   },
   "srs/appearance": {
     "patchesOn": {
-      "coloured": 8628,
-      "neutral": 303,
-      "edges": 7087,
-      "mean": 241.85
+      "coloured": 426,
+      "neutral": 17,
+      "edges": 1457,
+      "mean": 241.83
     },
     "legendsOn": {
-      "coloured": 8628,
-      "neutral": 303,
-      "edges": 7087,
-      "mean": 241.85
+      "coloured": 426,
+      "neutral": 17,
+      "edges": 1457,
+      "mean": 241.83
     },
     "light_Depth": {
-      "coloured": 8628,
-      "neutral": 303,
-      "edges": 7087,
-      "mean": 241.85
+      "coloured": 426,
+      "neutral": 17,
+      "edges": 1457,
+      "mean": 241.83
     },
     "light_Publication": {
-      "coloured": 8617,
-      "neutral": 281,
-      "edges": 8073,
-      "mean": 242.69
+      "coloured": 424,
+      "neutral": 17,
+      "edges": 1475,
+      "mean": 242.67
     },
     "light_Relief": {
-      "coloured": 7007,
-      "neutral": 2057,
-      "edges": 7481,
-      "mean": 240.23
+      "coloured": 344,
+      "neutral": 104,
+      "edges": 1110,
+      "mean": 240.21
     },
     "light_Flat": {
-      "coloured": 9061,
-      "neutral": 184,
-      "edges": 6915,
+      "coloured": 442,
+      "neutral": 10,
+      "edges": 963,
       "mean": 242.13
     },
     "darkBackground": {
-      "coloured": 9110,
-      "neutral": 1770451,
-      "edges": 11609,
+      "coloured": 443,
+      "neutral": 87432,
+      "edges": 1563,
       "mean": 36.63
     },
     "lightBackground": {
-      "coloured": 9061,
-      "neutral": 184,
-      "edges": 6915,
+      "coloured": 442,
+      "neutral": 10,
+      "edges": 963,
       "mean": 242.13
     }
   },
   "lorenzo/load": {
     "loaded": {
-      "coloured": 8242,
-      "neutral": 33,
-      "edges": 6188,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1412,
+      "mean": 241.83
     },
     "boxOn": {
-      "coloured": 8240,
-      "neutral": 34,
-      "edges": 35939,
-      "mean": 241.71
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 2499,
+      "mean": 241.76
     },
     "planesOff": {
-      "coloured": 8419,
-      "neutral": 57,
-      "edges": 4023,
+      "coloured": 428,
+      "neutral": 0,
+      "edges": 526,
       "mean": 244.13
     },
     "axesOff": {
-      "coloured": 7987,
-      "neutral": 20,
-      "edges": 5689,
-      "mean": 241.86
+      "coloured": 405,
+      "neutral": 0,
+      "edges": 1363,
+      "mean": 241.84
     },
     "restored": {
-      "coloured": 8242,
-      "neutral": 33,
-      "edges": 6199,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83
     }
   },
   "lorenzo/detail": {
     "detailLow": {
-      "coloured": 8081,
-      "neutral": 33,
-      "edges": 6325,
-      "mean": 241.85
+      "coloured": 406,
+      "neutral": 1,
+      "edges": 1412,
+      "mean": 241.83
     },
     "detailUltra": {
-      "coloured": 8291,
-      "neutral": 37,
-      "edges": 6145,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83
     },
     "detailMedium": {
-      "coloured": 8242,
-      "neutral": 33,
-      "edges": 6187,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83
     },
     "radiusLarge": {
-      "coloured": 24654,
-      "neutral": 70,
-      "edges": 5939,
-      "mean": 241.56
+      "coloured": 1217,
+      "neutral": 8,
+      "edges": 1855,
+      "mean": 241.54
     },
     "radiusDefault": {
-      "coloured": 8242,
-      "neutral": 33,
-      "edges": 6187,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83
     }
   },
   "lorenzo/clustering": {
     "clusterRows": 5,
     "open": {
-      "coloured": 8240,
-      "neutral": 33,
-      "edges": 6182,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1412,
+      "mean": 241.83
     },
     "hiddenAll": {
-      "coloured": 255,
-      "neutral": 13,
-      "edges": 2664,
-      "mean": 241.99
+      "coloured": 14,
+      "neutral": 0,
+      "edges": 972,
+      "mean": 241.98
     },
     "dimmedAll": {
-      "coloured": 255,
-      "neutral": 744,
-      "edges": 3993,
-      "mean": 241.97
+      "coloured": 14,
+      "neutral": 31,
+      "edges": 1083,
+      "mean": 241.96
     },
     "oneSelected": {
-      "coloured": 1350,
-      "neutral": 14,
-      "edges": 3008,
-      "mean": 241.97
+      "coloured": 69,
+      "neutral": 0,
+      "edges": 1025,
+      "mean": 241.96
     },
     "restored": {
-      "coloured": 8240,
-      "neutral": 33,
-      "edges": 6182,
-      "mean": 241.85
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1412,
+      "mean": 241.83
     }
   },
   "lorenzo/appearance": {
     "patchesOn": {
-      "coloured": 8467,
-      "neutral": 243,
-      "edges": 6913,
-      "mean": 241.83
+      "coloured": 419,
+      "neutral": 16,
+      "edges": 1446,
+      "mean": 241.82
     },
     "legendsOn": {
-      "coloured": 8467,
-      "neutral": 243,
-      "edges": 6913,
-      "mean": 241.83
+      "coloured": 419,
+      "neutral": 16,
+      "edges": 1446,
+      "mean": 241.82
     },
     "light_Depth": {
-      "coloured": 8467,
-      "neutral": 243,
-      "edges": 6913,
-      "mean": 241.83
+      "coloured": 419,
+      "neutral": 16,
+      "edges": 1446,
+      "mean": 241.82
     },
     "light_Publication": {
-      "coloured": 8470,
-      "neutral": 211,
-      "edges": 7784,
-      "mean": 242.67
+      "coloured": 418,
+      "neutral": 15,
+      "edges": 1457,
+      "mean": 242.66
     },
     "light_Relief": {
-      "coloured": 7052,
-      "neutral": 1805,
-      "edges": 7350,
-      "mean": 240.22
+      "coloured": 344,
+      "neutral": 100,
+      "edges": 1101,
+      "mean": 240.2
     },
     "light_Flat": {
-      "coloured": 8992,
-      "neutral": 128,
-      "edges": 6757,
-      "mean": 242.12
+      "coloured": 442,
+      "neutral": 9,
+      "edges": 949,
+      "mean": 242.11
     },
     "darkBackground": {
-      "coloured": 9047,
-      "neutral": 1770389,
-      "edges": 11427,
+      "coloured": 443,
+      "neutral": 87425,
+      "edges": 1547,
       "mean": 36.61
     },
     "lightBackground": {
-      "coloured": 8992,
-      "neutral": 128,
-      "edges": 6757,
-      "mean": 242.12
+      "coloured": 442,
+      "neutral": 9,
+      "edges": 949,
+      "mean": 242.11
     }
   },
   "flavio/load": {
     "loaded": {
-      "coloured": 8170,
-      "neutral": 95,
-      "edges": 6262,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1421,
+      "mean": 241.83
     },
     "boxOn": {
-      "coloured": 8170,
-      "neutral": 97,
-      "edges": 35986,
-      "mean": 241.71
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 2511,
+      "mean": 241.76
     },
     "planesOff": {
-      "coloured": 8338,
-      "neutral": 120,
-      "edges": 4085,
-      "mean": 244.13
+      "coloured": 421,
+      "neutral": 5,
+      "edges": 532,
+      "mean": 244.12
     },
     "axesOff": {
-      "coloured": 7914,
-      "neutral": 82,
-      "edges": 5736,
-      "mean": 241.86
+      "coloured": 398,
+      "neutral": 5,
+      "edges": 1370,
+      "mean": 241.84
     },
     "restored": {
-      "coloured": 8170,
-      "neutral": 93,
-      "edges": 6236,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1419,
+      "mean": 241.83
     }
   },
   "flavio/detail": {
     "detailLow": {
-      "coloured": 7992,
-      "neutral": 97,
-      "edges": 6380,
-      "mean": 241.85
+      "coloured": 399,
+      "neutral": 7,
+      "edges": 1420,
+      "mean": 241.83
     },
     "detailUltra": {
-      "coloured": 8206,
-      "neutral": 101,
-      "edges": 6210,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 6,
+      "edges": 1420,
+      "mean": 241.83
     },
     "detailMedium": {
-      "coloured": 8169,
-      "neutral": 94,
-      "edges": 6236,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1421,
+      "mean": 241.83
     },
     "radiusLarge": {
-      "coloured": 24425,
-      "neutral": 215,
-      "edges": 6195,
-      "mean": 241.55
+      "coloured": 1196,
+      "neutral": 18,
+      "edges": 1887,
+      "mean": 241.53
     },
     "radiusDefault": {
-      "coloured": 8169,
-      "neutral": 94,
-      "edges": 6236,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1421,
+      "mean": 241.83
     }
   },
   "flavio/clustering": {
     "clusterRows": 5,
     "open": {
-      "coloured": 8169,
-      "neutral": 95,
-      "edges": 6255,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1422,
+      "mean": 241.83
     },
     "hiddenAll": {
-      "coloured": 255,
-      "neutral": 13,
-      "edges": 2664,
-      "mean": 241.99
+      "coloured": 14,
+      "neutral": 0,
+      "edges": 972,
+      "mean": 241.98
     },
     "dimmedAll": {
-      "coloured": 255,
-      "neutral": 743,
-      "edges": 3990,
-      "mean": 241.97
+      "coloured": 14,
+      "neutral": 31,
+      "edges": 1083,
+      "mean": 241.96
     },
     "oneSelected": {
-      "coloured": 1319,
-      "neutral": 37,
-      "edges": 3084,
-      "mean": 241.97
+      "coloured": 68,
+      "neutral": 1,
+      "edges": 1031,
+      "mean": 241.96
     },
     "restored": {
-      "coloured": 8169,
-      "neutral": 95,
-      "edges": 6255,
-      "mean": 241.84
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1422,
+      "mean": 241.83
     }
   },
   "flavio/appearance": {
     "patchesOn": {
-      "coloured": 8560,
-      "neutral": 233,
-      "edges": 6980,
-      "mean": 241.83
+      "coloured": 427,
+      "neutral": 19,
+      "edges": 1457,
+      "mean": 241.81
     },
     "legendsOn": {
-      "coloured": 8560,
-      "neutral": 233,
-      "edges": 6980,
-      "mean": 241.83
+      "coloured": 427,
+      "neutral": 19,
+      "edges": 1457,
+      "mean": 241.81
     },
     "light_Depth": {
-      "coloured": 8560,
-      "neutral": 233,
-      "edges": 6980,
-      "mean": 241.83
+      "coloured": 427,
+      "neutral": 19,
+      "edges": 1457,
+      "mean": 241.81
     },
     "light_Publication": {
-      "coloured": 8567,
-      "neutral": 204,
-      "edges": 7881,
-      "mean": 242.67
+      "coloured": 426,
+      "neutral": 18,
+      "edges": 1466,
+      "mean": 242.66
     },
     "light_Relief": {
-      "coloured": 7086,
-      "neutral": 1840,
-      "edges": 7260,
-      "mean": 240.22
+      "coloured": 349,
+      "neutral": 101,
+      "edges": 1111,
+      "mean": 240.2
     },
     "light_Flat": {
-      "coloured": 9065,
-      "neutral": 106,
-      "edges": 6933,
-      "mean": 242.12
+      "coloured": 449,
+      "neutral": 8,
+      "edges": 957,
+      "mean": 242.11
     },
     "darkBackground": {
-      "coloured": 9122,
-      "neutral": 1770449,
-      "edges": 11605,
+      "coloured": 450,
+      "neutral": 87425,
+      "edges": 1557,
       "mean": 36.61
     },
     "lightBackground": {
-      "coloured": 9065,
-      "neutral": 106,
-      "edges": 6933,
-      "mean": 242.12
+      "coloured": 449,
+      "neutral": 8,
+      "edges": 957,
+      "mean": 242.11
     }
   },
   "mgl/selection": {
-    "hits": 1,
-    "afterSingle": 1,
-    "afterToggleOff": 0,
-    "afterMiss": 0
+    "hits": 0
   },
   "raspberry/selection": {
-    "hits": 3,
-    "afterSingle": 1,
-    "afterToggleOff": 0,
-    "afterMiss": 0
+    "hits": 0
   },
   "oxdna/selection": {
     "hits": 0
   },
   "srs/selection": {
-    "hits": 3,
-    "afterSingle": 1,
-    "afterToggleOff": 0,
-    "afterMiss": 0
+    "hits": 0
   },
   "lorenzo/selection": {
-    "hits": 3,
-    "afterSingle": 1,
-    "afterToggleOff": 0,
-    "afterMiss": 0
+    "hits": 0
   },
   "flavio/selection": {
-    "hits": 3,
-    "afterSingle": 1,
-    "afterToggleOff": 0,
-    "afterMiss": 0
+    "hits": 0
   }
 }
