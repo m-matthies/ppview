@@ -5,13 +5,13 @@ import ParticleScene from "./components/ParticleScene";
 import PatchLegend from "./components/PatchLegend";
 import ParticleLegend from "./components/ParticleLegend";
 import SelectedParticlesDisplay from "./components/SelectedParticlesDisplay";
-import ColorSchemeSelector from "./components/ColorSchemeSelector";
 import SceneBackgroundToggle from "./components/SceneBackgroundToggle";
 import ClusteringPane from "./components/ClusteringPane";
+import ControlBar from "./components/ControlBar";
 import LightingControlsModal from "./components/LightingControlsModal";
-import { analyzeFiles, categorizeFiles, parseInputFile } from "./utils/fileTypeDetector";
+import { analyzeFiles, categorizeFiles, parseInputFile } from "./formats/detection";
 import { readMGL, readMGLTrajectory, convertMGLToPPViewFormat } from "./utils/mglParser";
-import { getParticleType } from "./utils/topologyParser";
+import { getParticleType } from "./formats/parsers/particleType";
 import { parseTopology } from "./formats/registry";
 import { buildTrajIndex, parseConfiguration } from "./utils/trajectoryLoader";
 import { applyPeriodicBoundary, applyPeriodicWrapping, computeRotationMatrix } from "./utils/geometryUtils";
@@ -20,53 +20,9 @@ import { captureScreenshot, exportSceneAsGLTF } from "./utils/exportUtils";
 import { useParticleStore } from "./store/particleStore";
 import { useUIStore } from "./store/uiStore";
 import { useClusteringStore } from "./store/clusteringStore";
+import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
+import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
-import {
-  PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
-  LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
-  ChevronUpIcon, ChevronDownIcon, CloseIcon, AxisIcon, LightbulbIcon,
-  StepBackIcon, StepForwardIcon, ActivityIcon
-} from "./components/Icons";
-
-// A toggle states what it controls and whether it is on, for both sighted and
-// assistive users — the icon alone carries neither.
-const ToggleBtn = ({ checked, onChange, icon, label, shortcut }) => (
-  <button
-    className={`toggle-btn ${checked ? 'is-active' : ''}`}
-    onClick={() => onChange(!checked)}
-    title={shortcut ? `${label} (${shortcut})` : label}
-    aria-pressed={checked}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
-
-const ToolBtn = ({ onClick, icon, label, active }) => (
-  <button
-    className={`toggle-btn ${active ? 'is-active' : ''}`}
-    onClick={onClick}
-    title={label}
-    aria-label={label}
-  >
-    {icon}
-  </button>
-);
-
-// Trajectory times run to 1e9; full digits are unreadable and shift the row
-// width every frame.
-const formatTime = (time) => {
-  if (typeof time !== 'number' || !Number.isFinite(time)) return String(time ?? '--');
-  if (time === 0) return '0';
-  return Math.abs(time) >= 1e6 ? time.toExponential(2) : time.toLocaleString();
-};
-
-const formatEnergy = (energy) => {
-  const value = Array.isArray(energy) ? energy[0] : energy;
-  if (typeof value !== 'number' || !Number.isFinite(value) || value === 0) return null;
-  return value.toFixed(4);
-};
-
 
 function App() {
   // Zustand stores
@@ -122,8 +78,6 @@ function App() {
     setShowClusteringPane,
     setFilesDropped,
     setIsLoading,
-    setIsIframeMode,
-    setIsDragDropEnabled,
     setIsPlaying,
     setPlaybackSpeed,
     setIsSpeedPopupVisible,
@@ -600,173 +554,11 @@ function App() {
     }
   }, [exportGLTF, takeScreenshot]);
 
-  // Message handler for iframe communication
-  const handleMessage = useCallback((data) => {
-    console.log('PPView received message:', data);
+  useIframeBridge({ handleFilesReceived, makeOutputFiles, notify });
 
-    if (data.message === 'drop') {
-      handleFilesReceived(data.files);
-    }
-    else if (data.message === 'download') {
-      makeOutputFiles();
-    }
-    else if (data.message === 'remove-event') {
-      // Disable drag-drop on the FileDropZone and show notification on drop attempts
-      setIsDragDropEnabled(false);
-      notify("Dragging onto embedded viewer does not allow form completion");
-    }
-    else if (data.message === 'iframe_drop') {
-      let files = data.files;
-      let ext = data.ext;
-      let view_settings = data.view_settings;
-
-      if (files.length !== ext.length) {
-        notify("Make sure you pass all files with extensions");
-        return;
-      }
-
-      // Apply view settings if present
-      if (view_settings) {
-        if ("Box" in view_settings) {
-          setShowSimulationBox(view_settings["Box"]);
-        }
-        if ("BackdropPlanes" in view_settings) {
-          setShowBackdropPlanes(view_settings["BackdropPlanes"]);
-        }
-        if ("CoordinateAxis" in view_settings) {
-          setShowCoordinateAxis(view_settings["CoordinateAxis"]);
-        }
-        if ("PatchLegend" in view_settings) {
-          setShowPatchLegend(view_settings["PatchLegend"]);
-        }
-        if ("ParticleLegend" in view_settings) {
-          setShowParticleLegend(view_settings["ParticleLegend"]);
-        }
-        if ("ClusteringPane" in view_settings) {
-          setShowClusteringPane(view_settings["ClusteringPane"]);
-        }
-        if ("Controls" in view_settings) {
-          setIsControlsVisible(view_settings["Controls"]);
-        }
-      }
-
-      // Set the names and extensions for every passed file
-      for (let i = 0; i < files.length; i++) {
-        files[i].name = `${i}.${ext[i]}`;
-      }
-
-      handleFilesReceived(files);
-      return;
-    }
-    else {
-      console.log(data.message, "is not a recognized message");
-      return;
-    }
-  }, [handleFilesReceived, makeOutputFiles, notify, setIsControlsVisible, setIsDragDropEnabled, setShowBackdropPlanes, setShowClusteringPane, setShowCoordinateAxis, setShowParticleLegend, setShowPatchLegend, setShowSimulationBox]);
-
-  // useEffect to detect iframe mode (run only once on mount)
-  useEffect(() => {
-    // Check if running in iframe
-    const isInIframe = window.self !== window.top;
-    setIsIframeMode(isInIframe);
-
-    if (isInIframe) {
-      console.log('PPView: Running in iframe mode');
-      // Hide controls by default in iframe mode
-      setIsControlsVisible(false);
-    }
-  }, [setIsControlsVisible, setIsIframeMode]);
-
-  // useEffect to set up message listener
-  useEffect(() => {
-    // Set up message listener for iframe communication
-    const messageListener = (event) => {
-      try {
-        handleMessage(event.data);
-      } catch (error) {
-        console.error('Error handling message:', error);
-      }
-    };
-
-    window.addEventListener('message', messageListener);
-
-    return () => {
-      window.removeEventListener('message', messageListener);
-    };
-  }, [handleMessage]);
-
-  // useEffect to handle key presses
-  useEffect(() => {
-    const handleKeyDown = (event) => {
-      // Never steal keys from a field the user is typing into — the lighting
-      // and clustering panels are full of number inputs.
-      const target = event.target;
-      if (target instanceof HTMLElement &&
-          (target.isContentEditable ||
-           ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) {
-        return;
-      }
-      if (event.metaKey || event.ctrlKey || event.altKey) return;
-
-      try {
-        switch (event.key) {
-          case " ":
-            event.preventDefault();
-            togglePlayback();
-            break;
-          case "ArrowLeft":
-            event.preventDefault();
-            stepFrame(event.shiftKey ? -10 : -1);
-            break;
-          case "ArrowRight":
-            event.preventDefault();
-            stepFrame(event.shiftKey ? 10 : 1);
-            break;
-          case "Home":
-            event.preventDefault();
-            goToFrame(0);
-            break;
-          case "End":
-            event.preventDefault();
-            goToFrame(totalConfigs - 1);
-            break;
-          case "q":
-            shiftPositions("x", 1);
-            break;
-          case "a":
-            shiftPositions("x", -1);
-            break;
-          case "w":
-            shiftPositions("y", 1);
-            break;
-          case "s":
-            shiftPositions("y", -1);
-            break;
-          case "e":
-            shiftPositions("z", 1);
-            break;
-          case "d":
-            shiftPositions("z", -1);
-            break;
-          case "p":
-          case "P":
-            takeScreenshot();
-            break;
-          default:
-            break;
-        }
-      } catch (error) {
-        console.warn('Error in key handler:', error);
-        // Don't propagate the error to avoid blocking the application
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      // Cleanup event listener on unmount
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [shiftPositions, takeScreenshot, togglePlayback, stepFrame, goToFrame, totalConfigs]);
+  useKeyboardShortcuts({
+    togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot,
+  });
 
   // Particle size is a display choice as much as a data one — a radius read
   // from the input file is often not the one that makes a structure readable.
@@ -777,8 +569,6 @@ function App() {
     setTimeout(invalidateScene, 0);
   }, [setParticleRadius, invalidateScene]);
 
-  const energyReadout = formatEnergy(currentEnergy);
-  const hasTrajectory = totalConfigs > 1;
 
   return (
     <div className="App">
@@ -795,193 +585,28 @@ function App() {
       {positions.length > 0 && !isLoading && !isIframeMode && <SceneBackgroundToggle />}
 
       {positions.length > 0 && !isLoading && (
-        <div className={`controls-wrapper ${isControlsVisible ? 'is-open' : 'is-collapsed'}`}>
-          {!isControlsVisible && (
-            <button className="show-controls-btn" onClick={() => setIsControlsVisible(true)}>
-              <ChevronUpIcon size={16} />
-              <span>Controls</span>
-            </button>
-          )}
-
-          {isControlsVisible && (
-            <div className="controls-panel pp-panel">
-
-              {/* Row 1 — transport and readout. What frame am I on, and how do
-                  I get to another one. */}
-              <div className="transport-row">
-                <div className="control-cluster">
-                  <button className="icon-btn" onClick={resetTrajectory} title="Back to first frame (Home)" aria-label="Back to first frame">
-                    <ResetIcon size={18} />
-                  </button>
-                  <button
-                    className="icon-btn"
-                    onClick={() => stepFrame(-1)}
-                    disabled={!hasTrajectory || currentConfigIndex === 0}
-                    title="Previous frame (Left arrow, Shift for 10)"
-                    aria-label="Previous frame"
-                  >
-                    <StepBackIcon size={18} />
-                  </button>
-                  <button
-                    className="icon-btn is-primary"
-                    onClick={togglePlayback}
-                    disabled={!hasTrajectory}
-                    title={isPlaying ? "Pause (Space)" : "Play (Space)"}
-                    aria-label={isPlaying ? "Pause" : "Play"}
-                  >
-                    {isPlaying ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
-                  </button>
-                  <button
-                    className="icon-btn"
-                    onClick={() => stepFrame(1)}
-                    disabled={!hasTrajectory || currentConfigIndex >= totalConfigs - 1}
-                    title="Next frame (Right arrow, Shift for 10)"
-                    aria-label="Next frame"
-                  >
-                    <StepForwardIcon size={18} />
-                  </button>
-
-                  <div className="speed-control-wrapper">
-                    <button
-                      className="icon-btn is-wide"
-                      onClick={() => setIsSpeedPopupVisible(!isSpeedPopupVisible)}
-                      title="Playback speed"
-                      aria-expanded={isSpeedPopupVisible}
-                    >
-                      <SpeedIcon size={16} />
-                      <span className="num">{(1000 / playbackSpeed).toFixed(1)}/s</span>
-                    </button>
-                    {isSpeedPopupVisible && (
-                      <div className="popover" ref={speedPopupRef}>
-                        <div className="popover-head">
-                          <span>Playback speed</span>
-                          <button className="icon-button" onClick={() => setIsSpeedPopupVisible(false)} aria-label="Close">
-                            <CloseIcon size={14} />
-                          </button>
-                        </div>
-                        <input
-                          type="range"
-                          min="50" max="2000" step="50"
-                          /* Inverted: dragging right should feel faster. */
-                          value={2050 - playbackSpeed}
-                          onChange={(e) => setPlaybackSpeed(2050 - parseInt(e.target.value, 10))}
-                        />
-                        <div className="popover-value num">{(1000 / playbackSpeed).toFixed(1)} frames/s</div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="readout">
-                  <span className="readout-item">
-                    <span className="readout-key">Frame</span>
-                    <span className="num readout-val">{currentConfigIndex + 1}<span className="readout-total">/{totalConfigs}</span></span>
-                  </span>
-                  <span className="readout-item">
-                    <span className="readout-key">Time</span>
-                    <span className="num readout-val">{formatTime(currentTime)}</span>
-                  </span>
-                  {energyReadout && (
-                    <span className="readout-item">
-                      <span className="readout-key">Energy</span>
-                      <span className="num readout-val">{energyReadout}</span>
-                    </span>
-                  )}
-                </div>
-
-                <div className="actions-cluster">
-                  <button className="action-btn" onClick={takeScreenshot} title="Save a PNG of the current view (P)">
-                    <CameraIcon size={15} />
-                    <span>Screenshot</span>
-                  </button>
-                  <button className="action-btn" onClick={exportGLTF} title="Save the scene as a GLTF model">
-                    <DownloadIcon size={15} />
-                    <span>Export GLTF</span>
-                  </button>
-                </div>
-
-                <button
-                  className="icon-btn is-quiet"
-                  onClick={() => setIsControlsVisible(false)}
-                  title="Hide controls"
-                  aria-label="Hide controls"
-                >
-                  <ChevronDownIcon size={18} />
-                </button>
-              </div>
-
-              {/* Row 2 — the scrubber. The control this app exists to offer. */}
-              <div className="scrub-row">
-                <input
-                  type="range"
-                  className="scrubber"
-                  min="0"
-                  max={Math.max(totalConfigs - 1, 0)}
-                  value={currentConfigIndex}
-                  onChange={handleSliderChange}
-                  disabled={!hasTrajectory}
-                  aria-label="Trajectory frame"
-                  aria-valuetext={`Frame ${currentConfigIndex + 1} of ${totalConfigs}`}
-                  style={{ '--progress': `${totalConfigs > 1 ? (currentConfigIndex / (totalConfigs - 1)) * 100 : 0}%` }}
-                />
-              </div>
-
-              {/* Row 3 — display options, grouped by what they affect rather
-                  than by the order they were added. */}
-              <div className="options-row">
-                <div className="toggle-groups">
-                  <div className="toggle-group" role="group" aria-label="Scene">
-                    <ToggleBtn checked={showSimulationBox} onChange={setShowSimulationBox} icon={<BoxIcon size={17} />} label="Simulation box" />
-                    <ToggleBtn checked={showCoordinateAxis} onChange={setShowCoordinateAxis} icon={<AxisIcon size={17} />} label="Coordinate axes" />
-                    <ToggleBtn checked={showBackdropPlanes} onChange={setShowBackdropPlanes} icon={<LayersIcon size={17} />} label="Backdrop planes" />
-                  </div>
-
-                  <div className="toggle-group" role="group" aria-label="Legends">
-                    <ToggleBtn checked={showParticleLegend} onChange={setShowParticleLegend} icon={<CircleIcon size={17} />} label="Particle legend" />
-                    <ToggleBtn checked={showPatchLegend} onChange={setShowPatchLegend} icon={<TagIcon size={17} />} label="Patch legend" />
-                  </div>
-
-                  <div className="toggle-group" role="group" aria-label="Tools">
-                    <ToggleBtn checked={showClusteringPane} onChange={setShowClusteringPane} icon={<ChartIcon size={17} />} label="Clustering" />
-                    <ToolBtn
-                      onClick={() => setIsLightingControlsModalOpen(!isLightingControlsModalOpen)}
-                      active={isLightingControlsModalOpen}
-                      icon={<LightbulbIcon size={17} />}
-                      label="Lighting"
-                    />
-                    <ToggleBtn checked={showStats} onChange={setShowStats} icon={<ActivityIcon size={17} />} label="Frame rate" />
-                  </div>
-                </div>
-
-                <div className="settings-cluster">
-                  <ColorSchemeSelector />
-
-                  <label className="field" title="Geometry resolution for spheres, patch cones and spring cylinders">
-                    <span className="field-label">Detail</span>
-                    <select value={sphereSegments} onChange={(e) => setSphereSegments(parseInt(e.target.value, 10))}>
-                      <option value={8}>Low</option>
-                      <option value={16}>Medium</option>
-                      <option value={24}>High</option>
-                      <option value={32}>Ultra</option>
-                    </select>
-                  </label>
-
-                  <label className="field" title="Particle radius in simulation units. Scales beads, patches, springs and nucleotides with it.">
-                    <span className="field-label"><RulerIcon size={13} /> Radius</span>
-                    <input
-                      className="num"
-                      type="number"
-                      min="0.05" max="5" step="0.05"
-                      value={particleRadius}
-                      onChange={(e) => handleRadiusChange(parseFloat(e.target.value))}
-                    />
-                  </label>
-                </div>
-
-              </div>
-            </div>
-          )}
-        </div>
+        <ControlBar
+          isControlsVisible={isControlsVisible} setIsControlsVisible={setIsControlsVisible}
+          isPlaying={isPlaying} togglePlayback={togglePlayback}
+          resetTrajectory={resetTrajectory} stepFrame={stepFrame}
+          currentConfigIndex={currentConfigIndex} totalConfigs={totalConfigs}
+          currentTime={currentTime} currentEnergy={currentEnergy}
+          playbackSpeed={playbackSpeed} setPlaybackSpeed={setPlaybackSpeed}
+          isSpeedPopupVisible={isSpeedPopupVisible} setIsSpeedPopupVisible={setIsSpeedPopupVisible}
+          speedPopupRef={speedPopupRef} handleSliderChange={handleSliderChange}
+          showSimulationBox={showSimulationBox} setShowSimulationBox={setShowSimulationBox}
+          showCoordinateAxis={showCoordinateAxis} setShowCoordinateAxis={setShowCoordinateAxis}
+          showBackdropPlanes={showBackdropPlanes} setShowBackdropPlanes={setShowBackdropPlanes}
+          showParticleLegend={showParticleLegend} setShowParticleLegend={setShowParticleLegend}
+          showPatchLegend={showPatchLegend} setShowPatchLegend={setShowPatchLegend}
+          showClusteringPane={showClusteringPane} setShowClusteringPane={setShowClusteringPane}
+          showStats={showStats} setShowStats={setShowStats}
+          isLightingControlsModalOpen={isLightingControlsModalOpen}
+          setIsLightingControlsModalOpen={setIsLightingControlsModalOpen}
+          sphereSegments={sphereSegments} setSphereSegments={setSphereSegments}
+          particleRadius={particleRadius} handleRadiusChange={handleRadiusChange}
+          takeScreenshot={takeScreenshot} exportGLTF={exportGLTF}
+        />
       )}
 
       <SelectedParticlesDisplay />

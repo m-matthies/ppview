@@ -1,0 +1,90 @@
+/* ==========================================================================
+   Empty state — the first screen. It names what the viewer accepts, because
+   "drop files here" does not tell a new user whether their .psp will work.
+   ========================================================================== */
+
+.dropzone {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: var(--space-5);
+    padding: var(--space-6);
+    text-align: center;
+    background:
+        radial-gradient(ellipse 80% 60% at 50% 38%, rgba(59, 130, 246, 0.09), transparent 70%),
+        var(--light-bg);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease);
+}
+
+.dropzone:hover,
+.dropzone.is-over {
+    background:
+        radial-gradient(ellipse 80% 60% at 50% 38%, rgba(59, 130, 246, 0.16), transparent 70%),
+        var(--light-bg);
+}
+
+.dropzone-frame {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-6) calc(var(--space-6) * 1.6);
+    border: 1px dashed var(--light-line-strong);
+    border-radius: var(--radius-panel);
+    background: var(--light-raised);
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.dropzone:hover .dropzone-frame,
+.dropzone.is-over .dropzone-frame {
+    border-color: var(--accent);
+    box-shadow: 0 10px 34px rgba(25, 28, 34, 0.09);
+}
+
+.dropzone-title {
+    margin: 0;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--light-ink);
+}
+
+.dropzone-sub {
+    margin: 0;
+    max-width: 46ch;
+    font-size: var(--text-base);
+    line-height: 1.6;
+    color: var(--light-ink-dim);
+}
+
+.dropzone-formats {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--space-2);
+    max-width: 52ch;
+}
+
+.dropzone-format {
+    padding: 5px 10px;
+    border: 1px solid var(--light-line);
+    border-radius: var(--radius-chip);
+    background: rgba(255, 255, 255, 0.75);
+    font-family: var(--font-num);
+    font-size: var(--text-xs);
+    color: var(--light-ink-dim);
+}
+
+.dropzone-disabled {
+    cursor: not-allowed;
+}
+
+.dropzone-disabled .dropzone-frame {
+    border-color: var(--light-line);
+    opacity: 0.7;
+}

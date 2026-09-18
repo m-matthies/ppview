@@ -1,0 +1,415 @@
+@import '../../styles/tokens.css';
+
+.clustering-pane {
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    width: 340px;
+    max-height: calc(100vh - 40px);
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    overflow: hidden;
+}
+
+.clustering-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    cursor: grab;
+}
+
+.clustering-pane.is-dragging .clustering-header {
+    cursor: grabbing;
+}
+
+.clustering-header h3 {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+
+.close-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: none;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--ink-mute);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.close-button:hover {
+    background: var(--surface-hover);
+    color: var(--ink);
+}
+
+/* One scroll region for the whole body. Scrolling each section separately
+   clipped the last row of whichever section ran long. */
+.clustering-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.clustering-header {
+    flex: none;
+}
+
+/* --- Parameters ---------------------------------------------------------- */
+
+.clustering-controls {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+.parameter-control+.parameter-control {
+    margin-top: var(--space-4);
+}
+
+.parameter-control label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+}
+
+.parameter-slider {
+    width: 100%;
+}
+
+/* --- Statistics ----------------------------------------------------------
+   A two-column grid of label/value pairs. Values are tabular so the column
+   stays aligned as clustering parameters change. */
+
+.clustering-statistics {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+.clustering-statistics h4,
+.clustering-histogram h4,
+.selection-controls h4 {
+    margin: 0 0 var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-dim);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 7px var(--space-3);
+}
+
+.stat-item {
+    display: contents;
+}
+
+.stat-label {
+    font-size: var(--text-sm);
+    color: var(--ink-mute);
+}
+
+.stat-value {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--text-sm);
+    text-align: right;
+    color: var(--ink);
+}
+
+/* --- Histogram ------------------------------------------------------------ */
+
+.clustering-histogram {
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--line);
+}
+
+.histogram-hint {
+    margin: -4px 0 var(--space-3);
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--ink-mute);
+}
+
+.histogram-container {
+    padding: var(--space-3) var(--space-2) var(--space-2);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-sunken);
+}
+
+.histogram-plot {
+    position: relative;
+    height: 150px;
+}
+
+.histogram-y-axis {
+    position: absolute;
+    top: 0;
+    left: 0;
+    font-size: var(--text-xs);
+    color: var(--ink-mute);
+}
+
+/* Scrolls horizontally once there are more distinct cluster sizes than fit.
+   Bars below ~22px stop being clickable targets and their labels stop being
+   readable, so the row is allowed to overflow rather than compress. */
+.histogram-scroll {
+    height: 100%;
+    margin-left: 20px;
+    /* Room for the horizontal scrollbar so it never sits over the labels. */
+    padding-bottom: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+}
+
+.histogram-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 100%;
+    min-width: 100%;
+}
+
+.histogram-bar-container {
+    display: flex;
+    /* Grow to fill when there is room; never shrink past a usable width. */
+    flex: 1 0 22px;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    cursor: pointer;
+}
+
+/* The bar scales inside this; the labels below keep their own height and can
+   never be squeezed out of the plot. */
+.histogram-bar-track {
+    display: flex;
+    flex: 1;
+    align-items: flex-end;
+    width: 100%;
+    min-height: 0;
+}
+
+/* Blue means selected here, as everywhere else in the app. Unselected bars stay
+   neutral so the selection is the only thing that reads as coloured. */
+.histogram-bar {
+    width: 100%;
+    min-height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: rgba(255, 255, 255, 0.22);
+    transition: background var(--dur) var(--ease);
+}
+
+.histogram-bar-container:hover .histogram-bar {
+    background: rgba(255, 255, 255, 0.36);
+}
+
+.histogram-bar-container.is-active .histogram-bar {
+    background: var(--accent);
+}
+
+.histogram-bar-container.is-active:hover .histogram-bar {
+    background: var(--accent-bright);
+}
+
+.histogram-bar-container.is-active .histogram-label-count,
+.histogram-bar-container.is-active .histogram-label-size {
+    color: var(--accent-bright);
+}
+
+.histogram-labels {
+    display: flex;
+    flex: none;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 4px;
+    font-family: var(--font-num);
+    font-size: 9px;
+    line-height: 1.3;
+}
+
+.histogram-label-count {
+    color: var(--ink-dim);
+}
+
+.histogram-label-size {
+    color: var(--ink-mute);
+}
+
+.histogram-scroll::-webkit-scrollbar {
+    height: 7px;
+}
+
+.histogram-scroll::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.histogram-scroll::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    background-clip: content-box;
+}
+
+.histogram-scroll::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+    background-clip: content-box;
+}
+
+.histogram-axis-labels {
+    padding-top: 6px;
+    text-align: center;
+    font-size: var(--text-xs);
+    color: var(--ink-mute);
+}
+
+.histogram-empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 90px;
+    font-size: var(--text-sm);
+    color: var(--ink-mute);
+}
+
+/* --- Selection ------------------------------------------------------------ */
+
+.cluster-selection {
+    padding: var(--space-4);
+}
+
+.selection-buttons {
+    display: flex;
+    gap: var(--space-2);
+    margin-bottom: var(--space-3);
+}
+
+.select-button {
+    flex: 1;
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-chip);
+    background: var(--surface-raised);
+    color: var(--ink-dim);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.select-button:hover {
+    background: var(--surface-hover);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+
+.highlight-checkbox,
+.cluster-checkbox {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+    cursor: pointer;
+}
+
+.highlight-checkbox {
+    align-items: flex-start;
+}
+
+.highlight-checkbox.indented {
+    margin-top: var(--space-2);
+    padding-left: var(--space-4);
+}
+
+.highlight-checkbox span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.checkbox-hint {
+    font-size: var(--text-xs);
+    line-height: 1.45;
+    color: var(--ink-mute);
+}
+
+.highlight-checkbox input,
+.cluster-checkbox input {
+    width: 15px;
+    height: 15px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.cluster-list {
+    margin-top: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+}
+
+.cluster-list-header {
+    display: flex;
+    justify-content: space-between;
+    padding: 7px var(--space-3);
+    border-bottom: 1px solid var(--line);
+    background: var(--surface-sunken);
+    font-size: var(--text-xs);
+    color: var(--ink-mute);
+}
+
+.cluster-items {
+    max-height: 190px;
+    overflow-y: auto;
+}
+
+.cluster-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+}
+
+.cluster-item+.cluster-item {
+    border-top: 1px solid var(--line);
+}
+
+.cluster-item:hover {
+    background: var(--surface-raised);
+}
+
+.cluster-items::-webkit-scrollbar {
+    width: 8px;
+}
+
+.cluster-items::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.cluster-items::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    background-clip: content-box;
+}

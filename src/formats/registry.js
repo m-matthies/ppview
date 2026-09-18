@@ -1,12 +1,10 @@
 import Particles from '../components/Particles';
 import OxDNANucleotides from '../components/OxDNANucleotides';
-import {
-  parseRaspberryTopology,
-  parseSRSSpringsTopology,
-  parseOxDNANucleotideTopology,
-  parseFlavioTopology,
-  parseLorenzoTopology,
-} from '../utils/topologyParser';
+import { parseRaspberryTopology } from './parsers/raspberry';
+import { parseSRSSpringsTopology } from './parsers/srsSprings';
+import { parseOxDNANucleotideTopology } from './parsers/oxdnaNucleotide';
+import { parseFlavioTopology } from './parsers/flavio';
+import { parseLorenzoTopology } from './parsers/lorenzo';
 
 /**
  * Every supported topology format, in one table.

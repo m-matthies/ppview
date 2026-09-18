@@ -1,0 +1,31 @@
+/* ==========================================================================
+   Scrollbars
+   ========================================================================== */
+
+.selected-particles-list::-webkit-scrollbar,
+.patch-list::-webkit-scrollbar,
+.panel-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+.selected-particles-list::-webkit-scrollbar-track,
+.patch-list::-webkit-scrollbar-track,
+.panel-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.selected-particles-list::-webkit-scrollbar-thumb,
+.patch-list::-webkit-scrollbar-thumb,
+.panel-body::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    background-clip: content-box;
+}
+
+.selected-particles-list::-webkit-scrollbar-thumb:hover,
+.patch-list::-webkit-scrollbar-thumb:hover,
+.panel-body::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.28);
+    background-clip: content-box;
+}

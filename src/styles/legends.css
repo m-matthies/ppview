@@ -1,0 +1,78 @@
+/* ==========================================================================
+   Legends
+   ========================================================================== */
+
+.particle-legend,
+.patch-legend {
+    position: absolute;
+    top: var(--space-5);
+    z-index: 10;
+    max-width: 230px;
+    padding: var(--space-4);
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-group);
+    box-shadow: var(--shadow-panel);
+    color: var(--ink);
+    font-family: var(--font-ui);
+}
+
+.particle-legend {
+    left: var(--space-5);
+}
+
+.patch-legend {
+    right: var(--space-5);
+    /* Clear of the background toggle, which owns the corner. */
+    top: 68px;
+}
+
+.particle-legend h3,
+.patch-legend h3 {
+    margin: 0 0 var(--space-3);
+    padding-bottom: var(--space-2);
+    border-bottom: 1px solid var(--line);
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-dim);
+}
+
+.particle-legend ul,
+.patch-legend ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.particle-legend li,
+.patch-legend li {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: 7px;
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+}
+
+.particle-legend li:last-child,
+.patch-legend li:last-child {
+    margin-bottom: 0;
+}
+
+.particle-legend .color-box,
+.patch-legend .color-box {
+    flex: none;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 3px;
+}
+
+/* Frame-rate overlay sits below the patch legend rather than under it. */
+.r3f-stats {
+    position: absolute !important;
+    top: var(--space-2) !important;
+    left: var(--space-2) !important;
+}

@@ -1,0 +1,31 @@
+/* ==========================================================================
+   Scene background toggle
+   ========================================================================== */
+
+.scene-bg-toggle {
+    position: absolute;
+    top: var(--space-5);
+    right: var(--space-5);
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    color: var(--ink-dim);
+    cursor: pointer;
+    box-shadow: var(--shadow-pop);
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.scene-bg-toggle:hover {
+    background: var(--surface-solid);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}

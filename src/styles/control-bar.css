@@ -1,0 +1,444 @@
+/* ==========================================================================
+   Control bar
+   ========================================================================== */
+
+.controls-wrapper {
+    position: absolute;
+    bottom: var(--space-5);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: calc(100% - var(--space-6));
+    max-width: 960px;
+    font-family: var(--font-ui);
+}
+
+.controls-wrapper.is-collapsed {
+    width: auto;
+}
+
+.show-controls-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    padding: 9px 18px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-base);
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: var(--shadow-pop);
+    transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.show-controls-btn:hover {
+    background: var(--surface-solid);
+    border-color: var(--line-strong);
+}
+
+.controls-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: 100%;
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    animation: panel-in 0.24s var(--ease);
+}
+
+@keyframes panel-in {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+
+    to {
+        opacity: 1;
+        transform: none;
+    }
+}
+
+/* --- Row 1: transport ---------------------------------------------------- */
+
+.transport-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.control-cluster {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.icon-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: var(--radius-control);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.icon-btn:hover:not(:disabled) {
+    background: var(--surface-hover);
+    color: var(--ink);
+}
+
+.icon-btn:disabled {
+    opacity: 0.3;
+    cursor: default;
+}
+
+.icon-btn.is-primary {
+    background: var(--accent);
+    color: #fff;
+}
+
+.icon-btn.is-primary:hover:not(:disabled) {
+    background: var(--accent-bright);
+}
+
+.icon-btn.is-primary:disabled {
+    background: var(--surface-raised);
+    color: var(--ink-mute);
+    opacity: 1;
+}
+
+.icon-btn.is-wide {
+    width: auto;
+    padding: 0 10px;
+    font-size: var(--text-sm);
+    font-weight: 500;
+}
+
+.icon-btn.is-quiet {
+    color: var(--ink-mute);
+}
+
+/* Readout. Fixed-width figures so scrubbing never shifts the row. */
+.readout {
+    display: flex;
+    align-items: baseline;
+    gap: var(--space-4);
+    margin-left: var(--space-2);
+    overflow: hidden;
+}
+
+.readout-item {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.readout-key {
+    font-size: var(--text-xs);
+    color: var(--ink-mute);
+}
+
+.readout-val {
+    font-size: var(--text-base);
+    color: var(--ink);
+}
+
+.readout-total {
+    color: var(--ink-mute);
+}
+
+/* --- Row 2: the scrubber ------------------------------------------------- */
+
+.scrub-row {
+    padding: 0 2px;
+}
+
+.scrubber {
+    display: block;
+    width: 100%;
+    height: 18px;
+    margin: 0;
+    background: transparent;
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    cursor: pointer;
+}
+
+.scrubber:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* The filled portion is the only place blue appears at this size, so the
+   playhead reads instantly against the track. */
+.scrubber::-webkit-slider-runnable-track {
+    height: 4px;
+    border-radius: 2px;
+    background:
+        linear-gradient(to right, var(--accent) var(--progress, 0%), rgba(255, 255, 255, 0.12) var(--progress, 0%));
+}
+
+.scrubber::-moz-range-track {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.scrubber::-moz-range-progress {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--accent);
+}
+
+.scrubber::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+    border: 2px solid #12141a;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
+    transition: transform 0.1s var(--ease);
+}
+
+.scrubber::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: 2px solid #12141a;
+    border-radius: 50%;
+    background: #fff;
+}
+
+.scrubber:hover:not(:disabled)::-webkit-slider-thumb,
+.scrubber:focus-visible::-webkit-slider-thumb {
+    transform: scale(1.25);
+}
+
+/* --- Row 3: options ------------------------------------------------------ */
+
+.options-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-4);
+    flex-wrap: wrap;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--line);
+}
+
+/* Groups are separated by a rule, not just space: the boundary is the
+   information — these toggles affect the scene, those affect the legends. */
+.toggle-groups {
+    display: flex;
+    align-items: center;
+    padding: 3px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-group);
+    background: var(--surface-sunken);
+}
+
+.toggle-group {
+    display: flex;
+    align-items: center;
+    gap: 1px;
+    padding: 0 6px;
+}
+
+.toggle-group+.toggle-group {
+    border-left: 1px solid var(--line);
+}
+
+.toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--ink-mute);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.toggle-btn:hover {
+    background: var(--surface-hover);
+    color: var(--ink);
+}
+
+.toggle-btn.is-active {
+    background: var(--accent-soft);
+    color: var(--accent-bright);
+}
+
+.settings-cluster {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    /* Without this a flex item refuses to shrink below its content width and
+       overruns the row instead of wrapping. */
+    min-width: 0;
+}
+
+.field {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.field-label {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    font-size: var(--text-xs);
+    color: var(--ink-mute);
+    white-space: nowrap;
+}
+
+.field select,
+.field input {
+    padding: 6px 8px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-chip);
+    background: var(--surface-raised);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    cursor: pointer;
+    outline: none;
+    transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease);
+}
+
+.field input[type="number"] {
+    width: 68px;
+    cursor: text;
+}
+
+.field select:hover,
+.field input:hover {
+    background: var(--surface-hover);
+    border-color: var(--line-strong);
+}
+
+.field select option {
+    background: var(--surface-solid);
+    color: var(--ink);
+}
+
+.scheme-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 118px;
+}
+
+.actions-cluster {
+    display: flex;
+    flex: 0 0 auto;
+    gap: var(--space-2);
+    /* Sits in the transport row, pushed to the right edge ahead of the
+       collapse control. */
+    margin-left: auto;
+}
+
+.action-btn {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 14px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-raised);
+    color: var(--ink-dim);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.action-btn:hover {
+    background: var(--surface-hover);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+
+/* --- Popover (playback speed) -------------------------------------------- */
+
+.speed-control-wrapper {
+    position: relative;
+}
+
+.popover {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 200;
+    width: 220px;
+    padding: var(--space-3);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-group);
+    background: var(--surface-solid);
+    box-shadow: var(--shadow-pop);
+}
+
+.popover-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+    font-size: var(--text-sm);
+    font-weight: 500;
+    color: var(--ink-dim);
+}
+
+.popover input[type="range"] {
+    width: 100%;
+}
+
+.popover-value {
+    margin-top: var(--space-2);
+    text-align: center;
+    font-size: var(--text-sm);
+    color: var(--accent-bright);
+}
+
+.icon-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    border: none;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--ink-mute);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.icon-button:hover {
+    background: var(--surface-hover);
+    color: var(--ink);
+}

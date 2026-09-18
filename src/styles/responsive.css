@@ -1,0 +1,45 @@
+/* ==========================================================================
+   Narrow viewports
+   ========================================================================== */
+
+@media (max-width: 860px) {
+    .readout-item:nth-child(n+3) {
+        display: none;
+    }
+
+    /* The actions share the transport row now, so they shed their labels
+       rather than pushing the collapse control off the end. */
+    .action-btn span {
+        display: none;
+    }
+
+    .action-btn {
+        padding: 8px 10px;
+    }
+
+    .options-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .toggle-groups,
+    .settings-cluster {
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+}
+
+@media (max-width: 560px) {
+    .controls-wrapper {
+        bottom: var(--space-3);
+        width: calc(100% - var(--space-4));
+    }
+
+    .readout {
+        margin-left: 0;
+    }
+
+    .dropzone-title {
+        font-size: 21px;
+    }
+}

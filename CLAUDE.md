@@ -31,6 +31,22 @@ npm run test:visual -- --only=oxdna
 
 Components read from stores directly — **no prop drilling**.
 
+### Source layout
+```
+src/
+  components/<Name>/index.js   one folder per component, with its .css and .test.js
+  rendering/                   InstancedLayer, pickingService, transforms
+  formats/
+    registry.js                every supported format in one table
+    parsers/                   one module per topology format
+    detection/                 signatures.js (pure predicates) + orchestration
+  hooks/                       useKeyboardShortcuts, useIframeBridge
+  store/                       three Zustand stores
+  styles/                      tokens.css plus one file per UI concern
+  utils/                       clustering, geometry, export, trajectory, MGL
+```
+`styles.css` is now only a manifest of `@import`s; `tokens.css` must come first.
+
 ### Key Components
 - `App.js` — file loading, trajectory nav, GLTF export, iframe message handling
 - `ParticleScene.js` — Three.js scene (lighting, controls, 3D rendering, Springs)

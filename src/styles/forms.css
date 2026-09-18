@@ -1,0 +1,36 @@
+/* ==========================================================================
+   Shared range input styling
+   ========================================================================== */
+
+input[type="range"]:not(.scrubber) {
+    height: 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.12);
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    cursor: pointer;
+}
+
+input[type="range"]:not(.scrubber)::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    transition: transform 0.1s var(--ease);
+}
+
+input[type="range"]:not(.scrubber)::-moz-range-thumb {
+    width: 13px;
+    height: 13px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent);
+}
+
+input[type="range"]:not(.scrubber):hover::-webkit-slider-thumb {
+    transform: scale(1.2);
+}
