@@ -1,0 +1,378 @@
+@import './tokens.css';
+
+/* ==========================================================================
+   Shared chrome for the floating tool panels.
+   The shell, control rows and footer live here once so a second panel does
+   not re-invent them.
+   ========================================================================== */
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--line);
+    cursor: grab;
+}
+
+.is-dragging .panel-header {
+    cursor: grabbing;
+}
+
+.panel-title {
+    margin: 0;
+    font-size: var(--text-md);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+}
+
+.panel-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.panel-body {
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+.panel-section {
+    padding: var(--space-4);
+}
+
+.panel-section+.panel-section {
+    border-top: 1px solid var(--line);
+}
+
+.section-hint,
+.ctl-hint {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--ink-mute);
+}
+
+.section-hint {
+    margin: 4px 0 var(--space-3);
+}
+
+.pp-heading+.ctl-row,
+.pp-heading+.ctl-row-stack {
+    margin-top: var(--space-3);
+}
+
+/* --- Control rows -------------------------------------------------------
+   Label, control, value on one baseline. The value column is fixed so a
+   number never pushes the slider as it changes. */
+
+.ctl-row {
+    display: grid;
+    grid-template-columns: 96px 1fr 44px;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.ctl-row+.ctl-row,
+.ctl-row+.ctl-vector,
+.ctl-vector+.ctl-row {
+    margin-top: 10px;
+}
+
+.ctl-row.ctl-row-wide {
+    grid-template-columns: 96px 1fr;
+}
+
+.ctl-label {
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+}
+
+.ctl-value {
+    font-size: var(--text-sm);
+    text-align: right;
+    color: var(--ink);
+}
+
+.ctl-row input[type="range"] {
+    width: 100%;
+}
+
+.ctl-row-stack+.ctl-row-stack {
+    margin-top: var(--space-4);
+}
+
+.ctl-row-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 6px;
+}
+
+.ctl-row-stack input[type="range"] {
+    width: 100%;
+}
+
+.ctl-row-stack .ctl-hint {
+    margin-top: 5px;
+}
+
+/* --- Vectors ------------------------------------------------------------- */
+
+.ctl-vector {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.ctl-axes {
+    display: flex;
+    gap: 6px;
+}
+
+.ctl-axis {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.ctl-axis-name {
+    font-size: var(--text-xs);
+    color: var(--ink-mute);
+}
+
+.ctl-axis input {
+    width: 52px;
+    padding: 5px 6px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-chip);
+    background: var(--surface-raised);
+    color: var(--ink);
+    font-size: var(--text-sm);
+    outline: none;
+}
+
+.ctl-axis input:hover {
+    border-color: var(--line-strong);
+}
+
+/* --- Checkboxes ---------------------------------------------------------- */
+
+.ctl-check {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--space-2);
+    margin-top: var(--space-3);
+    font-size: var(--text-sm);
+    color: var(--ink-dim);
+    cursor: pointer;
+}
+
+.ctl-check input[type="checkbox"] {
+    flex: none;
+    width: 15px;
+    height: 15px;
+    margin: 1px 0 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.ctl-check span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* --- Color swatches ----------------------------------------------------- */
+
+.swatch-pair {
+    display: flex;
+    gap: 6px;
+    grid-column: 2 / -1;
+}
+
+.swatch-pair input[type="color"] {
+    width: 34px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-chip);
+    background: transparent;
+    cursor: pointer;
+}
+
+.swatch-pair input[type="color"]::-webkit-color-swatch-wrapper {
+    padding: 2px;
+}
+
+.swatch-pair input[type="color"]::-webkit-color-swatch {
+    border: none;
+    border-radius: 3px;
+}
+
+/* --- Presets -------------------------------------------------------------
+   Chips, not a dropdown: the whole point is comparing them quickly. */
+
+.preset-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.preset-chip {
+    padding: 6px 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    background: var(--surface-raised);
+    color: var(--ink-dim);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.preset-chip:hover {
+    background: var(--surface-hover);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+
+.preset-chip.is-active {
+    background: var(--accent-soft);
+    border-color: var(--accent-line);
+    color: var(--accent-bright);
+}
+
+/* Not a button — a label saying the values no longer match a named preset. */
+.preset-chip.is-custom {
+    background: transparent;
+    border-style: dashed;
+    color: var(--ink-mute);
+    cursor: default;
+}
+
+/* --- Selects ------------------------------------------------------------- */
+
+.panel-body select {
+    width: 100%;
+    padding: 7px 9px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-chip);
+    background: var(--surface-raised);
+    color: var(--ink);
+    font-family: var(--font-ui);
+    font-size: var(--text-sm);
+    cursor: pointer;
+    outline: none;
+}
+
+.panel-body select:hover {
+    border-color: var(--line-strong);
+}
+
+.panel-body select option {
+    background: var(--surface-solid);
+    color: var(--ink);
+}
+
+/* --- Footer -------------------------------------------------------------- */
+
+.panel-footer {
+    display: flex;
+    gap: var(--space-2);
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--line);
+}
+
+.primary-button,
+.ghost-button {
+    padding: 9px 16px;
+    border-radius: var(--radius-control);
+    font-family: var(--font-ui);
+    font-size: var(--text-base);
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease), border-color var(--dur) var(--ease);
+}
+
+.primary-button {
+    flex: 1;
+    border: none;
+    background: var(--accent);
+    color: #fff;
+}
+
+.primary-button:hover:not(:disabled) {
+    background: var(--accent-bright);
+}
+
+.primary-button:disabled {
+    background: var(--surface-raised);
+    color: var(--ink-mute);
+    cursor: default;
+}
+
+.ghost-button {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink-dim);
+}
+
+.ghost-button:hover {
+    background: var(--surface-hover);
+    border-color: var(--line-strong);
+    color: var(--ink);
+}
+
+/* --- Background choices --------------------------------------------------- */
+
+.bg-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+}
+
+.bg-choices {
+    display: flex;
+    gap: 6px;
+}
+
+.bg-swatch {
+    width: 40px;
+    height: 28px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-chip);
+    cursor: pointer;
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.bg-swatch:hover {
+    border-color: var(--ink-mute);
+}
+
+.bg-swatch.is-active {
+    border-color: var(--accent-bright);
+    box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.bg-custom {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.bg-custom input[type="color"] {
+    width: 34px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-chip);
+    background: transparent;
+    cursor: pointer;
+}

@@ -1,0 +1,128 @@
+/* ==========================================================================
+   PPView design tokens
+   One source of truth for the viewer chrome. Components reference these
+   instead of re-declaring rgba(20,20,20,0.85) in six places.
+   ========================================================================== */
+
+:root {
+    /* --- Surfaces -------------------------------------------------------- */
+    /* Cool near-black so the chrome reads as instrument housing and never
+       competes with warm particle colors in the scene behind it. */
+    --surface-0: rgba(16, 17, 20, 0.88);
+    --surface-raised: rgba(255, 255, 255, 0.05);
+    --surface-hover: rgba(255, 255, 255, 0.09);
+    --surface-sunken: rgba(0, 0, 0, 0.22);
+    --surface-solid: #1b1d21;
+
+    --line: rgba(255, 255, 255, 0.10);
+    --line-strong: rgba(255, 255, 255, 0.18);
+
+    /* --- Ink ------------------------------------------------------------- */
+    --ink: #f0f2f5;
+    --ink-dim: rgba(240, 242, 245, 0.62);
+    --ink-mute: rgba(240, 242, 245, 0.38);
+
+    /* --- Accents ---------------------------------------------------------
+       Blue means exactly one thing: this control is on, or this is the
+       playhead. It is never decoration. */
+    --accent: #3b82f6;
+    --accent-bright: #60a5fa;
+    --accent-soft: rgba(59, 130, 246, 0.16);
+    --accent-line: rgba(59, 130, 246, 0.38);
+
+    --danger: #ef4444;
+
+    /* --- Light surfaces ---------------------------------------------------
+       The panels stay dark glass, but full-bleed surfaces (the entry screen,
+       the loading cover) sit against a light scene and follow it. */
+    --light-bg: #f2f4f7;
+    --light-raised: rgba(255, 255, 255, 0.72);
+    --light-ink: #191c22;
+    --light-ink-dim: rgba(25, 28, 34, 0.66);
+    --light-ink-mute: rgba(25, 28, 34, 0.45);
+    --light-line: rgba(25, 28, 34, 0.14);
+    --light-line-strong: rgba(25, 28, 34, 0.26);
+
+    /* --- Type ------------------------------------------------------------
+       Two families, split by job. Sans for language, mono for every number
+       that changes while scrubbing — tabular figures stop the layout from
+       twitching frame to frame. */
+    --font-ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    --font-num: ui-monospace, "SF Mono", "JetBrains Mono", "Roboto Mono", Menlo, Consolas, monospace;
+
+    --text-xs: 11px;
+    --text-sm: 12px;
+    --text-base: 13px;
+    --text-md: 15px;
+    --text-lg: 18px;
+
+    /* --- Geometry --------------------------------------------------------
+       Radius encodes elevation: chips < controls < groups < panels. */
+    --radius-chip: 6px;
+    --radius-control: 8px;
+    --radius-group: 12px;
+    --radius-panel: 16px;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 28px;
+
+    --shadow-panel: 0 18px 44px rgba(0, 0, 0, 0.55);
+    --shadow-pop: 0 10px 32px rgba(0, 0, 0, 0.5);
+    --blur: blur(20px);
+
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+    --dur: 0.18s;
+}
+
+/* Numeric readouts. Applied by class so a value can never shift the row
+   width as it counts up. */
+.num {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+}
+
+/* Shared panel shell for every floating surface in the viewer. */
+.pp-panel {
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+    color: var(--ink);
+    font-family: var(--font-ui);
+}
+
+/* Sentence-case section heading. Deliberately not uppercase/letterspaced:
+   at 12px that costs more legibility than the tidiness is worth. */
+.pp-heading {
+    margin: 0;
+    font-size: var(--text-sm);
+    font-weight: 600;
+    color: var(--ink-dim);
+}
+
+/* Keyboard focus has to survive on a dark translucent ground. */
+.pp-panel :focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--accent-bright);
+    outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

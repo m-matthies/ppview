@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from "three";
 import { useParticleStore } from "../store/particleStore";
+import { useUIStore } from "../store/uiStore";
+import { useThree } from "@react-three/fiber";
 
 // Renders spring bonds between connected particles as instanced cylinders.
 // Spring connection topology comes from topData.springConnections, which is
@@ -10,6 +12,8 @@ function Springs() {
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const particleRadius = useParticleStore(state => state.particleRadius);
   const topData = useParticleStore(state => state.topData);
+  const sphereSegments = useUIStore(state => state.sphereSegments);
+  const { invalidate } = useThree();
   const meshRef = useRef();
 
   const springConnections = topData?.springConnections;
@@ -19,7 +23,10 @@ function Springs() {
   const springRadius = particleRadius * 0.15;
 
   // Unit cylinder along Y axis, height=1 (scaled per instance)
-  const geometry = useMemo(() => new THREE.CylinderGeometry(1, 1, 1, 8), []);
+  const geometry = useMemo(
+    () => new THREE.CylinderGeometry(1, 1, 1, sphereSegments),
+    [sphereSegments],
+  );
   const material = useMemo(() => new THREE.MeshStandardMaterial({
     color: "#888888",
     metalness: 0.2,
@@ -76,7 +83,8 @@ function Springs() {
     }
 
     mesh.instanceMatrix.needsUpdate = true;
-  }, [positions, boxSize, springConnections, springRadius]);
+    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
+  }, [positions, boxSize, springConnections, springRadius, geometry, invalidate]);
 
   if (!springConnections || count === 0) return null;
 

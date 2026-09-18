@@ -6,7 +6,6 @@ PPView is a React-based 3D visualization tool for oxDNA molecular dynamics simul
 
 - **React 18.3.1** (Create React App)
 - **Three.js 0.168.0** + **React Three Fiber 8.17.7** + **@react-three/drei 9.113.0**
-- **@react-three/gpu-pathtracer** for path tracing mode
 - **Zustand** for state management (3 stores)
 - Deployed to GitHub Pages at `https://zoombya.github.io/ppview`
 
@@ -23,7 +22,7 @@ npm run deploy  # Deploy to GitHub Pages
 
 ### State Management (Zustand)
 - `src/store/particleStore.js` — particle/trajectory data (`positions`, `topData`, `trajFile`, `configIndex`, `particleRadius`, etc.)
-- `src/store/uiStore.js` — UI state (legends, toggles, playback, selection, color scheme, iframe mode, pathtracer config)
+- `src/store/uiStore.js` — UI state (legends, toggles, playback, selection, color scheme, iframe mode, lighting)
 - `src/store/clusteringStore.js` — clustering highlights (`highlightedClusters` Set, `showOnlyHighlightedClusters`)
 
 Components read from stores directly — **no prop drilling**.
@@ -32,12 +31,13 @@ Components read from stores directly — **no prop drilling**.
 - `App.js` — file loading, trajectory nav, GLTF export, iframe message handling
 - `ParticleScene.js` — Three.js scene (lighting, controls, 3D rendering, Springs)
 - `Particles.js` — instanced mesh rendering; consolidates all raycasting for click/selection including repulsion site beads (registration pattern)
-- `Patches.js` — cone geometry patches; size proportional to `particleRadius` from store; both `useEffect` (standard) and `useMemo patchData` (path tracer) use `particleRadius`-aware scale factor
+- `Patches.js` — instanced cone geometry patches; size proportional to `particleRadius` from store
 - `RepulsionSites.js` — instanced bead rendering for raspberry particles; inner sphere hidden, only outer beads rendered and selectable; registers mesh + metadata with `Particles.js` via `onRegister` callback
 - `Springs.js` — instanced cylinder rendering for SRS spring bonds; hides springs longer than half box size (periodic boundary filter); uses zero-scale matrix for all skipped instances to avoid ghost artifacts
 - `OxDNANucleotides.js` — four instanced meshes (backbone sphere, nucleoside ellipsoid, connector cylinder, backbone connector cylinder); raycasts backbone mesh for click/double-click selection; separate lightweight selection effect updates only backbone sphere colors
-- `ClusteringPane.js` — DBSCAN clustering UI with histogram
-- `ColorSchemeSelector.js` — 6 color schemes, persisted to `localStorage`
+- `ClusteringPane.js` — DBSCAN clustering UI with histogram; visibility comes from `uiStore.showClusteringPane` (no local flag — a second one desynced from the toolbar toggle). The body is one scroll region (`.clustering-body`); scrolling each section separately clipped the last row of whichever ran long. Histogram bars hold a minimum width and the row scrolls horizontally rather than compressing — binning would break the click interaction, which selects clusters of one exact size
+- `ColorSchemeSelector.js` — 6 color schemes, persisted to `localStorage`; menu opens upward because the control bar is pinned to the bottom of the viewport
+- `DraggablePanel.js` — clamps to the viewport on drag and on resize (a panel can never be stranded off-screen), persists position per `storageId` in `localStorage`, supports touch and arrow-key nudging
 - `utils/fileTypeDetector.js` — content-based file format detection
 
 ### File Format Support
@@ -144,14 +144,136 @@ iS <id> <k> <r0> <x> <y> <z>
 - Cone geometry translated so tip = origin; rotated so +Y aligns with inward direction
 - `coneRadius = particleRadius * 0.4`, `coneHeight = particleRadius * 0.8` — proportional, format-agnostic
 - Scale factor: **always** `particleRadius / patchVectorLength` — normalises the patch direction vector to exactly `particleRadius` length, placing the tip on the sphere surface. Works for all formats: unit vectors (Lorenzo, ~1.0), sub-unit Flavio positions (~0.47), and larger absolute-position values. Degenerate vectors (< 1e-9) are skipped.
-- Both `useEffect` (standard instanced mode) and `useMemo patchData` (path tracer individual meshes) use the same scale formula
 - `particleRadius` is in dependency arrays of both `useEffect` and `useMemo`
-- Path tracer mode renders individual `<mesh>` elements per patch; standard mode uses `InstancedMesh`
+- Patches render as a single `InstancedMesh`
 
 ### Springs Rendering (`Springs.js`)
 - Unit `CylinderGeometry(1,1,1,8)` scaled per instance: `scale = (springRadius, distance, springRadius)` where `springRadius = particleRadius * 0.15`
 - Cylinder oriented with `setFromUnitVectors(up, dir)` between particle positions
 - All skipped instances (degenerate, out-of-range, or too-long) get explicit `makeScale(0,0,0)` matrix to prevent ghost cylinders at origin and stale matrices during translation
+
+## UI architecture
+
+### Defaults (`uiStore.js`)
+The scene background starts **light** (`LIGHT_BACKGROUND`), and the entry screen and loading
+cover follow it via the `--light-*` tokens (the floating panels stay dark glass). `showBackdropPlanes` and
+`showCoordinateAxis` start **on**; the simulation box, legends, clustering pane and FPS overlay
+start off.
+
+### Lighting is built for a data viewer, not a render (`lighting.js`)
+Particle, patch and base colours carry meaning, so the rig reports them faithfully rather than
+flattering them:
+
+- **Every light is neutral white.** A warm fill or cool rim shifts every colour in the scene and
+  makes two particle types read as more alike, or less alike, than they are. Depth comes from
+  occlusion and key-light direction, never from colour temperature. Do not reintroduce a tint.
+- **Tone mapping is `THREE.NeutralToneMapping`** (Khronos PBR Neutral) at exposure 1.0. It leaves
+  midtone hue and saturation alone and only compresses highlights. ACES Filmic — the usual
+  default, and what this used before — desaturates as it rolls off, quietly misreporting colour.
+- Presets are named for what they are *for* (Depth, Publication, Studio, Relief, Flat), not for
+  photographic moods. `Depth` is the default and is listed first — the chip row renders in key
+  order. `Flat` is the only one with occlusion off.
+- **Background is deliberately not part of a preset.** A preset is the light rig; the background
+  is a separate viewing choice, and folding it in would mean the preset chip lied every time the
+  background was toggled. It lives in `uiStore.sceneBackground` with its own storage key.
+- Light/dark state is **derived** from the background colour's luminance (`isDarkBackground`),
+  not tracked by a second boolean — so a colour picked from the panel's colour well still shows
+  the right icon in the corner toggle.
+- Storage keys are versioned (`..._v2`). The v1 rig used tinted lights and a dark scene, so a
+  saved blob would otherwise keep overriding the new defaults.
+
+Backdrop planes and the simulation box derive their colour from the background, and the
+coordinate axes swap to brightened variants on a dark background (the documented dark oxDNA
+triad is near-invisible there). The planes are matte and partly transparent on purpose: a lit
+surface can never reach the brightness of a light background, and an opaque glossy one reads as
+a slab of material competing with the particles.
+
+### Design tokens (`src/styles/tokens.css`)
+Every panel color, radius, space and font comes from a token. Components must not
+re-declare `rgba(20,20,20,0.85)` and friends. Key conventions:
+
+- `--accent` (blue) means **one** thing: a control is on, or it is the playhead. Never decoration.
+- `.num` (monospace + `tabular-nums`) on every numeric readout, so scrubbing never reflows a row.
+- `.pp-panel` is the shared floating-panel shell; `src/styles/panels.css` holds the shared
+  header/body/section/control-row chrome for the floating tool panels.
+
+### Control bar (`App.js`)
+Three rows: transport + readout, the scrubber, then display options. Toggles are grouped by
+what they affect (Scene · Legends · Tools), separated by hairlines rather than by spacing.
+
+Keyboard: `Space` play/pause, `←`/`→` step frame (`Shift` for 10), `Home`/`End` jump to ends,
+`P` screenshot, `Q/A W/S E/D` shift on X/Y/Z. The handler ignores events whose target is an
+`input`, `textarea`, `select` or contenteditable, so typing in a panel does not move particles.
+
+All frame changes go through `goToFrame()` — it clamps and triggers the redraw. Do not call
+`setCurrentConfigIndex` directly from a new control.
+
+## Wiring rules (things that have silently broken before)
+
+**Every store value that a control writes must have a consumer.** Lighting, the simulation-box
+flag and the FPS overlay all previously had UI that wrote state nothing read. When adding a
+setting, verify the consumer end-to-end in the running app, not just that the control moves.
+
+- **Lighting**: `ParticleScene.js#SceneLighting` drives *all* lights, `<Environment>` and SSAO
+  from `uiStore.lightingSettings`. Hardcoding any value there silently disconnects the matching
+  control in `LightingControlsModal`. Because `frameloop="demand"`, `SceneLighting` calls
+  `invalidate()` whenever settings change, or sliders appear to do nothing.
+- **`getLightingSettings()`** merges the stored blob over the default preset, so a setting added
+  after that blob was written still has a value (a missing intensity reads as an unlit scene).
+- **`<Stats />` only takes a class if you pass one** (`className="r3f-stats"`), otherwise the
+  `.r3f-stats` CSS rule matches nothing.
+
+### Never bail out when `instanceColor` is null
+Changing `geometry` changes an `<instancedMesh>`'s `args`, so r3f **rebuilds the mesh** — and a
+fresh `InstancedMesh` has `instanceColor === null`. `Particles.js` used to guard its colour
+effects with `if (!mesh.instanceColor) return`, which meant every Detail change left the
+particles the bare material white until some later event happened to re-run the effect (rotating
+the camera looked like it "fixed" it). `setColorAt` allocates the buffer on first call and three
+recompiles the material when the attribute appears, so there is nothing to guard against. Guard
+only the write-back: `if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true`.
+
+The same applies to the length check that was there: `instanceColor.count` is the instance
+*capacity*, not the number of particles being drawn, so comparing it against a smaller loop
+bound also bailed for no reason.
+
+### Detail and radius must reach every renderer
+`sphereSegments` and `particleRadius` are scene-wide, so a renderer that hardcodes its own
+resolution or size silently opts out of the control:
+
+- `sphereSegments` drives particle spheres, patch cones (`Patches.js`), spring cylinders
+  (`Springs.js`), repulsion beads and all four nucleotide meshes.
+- `particleRadius` drives particle spheres, patch cone size and spring thickness directly.
+  Renderers with intrinsic geometry scale by `particleRadius / DEFAULT_PARTICLE_RADIUS`
+  (exported from `particleStore.js`): raspberry beads scale both bead radius and offset, so the
+  particle resizes without losing the shape the topology describes; oxDNA nucleotides scale only
+  *thicknesses* — the 0.34 / 0.3408 offsets are the oxDNA geometry itself and moving them would
+  misreport where a nucleotide sits.
+
+Every one of these effects must also call `invalidate()` — see demand rendering above.
+
+### Ambient occlusion leaves the renderer dirty (`ParticleScene.js`)
+`postprocessing`'s `EffectComposer.setRenderer()` sets `renderer.autoClear = false` and never
+restores it. r3f shares one renderer across the canvas, so once occlusion has been enabled even
+once that flag stays false permanently. While the composer is mounted this is harmless — it
+clears its own passes — but the moment occlusion is switched off (the **Minimal** preset) the
+composer unmounts, r3f goes back to calling `gl.render()` itself, and with `autoClear` false
+nothing clears the canvas: each frame composites onto the last and orbiting smears.
+
+`SceneContent` therefore restores `gl.autoClear = true` whenever `ssaoEnabled` is false. Any
+future effect added to the composer inherits the same hazard.
+
+### The per-frame clear (`ParticleScene.js`)
+`preserveDrawingBuffer: true` is needed so `captureScreenshot` can read the canvas back after
+the frame, but it also stops the browser from ever implicitly clearing the drawing buffer. Any
+frame whose renderer does not write every pixel then leaves the previous frame showing through —
+this is the smearing seen while orbiting, and a post-processing pass covering a different pixel
+area than the canvas (SSAO at a non-1 device pixel ratio) is enough to cause it.
+
+`SceneContent` therefore binds the default framebuffer and clears it before every frame. The
+**negative** priority matters twice: r3f sorts subscribers ascending so it runs before the frame
+is drawn, and r3f only hands rendering over to a subscriber whose priority is `> 0`, so it does
+not disable r3f's own render. Do not change that priority to 0 or above. `setRenderTarget(null)`
+first is deliberate — a stale render target left bound would otherwise swallow the clear.
 
 ## oxDNA Specifics
 
@@ -165,7 +287,7 @@ iS <id> <k> <r0> <x> <y> <z>
 
 - **Instanced rendering**: `THREE.InstancedMesh` for particles, patches, repulsion site beads, springs, and all four nucleotide mesh types
 - **Zero-scale hidden instances**: skipped instances use `makeScale(0,0,0)` matrix instead of `continue` to avoid ghost geometry
-- **Demand rendering**: `frameloop="demand"` on Canvas (always-on when path tracing). Components that update Three.js buffers (`Particles.js`, `OxDNANucleotides.js`) must call `invalidate()` from `useThree()` at the end of their position effects — otherwise the canvas does not redraw after trajectory frame changes.
+- **Demand rendering**: `frameloop="demand"` on Canvas. Components that update Three.js buffers (`Particles.js`, `OxDNANucleotides.js`) must call `invalidate()` from `useThree()` at the end of their position effects — otherwise the canvas does not redraw after trajectory frame changes.
 - **Memoized clustering**: only recomputes when epsilon/minPoints change
 
 ### In-place GPU buffer updates (no VRAM leak)
@@ -192,10 +314,15 @@ This means a trajectory frame update only re-renders `Particles.js` (or `OxDNANu
 
 | Key | Action |
 |-----|--------|
+| `Space` | Play / pause |
+| `←` / `→` | Step one frame (`Shift` for 10) |
+| `Home` / `End` | First / last frame |
 | `P` | Screenshot |
 | `Q/A` | Shift particles on X-axis |
 | `W/S` | Shift particles on Y-axis |
 | `E/D` | Shift particles on Z-axis |
+
+Ignored while a form field has focus.
 
 ## Iframe Embedding
 

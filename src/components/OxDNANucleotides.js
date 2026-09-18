@@ -9,7 +9,7 @@
 import React, { useRef, useEffect, useMemo, useCallback } from "react";
 import { useThree } from "@react-three/fiber";
 import * as THREE from "three";
-import { useParticleStore } from "../store/particleStore";
+import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../store/particleStore";
 import { useUIStore } from "../store/uiStore";
 import { getParticleColors } from "../colors";
 
@@ -31,6 +31,7 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
   const positions = useParticleStore(state => state.positions);
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const topData = useParticleStore(state => state.topData);
+  const particleRadius = useParticleStore(state => state.particleRadius);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
   const { selectedParticles, setSelectedParticles, sphereSegments } = useUIStore();
 
@@ -44,11 +45,30 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
   const nucleotides = topData?.nucleotides;
   const count = nucleotides?.length ?? 0;
 
+  // Radii scale with the particle-radius control so it moves nucleotides along
+  // with every other sphere in the app. Only thicknesses scale — the 0.34 /
+  // 0.3408 offsets that place backbone and nucleoside are the oxDNA geometry
+  // itself, so scaling those would misreport where the nucleotide sits.
+  const radiusScale = particleRadius / DEFAULT_PARTICLE_RADIUS;
+
   // Geometries — unit cylinder (height=1) is scaled per instance
-  const bbGeo = useMemo(() => new THREE.SphereGeometry(0.2, sphereSegments, sphereSegments), [sphereSegments]);
-  const nsGeo = useMemo(() => new THREE.SphereGeometry(0.3, sphereSegments, sphereSegments), [sphereSegments]);
-  const conGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.1, 1, 8), []);
-  const bbconGeo = useMemo(() => new THREE.CylinderGeometry(0.1, 0.02, 1, 8), []); // tapered
+  const bbGeo = useMemo(
+    () => new THREE.SphereGeometry(0.2 * radiusScale, sphereSegments, sphereSegments),
+    [sphereSegments, radiusScale],
+  );
+  const nsGeo = useMemo(
+    () => new THREE.SphereGeometry(0.3 * radiusScale, sphereSegments, sphereSegments),
+    [sphereSegments, radiusScale],
+  );
+  const conGeo = useMemo(
+    () => new THREE.CylinderGeometry(0.1 * radiusScale, 0.1 * radiusScale, 1, sphereSegments),
+    [sphereSegments, radiusScale],
+  );
+  // tapered
+  const bbconGeo = useMemo(
+    () => new THREE.CylinderGeometry(0.1 * radiusScale, 0.02 * radiusScale, 1, sphereSegments),
+    [sphereSegments, radiusScale],
+  );
 
   const material = useMemo(() => new THREE.MeshStandardMaterial({
     metalness: 0.1,
@@ -261,7 +281,7 @@ function OxDNANucleotides({ onParticleDoubleClick }) {
     if (conMesh.instanceColor) conMesh.instanceColor.needsUpdate = true;
     if (bbconMesh.instanceColor) bbconMesh.instanceColor.needsUpdate = true;
     invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
-  }, [positions, boxSize, nucleotides, count, currentColorScheme, invalidate, bbGeo, nsGeo]);
+  }, [positions, boxSize, nucleotides, count, currentColorScheme, invalidate, bbGeo, nsGeo, conGeo, bbconGeo]);
 
   // --- Selection effect: update backbone sphere colors only ---
   useEffect(() => {

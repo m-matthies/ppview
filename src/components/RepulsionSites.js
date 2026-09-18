@@ -1,6 +1,8 @@
 import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from 'three';
 import { useUIStore } from "../store/uiStore";
+import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../store/particleStore";
+import { useThree } from "@react-three/fiber";
 
 // Renders repulsion site beads for raspberry particles.
 // Click/double-click handling is delegated to Particles.js via onRegister —
@@ -9,6 +11,12 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const meshRef = useRef();
   const particlePositionsRef = useRef([]); // stable ref — updated every frame without re-registering
   const { selectedParticles, sphereSegments } = useUIStore();
+  const { invalidate } = useThree();
+  const particleRadius = useParticleStore(state => state.particleRadius);
+  // Bead sizes and offsets come from the topology. Scaling both by the same
+  // factor resizes the whole raspberry particle while preserving the shape the
+  // file describes.
+  const radiusScale = particleRadius / DEFAULT_PARTICLE_RADIUS;
 
   const geometry = useMemo(() => new THREE.SphereGeometry(1, sphereSegments, sphereSegments), [sphereSegments]);
   const material = useMemo(() => new THREE.MeshStandardMaterial({
@@ -57,14 +65,14 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
       for (let j = 0; j < repulsionSiteData.length; j++) {
         const site = repulsionSiteData[j];
         localPos.set(
-          site.position.x * particleScale,
-          site.position.y * particleScale,
-          site.position.z * particleScale,
+          site.position.x * particleScale * radiusScale,
+          site.position.y * particleScale * radiusScale,
+          site.position.z * particleScale * radiusScale,
         );
         if (hasRotation) localPos.applyMatrix3(rotMat);
 
         dummy.position.set(localPos.x + px, localPos.y + py, localPos.z + pz);
-        dummy.scale.setScalar(site.radius * particleScale);
+        dummy.scale.setScalar(site.radius * particleScale * radiusScale);
         dummy.updateMatrix();
         mesh.setMatrixAt(index, dummy.matrix);
         index++;
@@ -73,7 +81,8 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
 
     particlePositionsRef.current = positions;
     mesh.instanceMatrix.needsUpdate = true;
-  }, [particles, repulsionSiteData, particleScale, hasValidData, boxSize, geometry]);
+    invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
+  }, [particles, repulsionSiteData, particleScale, radiusScale, hasValidData, boxSize, geometry, invalidate]);
 
   // Update bead colors: yellow for selected particles, typeColor otherwise.
   // Uses setColorAt to update the buffer in-place — avoids allocating a new

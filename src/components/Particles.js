@@ -15,7 +15,7 @@ function Particles({
   const positions = useParticleStore(state => state.positions);
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const particleRadius = useParticleStore(state => state.particleRadius);
-  const { selectedParticles, setSelectedParticles, isPathtracerEnabled, sphereSegments } = useUIStore();
+  const { selectedParticles, setSelectedParticles, sphereSegments } = useUIStore();
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
   const { highlightedClusters, showOnlyHighlightedClusters } = useClusteringStore();
@@ -38,29 +38,15 @@ function Particles({
     return new THREE.SphereGeometry(particleRadius, sphereSegments, sphereSegments);
   }, [particleRadius, sphereSegments]);
   
-  // Use MeshPhysicalMaterial for better path tracing results
   const material = useMemo(
-    () => {
-      if (isPathtracerEnabled) {
-        return new THREE.MeshPhysicalMaterial({
-          metalness: 0.2,
-          roughness: 0.6,
-          clearcoat: 0.3,
-          clearcoatRoughness: 0.2,
-          reflectivity: 0.5,
-          envMapIntensity: 1.5,
-        });
-      } else {
-        return new THREE.MeshStandardMaterial({
-          metalness: 0.1,
-          roughness: 0.7,
-          envMapIntensity: 1.0,
-          emissive: 0x000000,
-          emissiveIntensity: 0.05,
-        });
-      }
-    },
-    [isPathtracerEnabled],
+    () => new THREE.MeshStandardMaterial({
+      metalness: 0.1,
+      roughness: 0.7,
+      envMapIntensity: 1.0,
+      emissive: 0x000000,
+      emissiveIntensity: 0.05,
+    }),
+    [],
   );
 
   // Get current particle colors based on the selected scheme
@@ -127,11 +113,11 @@ function Particles({
       // Ensure we don't exceed the actual instance count
       const instanceCount = Math.min(mesh.count, particleData.length);
 
-      // Safety check: ensure instanceColor exists and has the right length
-      if (!mesh.instanceColor || mesh.instanceColor.count !== instanceCount) {
-        console.warn('Instance color buffer mismatch in color scheme update, skipping');
-        return;
-      }
+      // No guard on mesh.instanceColor here. Changing the geometry makes r3f
+      // rebuild the InstancedMesh, and a fresh one has instanceColor === null —
+      // bailing out then left every particle the bare material white until some
+      // later event happened to re-run this. setColorAt allocates the buffer on
+      // first call, and three recompiles the material when it appears.
 
       // Update instance colors with new color scheme
       for (let i = 0; i < instanceCount; i++) {
@@ -147,9 +133,10 @@ function Particles({
         }
       }
 
-      mesh.instanceColor.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+      invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
     }
-  }, [particleData, selectedParticles]);
+  }, [particleData, selectedParticles, geometry, invalidate]);
 
   // Set positions and colors for instanced particles.
   // Uses setColorAt to update instanceColor in-place — avoids allocating a new
@@ -222,8 +209,6 @@ function Particles({
 
   // Memoize event handlers to prevent unnecessary re-creation
   const handleClick = useCallback((event) => {
-    // Disable selection during pathtracing to avoid interrupting rendering
-    if (isPathtracerEnabled) return;
     if (!meshRef.current || !camera) return;
 
     const pointer = getNormalizedMouseCoords(event);
@@ -279,11 +264,9 @@ function Particles({
     } catch (error) {
       console.warn('Error during particle selection:', error);
     }
-  }, [camera, setSelectedParticles, getNormalizedMouseCoords, particleData, selectedParticles, isPathtracerEnabled]);
+  }, [camera, setSelectedParticles, getNormalizedMouseCoords, particleData, selectedParticles]);
 
   const handleDoubleClick = useCallback((event) => {
-    // Disable double-click navigation during pathtracing to avoid interrupting rendering
-    if (isPathtracerEnabled) return;
     if (!meshRef.current || !camera) return;
 
     const pointer = getNormalizedMouseCoords(event);
@@ -321,7 +304,7 @@ function Particles({
     } catch (error) {
       console.warn('Error during particle double-click:', error);
     }
-  }, [camera, particleData, onParticleDoubleClick, getNormalizedMouseCoords, isPathtracerEnabled]);
+  }, [camera, particleData, onParticleDoubleClick, getNormalizedMouseCoords]);
 
   // Raycaster for detecting clicks and double-clicks
   useEffect(() => {
@@ -344,11 +327,8 @@ function Particles({
       // Ensure we don't exceed the actual instance count
       const instanceCount = Math.min(mesh.count, particleData.length);
 
-      // Safety check: ensure instanceColor exists and has the right length
-      if (!mesh.instanceColor || mesh.instanceColor.count !== instanceCount) {
-        console.warn('Instance color buffer mismatch, skipping update');
-        return;
-      }
+      // See the note above: a rebuilt mesh starts with instanceColor === null,
+      // and setColorAt is what creates it.
 
       for (let i = 0; i < instanceCount; i++) {
         const data = particleData[i];
@@ -388,10 +368,11 @@ function Particles({
         }
       }
 
-      mesh.instanceColor.needsUpdate = true;
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
       mesh.instanceMatrix.needsUpdate = true;
+      invalidate(); // frameloop="demand": tell R3F the canvas needs a redraw
     }
-  }, [selectedParticles, particleData, highlightedClusters, showOnlyHighlightedClusters, geometry]);
+  }, [selectedParticles, particleData, highlightedClusters, showOnlyHighlightedClusters, geometry, invalidate]);
 
   // Group particles by type (tracking global indices for repulsion site selection)
   const particlesByType = useMemo(() => {
@@ -416,59 +397,9 @@ function Particles({
 
   return (
     <>
-      {/* Path tracer uses individual meshes instead of InstancedMesh */}
-      {isPathtracerEnabled ? (
-        <>
-          {particleData.map((data, i) => {
-            if (!data || !data.position) return null;
-
-            // Raspberry particles render via RepulsionSites beads instead
-            if (data.hasRepulsionSites) return null;
-
-            // Hide noise particles (particles not in any cluster) when pathtracing
-            // If clustering is active (highlightedClusters has any clusters) and particle is not in a cluster, hide it
-            if (highlightedClusters.size > 0 && !data.isInHighlightedCluster) {
-              return null;
-            }
-            
-            // Hide particles when "show only selected" is active and particle shouldn't be shown
-            if (showOnlyHighlightedClusters && !data.shouldShow) {
-              return null;
-            }
-            
-            const color = (Array.isArray(selectedParticles) && selectedParticles.includes(i))
-              ? new THREE.Color("yellow")
-              : data.typeColor;
-
-            const scale = data.baseScale * ((data.isInHighlightedCluster && highlightedClusters.size > 0)
-              ? 1.3
-              : 1.0);
-            
-            return (
-              <mesh
-                key={i}
-                position={[data.position.x, data.position.y, data.position.z]}
-                scale={[scale, scale, scale]}
-                castShadow
-                receiveShadow
-                geometry={geometry}
-              >
-                <meshStandardMaterial
-                  color={color}
-                  metalness={0.1}
-                  roughness={0.8}
-                  emissive={color}
-                  emissiveIntensity={0.3}
-                />
-              </mesh>
-            );
-          })}
-        </>
-      ) : (
-        <instancedMesh ref={meshRef} args={[geometry, material, count]} castShadow receiveShadow>
-          {/* This instancedMesh renders the particles */}
-        </instancedMesh>
-      )}
+      <instancedMesh ref={meshRef} args={[geometry, material, count]} castShadow receiveShadow>
+        {/* This instancedMesh renders the particles */}
+      </instancedMesh>
 
       {Array.from(particlesByType.values()).map(
         ({ particleType, particles, globalIndices }, idx) => {
@@ -529,7 +460,6 @@ function Particles({
                   patchIDs={particleType.patches}
                   boxSize={boxSize}
                   colorScheme={colorScheme}
-                  isPathtracerEnabled={isPathtracerEnabled}
                 />
               );
             }

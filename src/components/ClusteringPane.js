@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParticleStore } from '../store/particleStore';
 import { useClusteringStore } from '../store/clusteringStore';
+import { useUIStore } from '../store/uiStore';
 import DraggablePanel from './DraggablePanel';
+import { CloseIcon } from './Icons';
 import './ClusteringPane.css';
 
 // DBSCAN clustering algorithm implementation
@@ -109,11 +111,14 @@ function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
   const highlightClusters = useClusteringStore(state => state.highlightClusters);
+  // Visibility belongs to the UI store, which is what the control-bar toggle
+  // reads. A second local flag here let the two disagree about whether the
+  // pane was open.
+  const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
   const [selectedClusters, setSelectedClusters] = useState(new Set());
   const [showOnlySelected, setShowOnlySelected] = useState(false);
-  const [isVisible, setIsVisible] = useState(true);
 
   // Compute clusters when parameters change
   const clusters = useMemo(() => {
@@ -151,6 +156,13 @@ function ClusteringPane() {
     // Sort by cluster size (largest first)
     return histogram.sort((a, b) => b.size - a.size);
   }, [statistics.clusterSizes]);
+
+  // Tallest bar sets the scale. Hoisted out of the render loop, which used to
+  // recompute it once per bar.
+  const maxBinCount = useMemo(
+    () => histogramData.reduce((max, bin) => Math.max(max, bin.count), 0),
+    [histogramData],
+  );
 
   // Handle cluster selection
   const handleClusterToggle = (clusterIndex) => {
@@ -218,32 +230,21 @@ function ClusteringPane() {
     return null;
   }
 
-  if (!isVisible) {
-    return (
-      <div className="clustering-pane-toggle">
-        <button 
-          className="toggle-clustering-button"
-          onClick={() => setIsVisible(true)}
-          title="Show Clustering Panel"
-        >
-          📊 Clustering
-        </button>
-      </div>
-    );
-  }
-
   return (
-    <DraggablePanel initialX={250} initialY={20} className="clustering-pane">
-      <div className="clustering-header drag-handle" style={{ cursor: 'grab' }}>
+    <DraggablePanel initialX={250} initialY={20} className="clustering-pane" storageId="clustering">
+      <div className="clustering-header drag-handle" tabIndex={0}>
         <h3>Particle Clustering</h3>
-        <button 
+        <button
           className="close-button"
-          onClick={() => setIsVisible(false)}
+          onClick={() => setShowClusteringPane(false)}
           title="Hide Clustering Panel"
+          aria-label="Hide clustering panel"
         >
-          ✕
+          <CloseIcon size={16} />
         </button>
       </div>
+
+      <div className="clustering-body">
 
       {/* Clustering Parameters */}
       <div className="clustering-controls">
@@ -314,21 +315,27 @@ function ClusteringPane() {
       {/* Histogram */}
       <div className="clustering-histogram">
         <h4>Cluster Size Distribution</h4>
-        <p style={{ fontSize: '11px', color: '#7f8c8d', marginBottom: '8px', marginTop: '-5px' }}>
-          Click a bar to select clusters of that size. Cmd/Ctrl+click to add. Top = count, bottom = size (particles).
+        <p className="histogram-hint">
+          Click a bar to select every cluster of that size, or Cmd/Ctrl+click to add it to the
+          selection. Each bar is labelled with its count above and its size below.
         </p>
         <div className="histogram-container">
           {histogramData.length > 0 ? (
             <>
-              <div style={{ position: 'relative', height: '150px' }}>
+              <div className="histogram-plot">
                 <div className="histogram-y-axis">Count</div>
-                <div className="histogram-bars" style={{ height: '100%' }}>
-                  {histogramData.map((bin, index) => {
-                    const maxCount = Math.max(...histogramData.map(b => b.count));
-                    
+                {/* Bars keep a legible fixed minimum width and this scrolls once
+                    there are more distinct sizes than fit. Binning them instead
+                    would break the interaction, which selects clusters of one
+                    exact size. */}
+                <div className="histogram-scroll">
+                <div className="histogram-bars">
+                  {histogramData.map((bin) => {
                     // Simple linear scaling with minimum height for visibility
-                    const linearHeight = maxCount > 0 ? (bin.count / maxCount) * 85 : 0; // Use 85% max to leave room for labels
-                    const minHeight = 3; // Minimum 3% height for any bar
+                    // Scales against the bar track, which is laid out above the
+                    // labels rather than sharing space with them.
+                    const linearHeight = maxBinCount > 0 ? (bin.count / maxBinCount) * 100 : 0;
+                    const minHeight = 4; // keep a one-count bar visible
                     const finalHeight = Math.max(linearHeight, bin.count > 0 ? minHeight : 0);
                     
                     // Check if any selected clusters have this size
@@ -337,34 +344,23 @@ function ClusteringPane() {
                     );
                     
                     return (
-                      <div 
-                        key={`size-${bin.size}`} 
-                        className="histogram-bar-container"
+                      <div
+                        key={`size-${bin.size}`}
+                        className={`histogram-bar-container ${isActive ? 'is-active' : ''}`}
                         onClick={(e) => handleHistogramBarClick(bin.size, e)}
-                        style={{ cursor: 'pointer' }}
-                        title={`Click to select ${bin.count} clusters with ${bin.size} particles. Cmd/Ctrl+click to add to selection.`}
+                        title={`Select the ${bin.count} cluster${bin.count === 1 ? '' : 's'} of ${bin.size} particles. Cmd/Ctrl+click to add to the selection.`}
                       >
-                        <div 
-                          className="histogram-bar"
-                          style={{ 
-                            height: `${finalHeight}%`,
-                            background: isActive 
-                              ? 'linear-gradient(to top, #e67e22, #f39c12)'
-                              : 'linear-gradient(to top, #3498db, #5dade2)',
-                            border: isActive ? '2px solid #d35400' : '1px solid #2980b9'
-                          }}
-                        />
+                        <div className="histogram-bar-track">
+                          <div className="histogram-bar" style={{ height: `${finalHeight}%` }} />
+                        </div>
                         <div className="histogram-labels">
-                          <span className="histogram-label-count" style={{ fontWeight: isActive ? 'bold' : 'normal' }}>
-                            {bin.count}
-                          </span>
-                          <span className="histogram-label-size" style={{ fontWeight: isActive ? 'bold' : 'normal' }}>
-                            {bin.size}
-                          </span>
+                          <span className="histogram-label-count">{bin.count}</span>
+                          <span className="histogram-label-size">{bin.size}</span>
                         </div>
                       </div>
                     );
                   })}
+                </div>
                 </div>
               </div>
               <div className="histogram-axis-labels">
@@ -428,6 +424,8 @@ function ClusteringPane() {
             </div>
           </div>
         )}
+      </div>
+
       </div>
     </DraggablePanel>
   );

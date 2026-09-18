@@ -1,294 +1,241 @@
-import React, { useState, useEffect } from 'react';
-import { CloseIcon } from './Icons';
+import React, { useState, useEffect, useCallback } from 'react';
+import { CloseIcon, ResetIcon } from './Icons';
 import { useUIStore } from '../store/uiStore';
-import { lightingPresets, saveLightingPreset } from '../lighting';
+import {
+  lightingPresets,
+  saveLightingPreset,
+  isDarkBackground,
+  LIGHT_BACKGROUND,
+  DARK_BACKGROUND,
+} from '../lighting';
 import DraggablePanel from './DraggablePanel';
 import '../styles/LightingControlsModal.css';
 
+// One row: label, slider, live value. The value is monospaced and fixed-width
+// so dragging a slider never reflows the row.
+function Slider({ label, value, min, max, step, decimals = 2, onChange }) {
+  return (
+    <label className="ctl-row">
+      <span className="ctl-label">{label}</span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(e) => onChange(parseFloat(e.target.value))}
+      />
+      <span className="ctl-value num">{Number(value).toFixed(decimals)}</span>
+    </label>
+  );
+}
+
+function VectorInput({ label, value, onChange }) {
+  return (
+    <div className="ctl-vector">
+      <span className="ctl-label">{label}</span>
+      <div className="ctl-axes">
+        {['x', 'y', 'z'].map((axis, index) => (
+          <label key={axis} className="ctl-axis">
+            <span className="ctl-axis-name">{axis}</span>
+            <input
+              className="num"
+              type="number"
+              step="1"
+              value={value[index]}
+              onChange={(e) => {
+                const next = [...value];
+                next[index] = parseFloat(e.target.value) || 0;
+                onChange(next);
+              }}
+            />
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Each directional light is the same three controls, so describe them once.
+// All three are neutral white: a tinted light would shift every particle colour
+// in the scene, and those colours carry meaning.
+const DIRECTIONAL_LIGHTS = [
+  { key: 'keyLight', title: 'Key light', hint: 'Main source, and the only one that casts shadows.', max: 3, step: 0.1, decimals: 1 },
+  { key: 'fillLight', title: 'Fill light', hint: 'Opens up the side the key light leaves dark.', max: 2, step: 0.1, decimals: 1 },
+  { key: 'rimLight', title: 'Rim light', hint: 'Separates the structure from the background behind it.', max: 1, step: 0.05, decimals: 2 },
+];
+
 function LightingControlsModal({ isOpen, onClose }) {
-  const { currentLightingPreset, setCurrentLightingPreset, lightingSettings, setLightingSettings, isPathtracerEnabled, resetPathtracer } = useUIStore();
-  
-  // Local state for editing
+  const {
+    currentLightingPreset,
+    setCurrentLightingPreset,
+    lightingSettings,
+    setLightingSettings,
+    resetLighting,
+    sceneBackground,
+    setSceneBackground,
+  } = useUIStore();
+
   const [settings, setSettings] = useState(lightingSettings);
 
-  // Update local state when modal opens or preset changes
   useEffect(() => {
-    if (isOpen) {
-      setSettings(lightingSettings);
-    }
+    if (isOpen) setSettings(lightingSettings);
   }, [isOpen, lightingSettings]);
 
-  if (!isOpen) return null;
-
-  const handlePresetChange = (presetName) => {
+  const applyPreset = useCallback((presetName) => {
     const preset = lightingPresets[presetName];
     setCurrentLightingPreset(presetName);
     setLightingSettings(preset);
     setSettings(preset);
     saveLightingPreset(presetName);
-    // Reset pathtracer to apply new lighting
-    if (isPathtracerEnabled) {
-      resetPathtracer();
-    }
-  };
+  }, [setCurrentLightingPreset, setLightingSettings]);
 
-  const handleSettingChange = (key, value) => {
-    const newSettings = { ...settings, [key]: value };
-    setSettings(newSettings);
-    setLightingSettings(newSettings);
-    // Clear preset selection when manually adjusting
+  const change = useCallback((key, value) => {
+    setSettings((previous) => {
+      const next = { ...previous, [key]: value };
+      setLightingSettings(next);
+      return next;
+    });
+    // Editing a value means the scene no longer matches any named preset.
     setCurrentLightingPreset('custom');
-    // Reset pathtracer to apply new lighting (debounced by user stopping interaction)
-    if (isPathtracerEnabled) {
-      resetPathtracer();
-    }
-  };
+  }, [setCurrentLightingPreset, setLightingSettings]);
 
-  const handlePositionChange = (lightKey, axis, value) => {
-    const positionKey = `${lightKey}Position`;
-    const currentPosition = [...settings[positionKey]];
-    const axisIndex = { x: 0, y: 1, z: 2 }[axis];
-    currentPosition[axisIndex] = parseFloat(value);
-    handleSettingChange(positionKey, currentPosition);
-  };
+  if (!isOpen) return null;
 
-  const handleColorChange = (key, value) => {
-    handleSettingChange(key, value);
-  };
+  const isCustom = currentLightingPreset === 'custom';
 
   return (
-    <DraggablePanel initialX={20} initialY={20} className="lighting-panel">
-      <div className="lighting-modal">
-        <div className="lighting-modal-header drag-handle">
-          <h2>Scene Lighting Controls</h2>
-          <button className="close-btn" onClick={onClose}>
-            <CloseIcon size={18} />
+    <DraggablePanel initialX={20} initialY={20} className="pp-panel lighting-panel" storageId="lighting">
+      <header className="panel-header drag-handle" tabIndex={0}>
+        <h2 className="panel-title">Lighting</h2>
+        <div className="panel-header-actions">
+          <button
+            className="icon-button"
+            onClick={resetLighting}
+            title="Reset lighting to the default preset"
+          >
+            <ResetIcon size={15} />
+          </button>
+          <button className="icon-button" onClick={onClose} title="Close lighting">
+            <CloseIcon size={16} />
           </button>
         </div>
+      </header>
 
-        <div className="lighting-modal-body">
-          {/* Presets Section */}
-          <div className="lighting-section">
-            <h3>Presets</h3>
-            <div className="preset-buttons">
-              {Object.entries(lightingPresets).map(([key, preset]) => (
-                <button
-                  key={key}
-                  className={`preset-btn ${currentLightingPreset === key ? 'active' : ''}`}
-                  onClick={() => handlePresetChange(key)}
-                  title={preset.description}
-                >
-                  {preset.name}
-                </button>
-              ))}
+      <div className="panel-body">
+        <section className="panel-section">
+          <div className="preset-row">
+            {Object.entries(lightingPresets).map(([key, preset]) => (
+              <button
+                key={key}
+                className={`preset-chip ${currentLightingPreset === key ? 'is-active' : ''}`}
+                onClick={() => applyPreset(key)}
+                title={preset.description}
+              >
+                {preset.name}
+              </button>
+            ))}
+            {isCustom && <span className="preset-chip is-custom">Custom</span>}
+          </div>
+        </section>
+
+        {/* Background sits above the light rig because it is the choice people
+            change most, and it is not part of a preset. */}
+        <section className="panel-section">
+          <h3 className="pp-heading">Background</h3>
+          <div className="bg-row">
+            <div className="bg-choices">
+              <button
+                className={`bg-swatch ${!isDarkBackground(sceneBackground) ? 'is-active' : ''}`}
+                style={{ background: LIGHT_BACKGROUND }}
+                onClick={() => setSceneBackground(LIGHT_BACKGROUND)}
+                title="Light background"
+                aria-label="Light background"
+              />
+              <button
+                className={`bg-swatch ${isDarkBackground(sceneBackground) ? 'is-active' : ''}`}
+                style={{ background: DARK_BACKGROUND }}
+                onClick={() => setSceneBackground(DARK_BACKGROUND)}
+                title="Dark background"
+                aria-label="Dark background"
+              />
+            </div>
+            <label className="bg-custom">
+              <span className="ctl-label">Custom</span>
+              <input
+                type="color"
+                value={sceneBackground}
+                onChange={(e) => setSceneBackground(e.target.value)}
+                title="Pick a background color"
+              />
+            </label>
+          </div>
+        </section>
+
+        <section className="panel-section">
+          <h3 className="pp-heading">Ambient</h3>
+          <Slider label="Ambient" value={settings.ambientIntensity} min={0} max={1} step={0.05}
+            onChange={(v) => change('ambientIntensity', v)} />
+          <Slider label="Hemisphere" value={settings.hemisphereIntensity} min={0} max={1} step={0.05}
+            onChange={(v) => change('hemisphereIntensity', v)} />
+          <div className="ctl-row ctl-colors">
+            <span className="ctl-label">Sky / ground</span>
+            <div className="swatch-pair">
+              <input type="color" value={settings.hemisphereSkyColor}
+                onChange={(e) => change('hemisphereSkyColor', e.target.value)} title="Sky color" />
+              <input type="color" value={settings.hemisphereGroundColor}
+                onChange={(e) => change('hemisphereGroundColor', e.target.value)} title="Ground color" />
             </div>
           </div>
+        </section>
 
-          {/* Ambient Lights */}
-          <div className="lighting-section">
-            <h3>Ambient Lighting</h3>
-            
-            <div className="control-group">
-              <label>Ambient Light Intensity</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={settings.ambientIntensity}
-                onChange={(e) => handleSettingChange('ambientIntensity', parseFloat(e.target.value))}
-              />
-              <span className="value-display">{settings.ambientIntensity.toFixed(2)}</span>
-            </div>
+        {DIRECTIONAL_LIGHTS.map((light) => (
+          <section className="panel-section" key={light.key}>
+            <h3 className="pp-heading">{light.title}</h3>
+            <p className="section-hint">{light.hint}</p>
+            <Slider
+              label="Intensity"
+              value={settings[`${light.key}Intensity`]}
+              min={0}
+              max={light.max}
+              step={light.step}
+              decimals={light.decimals}
+              onChange={(v) => change(`${light.key}Intensity`, v)}
+            />
+            <VectorInput
+              label="Position"
+              value={settings[`${light.key}Position`]}
+              onChange={(v) => change(`${light.key}Position`, v)}
+            />
+          </section>
+        ))}
 
-            <div className="control-group">
-              <label>Hemisphere Intensity</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={settings.hemisphereIntensity}
-                onChange={(e) => handleSettingChange('hemisphereIntensity', parseFloat(e.target.value))}
-              />
-              <span className="value-display">{settings.hemisphereIntensity.toFixed(2)}</span>
-            </div>
+        <section className="panel-section">
+          <h3 className="pp-heading">Shadow fill</h3>
+          <p className="section-hint">Lifts shadow interiors from below so dense structures stay readable.</p>
+          <Slider label="Bottom fill" value={settings.bottomFillIntensity} min={0} max={1} step={0.05}
+            onChange={(v) => change('bottomFillIntensity', v)} />
+        </section>
 
-            <div className="control-row">
-              <div className="control-group">
-                <label>Sky Color</label>
-                <input
-                  type="color"
-                  value={settings.hemisphereSkyColor}
-                  onChange={(e) => handleColorChange('hemisphereSkyColor', e.target.value)}
-                />
-              </div>
-              <div className="control-group">
-                <label>Ground Color</label>
-                <input
-                  type="color"
-                  value={settings.hemisphereGroundColor}
-                  onChange={(e) => handleColorChange('hemisphereGroundColor', e.target.value)}
-                />
-              </div>
-            </div>
-          </div>
+        <section className="panel-section">
+          <h3 className="pp-heading">Environment and occlusion</h3>
+          <Slider label="Environment" value={settings.environmentIntensity} min={0} max={1} step={0.05}
+            onChange={(v) => change('environmentIntensity', v)} />
 
-          {/* Key Light */}
-          <div className="lighting-section">
-            <h3>Key Light (Main)</h3>
-            
-            <div className="control-group">
-              <label>Intensity</label>
-              <input
-                type="range"
-                min="0"
-                max="3"
-                step="0.1"
-                value={settings.keyLightIntensity}
-                onChange={(e) => handleSettingChange('keyLightIntensity', parseFloat(e.target.value))}
-              />
-              <span className="value-display">{settings.keyLightIntensity.toFixed(1)}</span>
-            </div>
+          <label className="ctl-check">
+            <input
+              type="checkbox"
+              checked={settings.ssaoEnabled}
+              onChange={(e) => change('ssaoEnabled', e.target.checked)}
+            />
+            <span>Ambient occlusion</span>
+          </label>
 
-            <div className="position-controls">
-              <label>Position</label>
-              <div className="axis-controls">
-                {['x', 'y', 'z'].map((axis) => (
-                  <div key={axis} className="axis-control">
-                    <span className="axis-label">{axis.toUpperCase()}</span>
-                    <input
-                      type="number"
-                      value={settings.keyLightPosition[{ x: 0, y: 1, z: 2 }[axis]]}
-                      onChange={(e) => handlePositionChange('keyLight', axis, e.target.value)}
-                      step="1"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Fill Light */}
-          <div className="lighting-section">
-            <h3>Fill Light</h3>
-            
-            <div className="control-group">
-              <label>Intensity</label>
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step="0.1"
-                value={settings.fillLightIntensity}
-                onChange={(e) => handleSettingChange('fillLightIntensity', parseFloat(e.target.value))}
-              />
-              <span className="value-display">{settings.fillLightIntensity.toFixed(1)}</span>
-            </div>
-
-            <div className="position-controls">
-              <label>Position</label>
-              <div className="axis-controls">
-                {['x', 'y', 'z'].map((axis) => (
-                  <div key={axis} className="axis-control">
-                    <span className="axis-label">{axis.toUpperCase()}</span>
-                    <input
-                      type="number"
-                      value={settings.fillLightPosition[{ x: 0, y: 1, z: 2 }[axis]]}
-                      onChange={(e) => handlePositionChange('fillLight', axis, e.target.value)}
-                      step="1"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Rim Light */}
-          <div className="lighting-section">
-            <h3>Rim Light</h3>
-            
-            <div className="control-group">
-              <label>Intensity</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={settings.rimLightIntensity}
-                onChange={(e) => handleSettingChange('rimLightIntensity', parseFloat(e.target.value))}
-              />
-              <span className="value-display">{settings.rimLightIntensity.toFixed(2)}</span>
-            </div>
-
-            <div className="position-controls">
-              <label>Position</label>
-              <div className="axis-controls">
-                {['x', 'y', 'z'].map((axis) => (
-                  <div key={axis} className="axis-control">
-                    <span className="axis-label">{axis.toUpperCase()}</span>
-                    <input
-                      type="number"
-                      value={settings.rimLightPosition[{ x: 0, y: 1, z: 2 }[axis]]}
-                      onChange={(e) => handlePositionChange('rimLight', axis, e.target.value)}
-                      step="1"
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Environment & Post-Processing */}
-          <div className="lighting-section">
-            <h3>Environment & Effects</h3>
-            
-            <div className="control-group">
-              <label>Environment Intensity</label>
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={settings.environmentIntensity}
-                onChange={(e) => handleSettingChange('environmentIntensity', parseFloat(e.target.value))}
-              />
-              <span className="value-display">{settings.environmentIntensity.toFixed(2)}</span>
-            </div>
-
-            <div className="control-group">
-              <label>
-                <input
-                  type="checkbox"
-                  checked={settings.ssaoEnabled}
-                  onChange={(e) => handleSettingChange('ssaoEnabled', e.target.checked)}
-                />
-                <span>Enable SSAO (Ambient Occlusion)</span>
-              </label>
-            </div>
-
-            {settings.ssaoEnabled && (
-              <div className="control-group indented">
-                <label>SSAO Intensity</label>
-                <input
-                  type="range"
-                  min="0"
-                  max="30"
-                  step="1"
-                  value={settings.ssaoIntensity}
-                  onChange={(e) => handleSettingChange('ssaoIntensity', parseFloat(e.target.value))}
-                />
-                <span className="value-display">{settings.ssaoIntensity.toFixed(0)}</span>
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="lighting-modal-footer">
-          <button className="secondary-btn" onClick={onClose}>
-            Close
-          </button>
-        </div>
+          {settings.ssaoEnabled && (
+            <Slider label="Occlusion strength" value={settings.ssaoIntensity} min={0} max={30} step={1}
+              decimals={0} onChange={(v) => change('ssaoIntensity', v)} />
+          )}
+        </section>
       </div>
     </DraggablePanel>
   );

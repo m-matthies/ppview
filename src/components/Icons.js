@@ -116,18 +116,50 @@ export const AxisIcon = ({ size = 24, color = "currentColor" }) => (
   </svg>
 );
 
-export const SparklesIcon = ({ size = 24, color = "currentColor" }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 3l1.5 4.5L18 9l-4.5 1.5L12 15l-1.5-4.5L6 9l4.5-1.5L12 3z"></path>
-    <path d="M19 12l1 3 3 1-3 1-1 3-1-3-3-1 3-1 1-3z"></path>
-    <path d="M5 18l1 2.5 2.5 1-2.5 1L5 25l-1-2.5L1.5 22l2.5-1L5 18z"></path>
-  </svg>
-);
-
 export const LightbulbIcon = ({ size = 24, color = "currentColor" }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M9 18h6"></path>
     <path d="M10 22h4"></path>
     <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1.36.5 2.5 1.5 3.5.76.76 1.23 1.52 1.41 2.5"></path>
+  </svg>
+);
+
+export const StepBackIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="18 5 8 12 18 19 18 5"></polygon>
+    <line x1="5" y1="5" x2="5" y2="19"></line>
+  </svg>
+);
+
+export const StepForwardIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polygon points="6 5 16 12 6 19 6 5"></polygon>
+    <line x1="19" y1="5" x2="19" y2="19"></line>
+  </svg>
+);
+
+export const ActivityIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+  </svg>
+);
+
+export const SunIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="4"></circle>
+    <line x1="12" y1="2" x2="12" y2="5"></line>
+    <line x1="12" y1="19" x2="12" y2="22"></line>
+    <line x1="2" y1="12" x2="5" y2="12"></line>
+    <line x1="19" y1="12" x2="22" y2="12"></line>
+    <line x1="4.9" y1="4.9" x2="7" y2="7"></line>
+    <line x1="17" y1="17" x2="19.1" y2="19.1"></line>
+    <line x1="4.9" y1="19.1" x2="7" y2="17"></line>
+    <line x1="17" y1="7" x2="19.1" y2="4.9"></line>
+  </svg>
+);
+
+export const MoonIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"></path>
   </svg>
 );

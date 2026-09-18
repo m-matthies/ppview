@@ -1,6 +1,19 @@
 import { create } from 'zustand';
 import { getCurrentColorScheme } from '../colors';
-import { getCurrentLightingPreset, getLightingSettings, saveLightingSettings } from '../lighting';
+import {
+  getCurrentLightingPreset,
+  getLightingSettings,
+  saveLightingSettings,
+  saveLightingPreset,
+  getSceneBackground,
+  saveSceneBackground,
+  isDarkBackground,
+  lightingPresets,
+  DEFAULT_LIGHTING_PRESET,
+  DEFAULT_BACKGROUND,
+  LIGHT_BACKGROUND,
+  DARK_BACKGROUND,
+} from '../lighting';
 
 export const useUIStore = create((set) => ({
   // Legend visibility
@@ -9,8 +22,9 @@ export const useUIStore = create((set) => ({
   
   // 3D scene toggles
   showSimulationBox: false,
-  showBackdropPlanes: false,
+  showBackdropPlanes: true,
   showCoordinateAxis: true,
+  showStats: false,
   
   // UI visibility
   isControlsVisible: true,
@@ -37,29 +51,16 @@ export const useUIStore = create((set) => ({
   currentLightingPreset: getCurrentLightingPreset(),
   lightingSettings: getLightingSettings(),
   isLightingControlsModalOpen: false,
+
+  // Scene background. Kept out of the presets on purpose — a preset is the light
+  // rig, the background is a separate viewing choice.
+  sceneBackground: getSceneBackground(),
   
   // Playback state
   isPlaying: false,
   playbackSpeed: 500,
   isSpeedPopupVisible: false,
   
-  // Pathtracer state
-  isPathtracerEnabled: false,
-  isPathtracerConfigModalOpen: false,
-  pathtracerConfig: {
-    samples: 500,
-    minSamples: 5,
-    bounces: 5,
-    tiles: 1,
-    denoise: true,
-    filterGlossyThreshold: 0.5,
-    resolutionScale: 1.0,
-    enableMIS: true,
-    transparentBackground: false,
-  },
-  pathtracerSamples: 0,
-  pathtracerReset: 0, // Increment to trigger reset
-
   // Sphere geometry quality
   sphereSegments: 16,
 
@@ -69,6 +70,7 @@ export const useUIStore = create((set) => ({
   setShowSimulationBox: (show) => set({ showSimulationBox: show }),
   setShowBackdropPlanes: (show) => set({ showBackdropPlanes: show }),
   setShowCoordinateAxis: (show) => set({ showCoordinateAxis: show }),
+  setShowStats: (show) => set({ showStats: show }),
   setIsControlsVisible: (visible) => set({ isControlsVisible: visible }),
   setShowClusteringPane: (show) => set({ showClusteringPane: show }),
   setFilesDropped: (dropped) => set({ filesDropped: dropped }),
@@ -84,13 +86,31 @@ export const useUIStore = create((set) => ({
     set({ lightingSettings: settings });
   },
   setIsLightingControlsModalOpen: (open) => set({ isLightingControlsModalOpen: open }),
+  setSceneBackground: (color) => {
+    saveSceneBackground(color);
+    set({ sceneBackground: color });
+  },
+  // Flips between the two stock backgrounds. Which one is "current" is derived
+  // from the colour's own luminance, so there is no second flag to fall out of
+  // step with a background picked from the colour well.
+  toggleSceneBackground: () => set((state) => {
+    const next = isDarkBackground(state.sceneBackground) ? LIGHT_BACKGROUND : DARK_BACKGROUND;
+    saveSceneBackground(next);
+    return { sceneBackground: next };
+  }),
+  resetLighting: () => {
+    const preset = lightingPresets[DEFAULT_LIGHTING_PRESET];
+    saveLightingPreset(DEFAULT_LIGHTING_PRESET);
+    saveLightingSettings(preset);
+    saveSceneBackground(DEFAULT_BACKGROUND);
+    set({
+      currentLightingPreset: DEFAULT_LIGHTING_PRESET,
+      lightingSettings: preset,
+      sceneBackground: DEFAULT_BACKGROUND,
+    });
+  },
   setIsPlaying: (playing) => set({ isPlaying: playing }),
   setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
   setIsSpeedPopupVisible: (visible) => set({ isSpeedPopupVisible: visible }),
-  setIsPathtracerEnabled: (enabled) => set({ isPathtracerEnabled: enabled }),
-  setIsPathtracerConfigModalOpen: (open) => set({ isPathtracerConfigModalOpen: open }),
-  setPathtracerConfig: (config) => set({ pathtracerConfig: config }),
-  setPathtracerSamples: (samples) => set({ pathtracerSamples: samples }),
-  resetPathtracer: () => set((state) => ({ pathtracerReset: state.pathtracerReset + 1, pathtracerSamples: 0 })),
   setSphereSegments: (segments) => set({ sphereSegments: segments }),
 }));

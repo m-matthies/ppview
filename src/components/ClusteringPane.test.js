@@ -3,6 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import ClusteringPane from './ClusteringPane';
 import { useParticleStore } from '../store/particleStore';
 import { useClusteringStore } from '../store/clusteringStore';
+import { useUIStore } from '../store/uiStore';
 
 // ClusteringPane takes no props — it reads `positions` from the particle store
 // and pushes highlights back through the clustering store.
@@ -27,6 +28,7 @@ describe('ClusteringPane', () => {
   beforeEach(() => {
     seedPositions(mockPositions);
     useClusteringStore.getState().clearHighlighting();
+    useUIStore.getState().setShowClusteringPane(true);
   });
 
   test('renders clustering pane with correct title', () => {
@@ -72,15 +74,15 @@ describe('ClusteringPane', () => {
     expect(screen.getByText(/Min Points: 5/)).toBeInTheDocument();
   });
 
-  test('can be collapsed and expanded', () => {
+  // The pane is mounted by App only while showClusteringPane is true, so its
+  // close button must clear that shared flag rather than a local one —
+  // otherwise the control-bar toggle still reads as "on".
+  test('closing the pane clears the shared visibility flag', () => {
     render(<ClusteringPane />);
 
     fireEvent.click(screen.getByTitle('Hide Clustering Panel'));
-    expect(screen.getByTitle('Show Clustering Panel')).toBeInTheDocument();
-    expect(screen.queryByText('Particle Clustering')).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTitle('Show Clustering Panel'));
-    expect(screen.getByText('Particle Clustering')).toBeInTheDocument();
+    expect(useUIStore.getState().showClusteringPane).toBe(false);
   });
 
   test('renders nothing when no positions are loaded', () => {

@@ -1,5 +1,11 @@
 import { create } from 'zustand';
 
+// The radius every other size in the scene is expressed relative to. Renderers
+// with their own intrinsic geometry (oxDNA nucleotides, raspberry beads) scale
+// by particleRadius / this, so the control moves them together with the plain
+// particle spheres instead of leaving them fixed.
+export const DEFAULT_PARTICLE_RADIUS = 0.5;
+
 export const useParticleStore = create((set, get) => ({
   // Particle and trajectory data
   positions: [],
@@ -11,7 +17,7 @@ export const useParticleStore = create((set, get) => ({
   currentTime: 0,
   currentEnergy: [],
   totalConfigs: 0,
-  particleRadius: 0.5, // Default particle radius
+  particleRadius: DEFAULT_PARTICLE_RADIUS,
   
   // Actions
   setPositions: (positions) => {

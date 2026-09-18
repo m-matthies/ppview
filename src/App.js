@@ -6,8 +6,8 @@ import PatchLegend from "./components/PatchLegend";
 import ParticleLegend from "./components/ParticleLegend";
 import SelectedParticlesDisplay from "./components/SelectedParticlesDisplay";
 import ColorSchemeSelector from "./components/ColorSchemeSelector";
+import SceneBackgroundToggle from "./components/SceneBackgroundToggle";
 import ClusteringPane from "./components/ClusteringPane";
-import PathTracerConfigModal from "./components/PathTracerConfigModal";
 import LightingControlsModal from "./components/LightingControlsModal";
 import { analyzeFiles, categorizeFiles, parseInputFile } from "./utils/fileTypeDetector";
 import { readMGL, readMGLTrajectory, convertMGLToPPViewFormat } from "./utils/mglParser";
@@ -22,19 +22,49 @@ import { useClusteringStore } from "./store/clusteringStore";
 import "./styles.css";
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
-  LayersIcon, ChartIcon, CameraIcon, DownloadIcon,
-  ChevronUpIcon, ChevronDownIcon, CloseIcon, AxisIcon, SparklesIcon, LightbulbIcon
+  LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
+  ChevronUpIcon, ChevronDownIcon, CloseIcon, AxisIcon, LightbulbIcon,
+  StepBackIcon, StepForwardIcon, ActivityIcon
 } from "./components/Icons";
 
-const ToggleBtn = ({ checked, onChange, icon, title }) => (
+// A toggle states what it controls and whether it is on, for both sighted and
+// assistive users — the icon alone carries neither.
+const ToggleBtn = ({ checked, onChange, icon, label, shortcut }) => (
   <button
-    className={`toggle-icon-btn ${checked ? 'active' : ''}`}
+    className={`toggle-btn ${checked ? 'is-active' : ''}`}
     onClick={() => onChange(!checked)}
-    title={title}
+    title={shortcut ? `${label} (${shortcut})` : label}
+    aria-pressed={checked}
+    aria-label={label}
   >
     {icon}
   </button>
 );
+
+const ToolBtn = ({ onClick, icon, label, active }) => (
+  <button
+    className={`toggle-btn ${active ? 'is-active' : ''}`}
+    onClick={onClick}
+    title={label}
+    aria-label={label}
+  >
+    {icon}
+  </button>
+);
+
+// Trajectory times run to 1e9; full digits are unreadable and shift the row
+// width every frame.
+const formatTime = (time) => {
+  if (typeof time !== 'number' || !Number.isFinite(time)) return String(time ?? '--');
+  if (time === 0) return '0';
+  return Math.abs(time) >= 1e6 ? time.toExponential(2) : time.toLocaleString();
+};
+
+const formatEnergy = (energy) => {
+  const value = Array.isArray(energy) ? energy[0] : energy;
+  if (typeof value !== 'number' || !Number.isFinite(value) || value === 0) return null;
+  return value.toFixed(4);
+};
 
 
 function App() {
@@ -58,6 +88,8 @@ function App() {
     setCurrentEnergy,
     setTotalConfigs,
     setParticleRadius,
+    currentEnergy,
+    particleRadius,
   } = useParticleStore();
 
   const {
@@ -66,6 +98,7 @@ function App() {
     showSimulationBox,
     showBackdropPlanes,
     showCoordinateAxis,
+    showStats,
     isControlsVisible,
     showClusteringPane,
     filesDropped,
@@ -77,17 +110,13 @@ function App() {
     isPlaying,
     playbackSpeed,
     isSpeedPopupVisible,
-    isPathtracerEnabled,
-    isPathtracerConfigModalOpen,
-    pathtracerConfig,
-    pathtracerSamples,
     isLightingControlsModalOpen,
-    resetPathtracer,
     setShowPatchLegend,
     setShowParticleLegend,
     setShowSimulationBox,
     setShowBackdropPlanes,
     setShowCoordinateAxis,
+    setShowStats,
     setIsControlsVisible,
     setShowClusteringPane,
     setFilesDropped,
@@ -97,9 +126,6 @@ function App() {
     setIsPlaying,
     setPlaybackSpeed,
     setIsSpeedPopupVisible,
-    setIsPathtracerEnabled,
-    setIsPathtracerConfigModalOpen,
-    setPathtracerConfig,
     setIsLightingControlsModalOpen,
     sphereSegments,
     setSphereSegments,
@@ -129,10 +155,8 @@ function App() {
 
   // Function to take a screenshot
   const takeScreenshot = useCallback(() => {
-    // Pass resolution scale from pathtracer config if pathtracer is enabled
-    const resolutionScale = isPathtracerEnabled ? pathtracerConfig.resolutionScale : 1.0;
-    captureScreenshot(sceneRef, currentConfigIndex, resolutionScale);
-  }, [sceneRef, currentConfigIndex, isPathtracerEnabled, pathtracerConfig.resolutionScale]);
+    captureScreenshot(sceneRef, currentConfigIndex, 1.0);
+  }, [sceneRef, currentConfigIndex]);
 
 
   const handleFilesReceived = useCallback(async (files) => {
@@ -426,16 +450,21 @@ function App() {
 
 
 
-  const handleSliderChange = (e) => {
-    const newIndex = parseInt(e.target.value, 10);
-    setCurrentConfigIndex(newIndex);
-    // Reset pathtracer when trajectory changes
-    if (isPathtracerEnabled) {
-      resetPathtracer();
-    }
-    // Trigger re-render when configuration changes
+  // Single entry point for every way of changing frame — slider, step buttons,
+  // arrow keys — so the clamp and the redraw can never be forgotten by one of
+  // them.
+  const goToFrame = useCallback((index) => {
+    const clamped = Math.min(Math.max(index, 0), Math.max(totalConfigs - 1, 0));
+    if (clamped === useParticleStore.getState().currentConfigIndex) return;
+    setCurrentConfigIndex(clamped);
     setTimeout(invalidateScene, 0);
-  };
+  }, [totalConfigs, invalidateScene, setCurrentConfigIndex]);
+
+  const handleSliderChange = (e) => goToFrame(parseInt(e.target.value, 10));
+
+  const stepFrame = useCallback((delta) => {
+    goToFrame(useParticleStore.getState().currentConfigIndex + delta);
+  }, [goToFrame]);
 
   // Function to toggle trajectory playback
   const togglePlayback = useCallback(() => {
@@ -533,23 +562,6 @@ function App() {
     },
     [currentBoxSize, invalidateScene, setPositions],
   );
-
-  // Handle pathtracer toggle - open config modal when enabling
-  const handlePathtracerToggle = useCallback(() => {
-    if (!isPathtracerEnabled) {
-      // Opening pathtracer - show config modal
-      setIsPathtracerConfigModalOpen(true);
-    } else {
-      // Closing pathtracer - disable immediately
-      setIsPathtracerEnabled(false);
-    }
-  }, [isPathtracerEnabled, setIsPathtracerEnabled, setIsPathtracerConfigModalOpen]);
-
-  // Handle starting pathtracer with config
-  const handleStartPathtracer = useCallback((config) => {
-    setPathtracerConfig(config);
-    setIsPathtracerEnabled(true);
-  }, [setPathtracerConfig, setIsPathtracerEnabled]);
 
   // Function to export the scene as GLTF
   const exportGLTF = useCallback(() => {
@@ -681,8 +693,38 @@ function App() {
   // useEffect to handle key presses
   useEffect(() => {
     const handleKeyDown = (event) => {
+      // Never steal keys from a field the user is typing into — the lighting
+      // and clustering panels are full of number inputs.
+      const target = event.target;
+      if (target instanceof HTMLElement &&
+          (target.isContentEditable ||
+           ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName))) {
+        return;
+      }
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+
       try {
         switch (event.key) {
+          case " ":
+            event.preventDefault();
+            togglePlayback();
+            break;
+          case "ArrowLeft":
+            event.preventDefault();
+            stepFrame(event.shiftKey ? -10 : -1);
+            break;
+          case "ArrowRight":
+            event.preventDefault();
+            stepFrame(event.shiftKey ? 10 : 1);
+            break;
+          case "Home":
+            event.preventDefault();
+            goToFrame(0);
+            break;
+          case "End":
+            event.preventDefault();
+            goToFrame(totalConfigs - 1);
+            break;
           case "q":
             shiftPositions("x", 1);
             break;
@@ -719,7 +761,19 @@ function App() {
       // Cleanup event listener on unmount
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [shiftPositions, takeScreenshot]);
+  }, [shiftPositions, takeScreenshot, togglePlayback, stepFrame, goToFrame, totalConfigs]);
+
+  // Particle size is a display choice as much as a data one — a radius read
+  // from the input file is often not the one that makes a structure readable.
+  const handleRadiusChange = useCallback((value) => {
+    const radius = Math.min(Math.max(value, 0.05), 5);
+    if (!Number.isFinite(radius)) return;
+    setParticleRadius(radius);
+    setTimeout(invalidateScene, 0);
+  }, [setParticleRadius, invalidateScene]);
+
+  const energyReadout = formatEnergy(currentEnergy);
+  const hasTrajectory = totalConfigs > 1;
 
   return (
     <div className="App">
@@ -730,187 +784,219 @@ function App() {
           onDisabledDrop={() => notify("Dragging onto embedded viewer does not allow form completion")}
         />
       )}
-      {positions.length > 0 && (
-        <ParticleScene />
-      )}
+
+      {positions.length > 0 && <ParticleScene />}
+
+      {positions.length > 0 && !isLoading && !isIframeMode && <SceneBackgroundToggle />}
+
       {positions.length > 0 && !isLoading && (
-        <div className={`controls-wrapper ${isControlsVisible ? 'visible' : 'minimized'}`}>
+        <div className={`controls-wrapper ${isControlsVisible ? 'is-open' : 'is-collapsed'}`}>
           {!isControlsVisible && (
-            <button
-              className="show-controls-btn"
-              onClick={() => setIsControlsVisible(true)}
-            >
-              <ChevronUpIcon /> Show Controls
+            <button className="show-controls-btn" onClick={() => setIsControlsVisible(true)}>
+              <ChevronUpIcon size={16} />
+              <span>Controls</span>
             </button>
           )}
 
           {isControlsVisible && (
-            <div className="controls-panel">
-              <div className="controls-header">
-                <div className="playback-group">
-                  <button className="icon-btn" onClick={resetTrajectory} title="Reset">
-                    <ResetIcon size={20} />
+            <div className="controls-panel pp-panel">
+
+              {/* Row 1 — transport and readout. What frame am I on, and how do
+                  I get to another one. */}
+              <div className="transport-row">
+                <div className="control-cluster">
+                  <button className="icon-btn" onClick={resetTrajectory} title="Back to first frame (Home)" aria-label="Back to first frame">
+                    <ResetIcon size={18} />
                   </button>
-                  <button className="icon-btn primary" onClick={togglePlayback} title={isPlaying ? "Pause" : "Play"}>
-                    {isPlaying ? <PauseIcon size={20} /> : <PlayIcon size={20} />}
+                  <button
+                    className="icon-btn"
+                    onClick={() => stepFrame(-1)}
+                    disabled={!hasTrajectory || currentConfigIndex === 0}
+                    title="Previous frame (Left arrow, Shift for 10)"
+                    aria-label="Previous frame"
+                  >
+                    <StepBackIcon size={18} />
+                  </button>
+                  <button
+                    className="icon-btn is-primary"
+                    onClick={togglePlayback}
+                    disabled={!hasTrajectory}
+                    title={isPlaying ? "Pause (Space)" : "Play (Space)"}
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                  >
+                    {isPlaying ? <PauseIcon size={18} /> : <PlayIcon size={18} />}
+                  </button>
+                  <button
+                    className="icon-btn"
+                    onClick={() => stepFrame(1)}
+                    disabled={!hasTrajectory || currentConfigIndex >= totalConfigs - 1}
+                    title="Next frame (Right arrow, Shift for 10)"
+                    aria-label="Next frame"
+                  >
+                    <StepForwardIcon size={18} />
                   </button>
 
                   <div className="speed-control-wrapper">
                     <button
-                      className="icon-btn speed-trigger"
+                      className="icon-btn is-wide"
                       onClick={() => setIsSpeedPopupVisible(!isSpeedPopupVisible)}
-                      title="Playback Speed"
+                      title="Playback speed"
+                      aria-expanded={isSpeedPopupVisible}
                     >
-                      <SpeedIcon size={18} />
-                      <span className="speed-text">{(1000 / playbackSpeed).toFixed(1)}x</span>
+                      <SpeedIcon size={16} />
+                      <span className="num">{(1000 / playbackSpeed).toFixed(1)}/s</span>
                     </button>
                     {isSpeedPopupVisible && (
-                      <div className="speed-popup" ref={speedPopupRef}>
-                        <div className="popup-header">
-                          <span>Playback Speed</span>
-                          <button className="close-btn" onClick={() => setIsSpeedPopupVisible(false)}>
+                      <div className="popover" ref={speedPopupRef}>
+                        <div className="popover-head">
+                          <span>Playback speed</span>
+                          <button className="icon-button" onClick={() => setIsSpeedPopupVisible(false)} aria-label="Close">
                             <CloseIcon size={14} />
                           </button>
                         </div>
-                        <div className="popup-content">
-                          <input
-                            type="range"
-                            min="50"
-                            max="2000"
-                            step="50"
-                            value={playbackSpeed}
-                            onChange={(e) => setPlaybackSpeed(parseInt(e.target.value))}
-                            className="styled-slider"
-                          />
-                          <div className="speed-value">{(1000 / playbackSpeed).toFixed(1)} fps</div>
-                        </div>
+                        <input
+                          type="range"
+                          min="50" max="2000" step="50"
+                          /* Inverted: dragging right should feel faster. */
+                          value={2050 - playbackSpeed}
+                          onChange={(e) => setPlaybackSpeed(2050 - parseInt(e.target.value, 10))}
+                        />
+                        <div className="popover-value num">{(1000 / playbackSpeed).toFixed(1)} frames/s</div>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="toggles-group">
-                  <ToggleBtn checked={showPatchLegend} onChange={setShowPatchLegend} icon={<TagIcon size={18} />} title="Patch Legend" />
-                  <ToggleBtn checked={showParticleLegend} onChange={setShowParticleLegend} icon={<CircleIcon size={18} />} title="Particle Legend" />
-                  <ToggleBtn checked={showBackdropPlanes} onChange={setShowBackdropPlanes} icon={<LayersIcon size={18} />} title="Backdrop Planes" />
-                  <ToggleBtn checked={showClusteringPane} onChange={setShowClusteringPane} icon={<ChartIcon size={18} />} title="Clustering Pane" />
-                  <ToggleBtn checked={showCoordinateAxis} onChange={setShowCoordinateAxis} icon={<AxisIcon size={18} />} title="Coordinate Axis" />
-                  <button
-                    className="toggle-icon-btn"
-                    onClick={() => setIsLightingControlsModalOpen(true)}
-                    title="Lighting Controls"
-                  >
-                    <LightbulbIcon size={18} />
-                  </button>
-                  <ToggleBtn checked={isPathtracerEnabled} onChange={handlePathtracerToggle} icon={<SparklesIcon size={18} />} title="GPU Pathtracer" />
+                <div className="readout">
+                  <span className="readout-item">
+                    <span className="readout-key">Frame</span>
+                    <span className="num readout-val">{currentConfigIndex + 1}<span className="readout-total">/{totalConfigs}</span></span>
+                  </span>
+                  <span className="readout-item">
+                    <span className="readout-key">Time</span>
+                    <span className="num readout-val">{formatTime(currentTime)}</span>
+                  </span>
+                  {energyReadout && (
+                    <span className="readout-item">
+                      <span className="readout-key">Energy</span>
+                      <span className="num readout-val">{energyReadout}</span>
+                    </span>
+                  )}
                 </div>
 
-                <button
-                  className="hide-controls-btn"
-                  onClick={() => setIsControlsVisible(false)}
-                  title="Hide Controls"
-                >
-                  <ChevronDownIcon size={20} />
-                </button>
-              </div>
-
-              <div className="controls-body">
-                <div className="timeline-container">
-                  <input
-                    type="range"
-                    min="0"
-                    max={totalConfigs - 1}
-                    value={currentConfigIndex}
-                    onChange={handleSliderChange}
-                    className="timeline-slider"
-                  />
-                  <div className="timeline-info">
-                    <span className="info-item"><strong>Config:</strong> {currentConfigIndex + 1} / {totalConfigs}</span>
-                    <span className="info-item"><strong>Time:</strong> {typeof currentTime === 'number' ? currentTime.toLocaleString() : currentTime}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="controls-footer">
-                <div className="selectors-wrapper">
-                  <ColorSchemeSelector />
-                  <div className="resolution-selector">
-                    <label className="scheme-label">Sphere Quality:</label>
-                    <select
-                      className="resolution-select"
-                      value={sphereSegments}
-                      onChange={(e) => setSphereSegments(parseInt(e.target.value))}
-                      title="Sphere geometry resolution"
-                    >
-                      <option value={8}>Low (8)</option>
-                      <option value={16}>Medium (16)</option>
-                      <option value={24}>High (24)</option>
-                      <option value={32}>Ultra (32)</option>
-                    </select>
-                  </div>
-                </div>
-                <div className="actions-group">
-                  <button className="action-btn" onClick={takeScreenshot} title="Take Screenshot (P)">
-                    <CameraIcon size={16} />
+                <div className="actions-cluster">
+                  <button className="action-btn" onClick={takeScreenshot} title="Save a PNG of the current view (P)">
+                    <CameraIcon size={15} />
                     <span>Screenshot</span>
                   </button>
-                  <button className="action-btn" onClick={exportGLTF} title="Export Scene">
-                    <DownloadIcon size={16} />
+                  <button className="action-btn" onClick={exportGLTF} title="Save the scene as a GLTF model">
+                    <DownloadIcon size={15} />
                     <span>Export GLTF</span>
                   </button>
                 </div>
+
+                <button
+                  className="icon-btn is-quiet"
+                  onClick={() => setIsControlsVisible(false)}
+                  title="Hide controls"
+                  aria-label="Hide controls"
+                >
+                  <ChevronDownIcon size={18} />
+                </button>
+              </div>
+
+              {/* Row 2 — the scrubber. The control this app exists to offer. */}
+              <div className="scrub-row">
+                <input
+                  type="range"
+                  className="scrubber"
+                  min="0"
+                  max={Math.max(totalConfigs - 1, 0)}
+                  value={currentConfigIndex}
+                  onChange={handleSliderChange}
+                  disabled={!hasTrajectory}
+                  aria-label="Trajectory frame"
+                  aria-valuetext={`Frame ${currentConfigIndex + 1} of ${totalConfigs}`}
+                  style={{ '--progress': `${totalConfigs > 1 ? (currentConfigIndex / (totalConfigs - 1)) * 100 : 0}%` }}
+                />
+              </div>
+
+              {/* Row 3 — display options, grouped by what they affect rather
+                  than by the order they were added. */}
+              <div className="options-row">
+                <div className="toggle-groups">
+                  <div className="toggle-group" role="group" aria-label="Scene">
+                    <ToggleBtn checked={showSimulationBox} onChange={setShowSimulationBox} icon={<BoxIcon size={17} />} label="Simulation box" />
+                    <ToggleBtn checked={showCoordinateAxis} onChange={setShowCoordinateAxis} icon={<AxisIcon size={17} />} label="Coordinate axes" />
+                    <ToggleBtn checked={showBackdropPlanes} onChange={setShowBackdropPlanes} icon={<LayersIcon size={17} />} label="Backdrop planes" />
+                  </div>
+
+                  <div className="toggle-group" role="group" aria-label="Legends">
+                    <ToggleBtn checked={showParticleLegend} onChange={setShowParticleLegend} icon={<CircleIcon size={17} />} label="Particle legend" />
+                    <ToggleBtn checked={showPatchLegend} onChange={setShowPatchLegend} icon={<TagIcon size={17} />} label="Patch legend" />
+                  </div>
+
+                  <div className="toggle-group" role="group" aria-label="Tools">
+                    <ToggleBtn checked={showClusteringPane} onChange={setShowClusteringPane} icon={<ChartIcon size={17} />} label="Clustering" />
+                    <ToolBtn
+                      onClick={() => setIsLightingControlsModalOpen(!isLightingControlsModalOpen)}
+                      active={isLightingControlsModalOpen}
+                      icon={<LightbulbIcon size={17} />}
+                      label="Lighting"
+                    />
+                    <ToggleBtn checked={showStats} onChange={setShowStats} icon={<ActivityIcon size={17} />} label="Frame rate" />
+                  </div>
+                </div>
+
+                <div className="settings-cluster">
+                  <ColorSchemeSelector />
+
+                  <label className="field" title="Geometry resolution for spheres, patch cones and spring cylinders">
+                    <span className="field-label">Detail</span>
+                    <select value={sphereSegments} onChange={(e) => setSphereSegments(parseInt(e.target.value, 10))}>
+                      <option value={8}>Low</option>
+                      <option value={16}>Medium</option>
+                      <option value={24}>High</option>
+                      <option value={32}>Ultra</option>
+                    </select>
+                  </label>
+
+                  <label className="field" title="Particle radius in simulation units. Scales beads, patches, springs and nucleotides with it.">
+                    <span className="field-label"><RulerIcon size={13} /> Radius</span>
+                    <input
+                      className="num"
+                      type="number"
+                      min="0.05" max="5" step="0.05"
+                      value={particleRadius}
+                      onChange={(e) => handleRadiusChange(parseFloat(e.target.value))}
+                    />
+                  </label>
+                </div>
+
               </div>
             </div>
           )}
         </div>
-      )
-      }
-      {/* Conditionally render the SelectedParticlesDisplay component */}
+      )}
+
       <SelectedParticlesDisplay />
 
-      {/* Conditionally render the PatchLegend component */}
-      {
-        topData && showPatchLegend && !isLoading && (
-          <PatchLegend />
-        )
-      }
+      {topData && showPatchLegend && !isLoading && <PatchLegend />}
+      {topData && showParticleLegend && !isLoading && <ParticleLegend />}
+      {positions.length > 0 && showClusteringPane && !isLoading && <ClusteringPane />}
 
-      {/* Conditionally render the ParticleLegend component */}
-      {
-        topData && showParticleLegend && !isLoading && (
-          <ParticleLegend />
-        )
-      }
-      {/* Conditionally render the ClusteringPane component */}
-      {
-        positions.length > 0 && showClusteringPane && !isLoading && (
-          <ClusteringPane />
-        )
-      }
-      {
-        isLoading && (
-          <div className="loading-overlay">
-            <div className="loading-spinner" />
-            <p>Loading trajectory data...</p>
-          </div>
-        )
-      }
+      {isLoading && (
+        <div className="loading-overlay">
+          <div className="loading-spinner" />
+          <p>Reading trajectory</p>
+        </div>
+      )}
 
-      {/* PathTracer Configuration Modal */}
-      <PathTracerConfigModal
-        isOpen={isPathtracerConfigModalOpen}
-        onClose={() => setIsPathtracerConfigModalOpen(false)}
-        onStart={handleStartPathtracer}
-        currentConfig={pathtracerConfig}
-        currentSamples={pathtracerSamples}
-      />
-
-      {/* Lighting Controls Modal */}
       <LightingControlsModal
         isOpen={isLightingControlsModalOpen}
         onClose={() => setIsLightingControlsModalOpen(false)}
       />
-    </div >
+    </div>
   );
 }
 

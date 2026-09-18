@@ -2,11 +2,13 @@ import React from "react";
 import { useParticleStore } from "../store/particleStore";
 import { useUIStore } from "../store/uiStore";
 import DraggablePanel from "./DraggablePanel";
+import { CloseIcon } from "./Icons";
 
 function SelectedParticlesDisplay() {
   const positions = useParticleStore(state => state.positions);
   const topData = useParticleStore(state => state.topData);
   const selectedParticles = useUIStore(state => state.selectedParticles);
+  const setSelectedParticles = useUIStore(state => state.setSelectedParticles);
   
   if (!selectedParticles || !Array.isArray(selectedParticles) || selectedParticles.length === 0) return null;
   // Helper function to get particle information
@@ -54,8 +56,18 @@ function SelectedParticlesDisplay() {
   };
 
   return (
-    <DraggablePanel initialX={20} initialY={100} className="selected-particles-display">
-      <h3 className="drag-handle" style={{ cursor: 'grab' }}>Selected Particles ({selectedParticles.length})</h3>
+    <DraggablePanel initialX={20} initialY={100} className="selected-particles-display" storageId="selection">
+      <h3 className="drag-handle" tabIndex={0}>
+        <span>Selected particles ({selectedParticles.length})</span>
+        <button
+          className="icon-button"
+          onClick={() => setSelectedParticles([])}
+          title="Clear selection"
+          aria-label="Clear selection"
+        >
+          <CloseIcon size={15} />
+        </button>
+      </h3>
       <div className="selected-particles-list">
         {selectedParticles.map((particleIndex) => {
           const info = getParticleInfo(particleIndex);

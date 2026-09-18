@@ -4,8 +4,9 @@ import React, { useRef, useEffect, useMemo } from "react";
 import * as THREE from 'three';
 import { getColorForPatchID } from '../utils/colorUtils';
 import { useParticleStore } from '../store/particleStore';
+import { useUIStore } from '../store/uiStore';
 
-function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = null, isPathtracerEnabled = false }) {
+function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = null }) {
   const meshRef = useRef();
   const particleRadius = useParticleStore(state => state.particleRadius);
 
@@ -14,8 +15,9 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
   // default particleRadius=0.5 gives the original coneRadius=0.2, coneHeight=0.4.
   const coneRadius = particleRadius * 0.4;
   const coneHeight = particleRadius * 0.8;
-  // Use moderate quality geometry for path tracing (not too high to avoid memory issues)
-  const coneSegments = isPathtracerEnabled ? 16 : 8;  // Number of segments for cone base
+  // Shares the scene-wide detail setting, so the control affects everything
+  // the scene draws rather than the particle spheres alone.
+  const coneSegments = useUIStore(state => state.sphereSegments);
 
   // Create cone geometry and material for patches
   // Cone points in +Y direction by default, we'll rotate it to point inward
@@ -27,26 +29,12 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
     return cone;
   }, [coneRadius, coneHeight, coneSegments]);
   
-  // Use MeshPhysicalMaterial for better path tracing results
-  const material = useMemo(() => {
-    if (isPathtracerEnabled) {
-      return new THREE.MeshPhysicalMaterial({
-        color: 'white',
-        metalness: 0.3,
-        roughness: 0.7,
-        clearcoat: 0.2,
-        clearcoatRoughness: 0.3,
-        side: THREE.DoubleSide,
-      });
-    } else {
-      return new THREE.MeshStandardMaterial({
-        color: 'white',
-        metalness: 0.3,
-        roughness: 0.7,
-        side: THREE.DoubleSide,
-      });
-    }
-  }, [isPathtracerEnabled]);
+  const material = useMemo(() => new THREE.MeshStandardMaterial({
+    color: 'white',
+    metalness: 0.3,
+    roughness: 0.7,
+    side: THREE.DoubleSide,
+  }), []);
   
   // Check if we have valid patch data
   const hasValidPatchData = particles && patchPositions && patchIDs && 
@@ -171,9 +159,7 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
       }
 
       // Update material to use instanceColor
-      // IMPORTANT: Skip custom shader injection when path tracing is enabled
-      // Path tracers don't support custom shaders
-      if (!isPathtracerEnabled && !mesh.material.userData.instanceColorInjected) {
+      if (!mesh.material.userData.instanceColorInjected) {
         mesh.material.userData.instanceColorInjected = true;
 
         mesh.material.onBeforeCompile = (shader) => {
@@ -206,86 +192,6 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
         mesh.material.needsUpdate = true;
       }
     }
-  }, [particles, patchPositions, patchIDs, boxSize, hasValidPatchData, colorScheme, particleRadius, isPathtracerEnabled]);
-
-  // Compute patch data for both rendering modes (must be before early return)
-  const patchData = useMemo(() => {
-    if (!hasValidPatchData) return [];
-    
-    const patches = [];
-    
-    for (let i = 0; i < particles.length; i++) {
-      const particle = particles[i];
-      const particlePosition = new THREE.Vector3(
-        particle.x - boxSize[0] / 2,
-        particle.y - boxSize[1] / 2,
-        particle.z - boxSize[2] / 2
-      );
-
-      // Use the rotation matrix if available
-      let rotationMatrix = null;
-      if (particle.rotationMatrix) {
-        rotationMatrix = new THREE.Matrix3().fromArray(particle.rotationMatrix.elements);
-      }
-
-      for (let j = 0; j < patchPositions.length; j++) {
-        const patchOffset = patchPositions[j];
-        const patchID = patchIDs[j];
-        
-        // Skip if patch data is invalid
-        if (!patchOffset || patchID === undefined || patchID === null) {
-          continue;
-        }
-
-        // Always normalise to the particle surface (same logic as instanced-mesh path above).
-        const patchVectorLength = Math.sqrt(
-          patchOffset.x * patchOffset.x +
-          patchOffset.y * patchOffset.y +
-          patchOffset.z * patchOffset.z
-        );
-        if (patchVectorLength < 1e-9) continue; // degenerate — skip
-
-        const scaleFactor = particleRadius / patchVectorLength;
-
-        const localPatchPosition = new THREE.Vector3(
-          patchOffset.x,
-          patchOffset.y,
-          patchOffset.z
-        ).multiplyScalar(scaleFactor);
-
-        const patchDirection = new THREE.Vector3(
-          patchOffset.x,
-          patchOffset.y,
-          patchOffset.z
-        ).normalize();
-
-        let rotatedPatchPosition = localPatchPosition.clone();
-        let rotatedPatchDirection = patchDirection.clone();
-        
-        if (rotationMatrix) {
-          rotatedPatchPosition.applyMatrix3(rotationMatrix);
-          rotatedPatchDirection.applyMatrix3(rotationMatrix);
-        }
-
-        const patchPosition = rotatedPatchPosition.add(particlePosition);
-        
-        // Orient the cone to point inward toward the particle
-        const upVector = new THREE.Vector3(0, 1, 0);
-        const inwardDirection = rotatedPatchDirection.clone().negate();
-        const quaternion = new THREE.Quaternion();
-        quaternion.setFromUnitVectors(upVector, inwardDirection);
-        
-        const color = getColorForPatchID(patchID, colorScheme);
-        
-        patches.push({
-          position: patchPosition,
-          quaternion: quaternion,
-          color: color
-        });
-      }
-    }
-    
-    return patches;
   }, [particles, patchPositions, patchIDs, boxSize, hasValidPatchData, colorScheme, particleRadius]);
 
   // Return null if no valid patch data
@@ -294,31 +200,7 @@ function Patches({ particles, patchPositions, patchIDs, boxSize, colorScheme = n
   }
 
   return (
-    <>
-      {isPathtracerEnabled ? (
-        // Path tracer mode: render individual meshes
-        patchData.map((patch, index) => (
-          <mesh
-            key={index}
-            position={[patch.position.x, patch.position.y, patch.position.z]}
-            quaternion={patch.quaternion}
-            geometry={geometry}
-            castShadow
-            receiveShadow
-          >
-            <meshStandardMaterial
-              color={patch.color}
-              metalness={0.3}
-              roughness={0.7}
-              side={THREE.DoubleSide}
-            />
-          </mesh>
-        ))
-      ) : (
-        // Standard mode: use instanced mesh
-        <instancedMesh ref={meshRef} args={[geometry, material, totalPatches]} castShadow receiveShadow />
-      )}
-    </>
+    <instancedMesh ref={meshRef} args={[geometry, material, totalPatches]} castShadow receiveShadow />
   );
 }
 
