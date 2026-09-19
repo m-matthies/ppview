@@ -33,10 +33,20 @@ const MEASURE = `
   ${SAMPLE}
   const W = w;
   let coloured = 0, neutral = 0, edges = 0, sumR = 0, sumG = 0, sumB = 0;
+  // Channel means over the coloured pixels only — "what colour is the geometry",
+  // as opposed to how much of it there is.
+  //
+  // Counting saturated pixels cannot tell magenta from green, so recolouring a
+  // cluster moved the buckets by two pixels and a regression that dropped
+  // colour overrides entirely would have read as no change at all. Averaging
+  // over the whole frame does not help either: a handful of particles is a
+  // rounding error against a light background. Averaging over just the coloured
+  // pixels makes a recolour of one cluster a decisive shift.
+  let tintR = 0, tintG = 0, tintB = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    if (mx - mn > 45) coloured++;
+    if (mx - mn > 45) { coloured++; tintR += r; tintG += g; tintB += b; }
     else if (mx > 40 && mx < 170) neutral++;
     sumR += r; sumG += g; sumB += b;
 
@@ -52,9 +62,13 @@ const MEASURE = `
     }
   }
   const n = d.length / 4;
+  const litPixels = coloured || 1;
   return {
     coloured, neutral, edges,
     mean: +((sumR + sumG + sumB) / (3 * n)).toFixed(2),
+    tintR: +(tintR / litPixels).toFixed(1),
+    tintG: +(tintG / litPixels).toFixed(1),
+    tintB: +(tintB / litPixels).toFixed(1),
   };
 })()
 `;
@@ -131,6 +145,31 @@ const setNative = (el, value) => {
   el.dispatchEvent(new Event('change', { bubbles: true }));
 };
 const clusterBoxes = () => [...document.querySelectorAll('.highlight-checkbox input')];
+
+// Two <select>s live in the same settings cluster and a third in the clustering
+// pane, so position is not a safe way to tell them apart — the View control only
+// exists once an overlay is registered, which shifts the others along. Identify
+// each by an option only it has.
+const selectWithOption = (label) => [...document.querySelectorAll('select')]
+  .find(s => [...s.options].some(o => o.textContent.trim() === label));
+const viewSelect = () => selectWithOption('Particle type');
+const clustersSelect = () => selectWithOption('Computed (DBSCAN)');
+
+/**
+ * Drop a file onto the loaded scene.
+ *
+ * Not DOM.setFileInputFiles: the initial drop zone unmounts once a simulation
+ * is up, and the additive path is a window drop listener with no input element
+ * behind it. Synthesising the event is therefore the only way to reach the code
+ * that actually runs when a user drags a cluster file onto the viewer.
+ */
+const dropJson = (name, text) => {
+  const dt = new DataTransfer();
+  dt.items.add(new File([text], name, { type: 'application/json' }));
+  for (const type of ['dragenter', 'drop']) {
+    window.dispatchEvent(new DragEvent(type, { bubbles: true, cancelable: true, dataTransfer: dt }));
+  }
+};
 `;
 
 const wrap = (body) => `(async () => {${PRELUDE}\n${body}\n})()`;
