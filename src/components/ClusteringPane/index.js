@@ -73,21 +73,32 @@ function ClusteringPane() {
       ?? palette[index % palette.length]
   ), [colorOverrides, fileClusters, palette]);
 
-  // Selection lives in this component, so clusters set from outside — a file
-  // dropped alongside the simulation — have to be adopted here too. Keyed on
-  // identity so re-renders do not keep re-selecting and fight manual changes.
-  const adoptedClustersRef = useRef(null);
+  // Selection lives in this component, so a change of active overlay has to be
+  // adopted here — including a change *to* none.
+  //
+  // Switching back to "Particle type" used to leave the previous selection in
+  // place. Those indices then addressed the computed clusters instead, so the
+  // scene stayed painted in cluster colours and the colour scheme never
+  // reappeared, which looked like the view control had simply stopped working.
+  const adoptedOverlayRef = useRef(undefined);
   useEffect(() => {
-    if (!fileClusters || adoptedClustersRef.current === fileClusters) return;
-    adoptedClustersRef.current = fileClusters;
+    if (adoptedOverlayRef.current === activeOverlayId) return;
+    adoptedOverlayRef.current = activeOverlayId;
     setColorOverrides({});
-    setSelectedClusters(new Set(fileClusters.map((_, i) => i)));
-    // `"visible": false` in the file starts that cluster switched off.
-    setHiddenClusters(new Set(
-      fileClusters.map((c, i) => (c.visible === false ? i : null)).filter(i => i !== null),
-    ));
-    setShowOnlySelected(true);
-  }, [fileClusters]);
+
+    if (fileClusters) {
+      setSelectedClusters(new Set(fileClusters.map((_, i) => i)));
+      // `"visible": false` in the file starts that cluster switched off.
+      setHiddenClusters(new Set(
+        fileClusters.map((c, i) => (c.visible === false ? i : null)).filter(i => i !== null),
+      ));
+      setShowOnlySelected(true);
+    } else {
+      setSelectedClusters(new Set());
+      setHiddenClusters(new Set());
+      setShowOnlySelected(false);
+    }
+  }, [activeOverlayId, fileClusters]);
 
   const handleClusterFile = useCallback(async (event) => {
     const file = event.target.files?.[0];

@@ -439,6 +439,15 @@ reworking it.
 Overlay colour is the *base* colour, so cluster selection, highlighting and
 per-cluster visibility still apply on top of it.
 
+The colour-scheme dropdown is hidden while an overlay is active: it describes
+the default view only, so under an overlay it would control nothing visible.
+
+`ClusteringPane` resets its selection whenever the active overlay changes,
+**including to none**. Without that, returning to "Particle type" left the
+previous selection in place; those indices then addressed the computed clusters
+instead, so the scene stayed painted in cluster colours and the scheme never
+reappeared — which looked like the view control had stopped working.
+
 ### Additive drops
 `handleFilesReceived` classifies the drop **before** touching any state: a drop
 carrying no topology, trajectory or MGL file, but at least one cluster file, onto

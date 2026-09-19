@@ -260,7 +260,9 @@ function ControlBar(props) {
                 </label>
               )}
 
-              <ColorSchemeSelector />
+              {/* The scheme only describes the default view; under an overlay it
+                  controls nothing visible, so showing it would be misleading. */}
+              {!activeOverlayId && <ColorSchemeSelector />}
 
               <label className="field" title="Geometry resolution for spheres, patch cones and spring cylinders">
                 <span className="field-label">Detail</span>
