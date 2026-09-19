@@ -454,12 +454,29 @@ carrying no topology, trajectory or MGL file, but at least one cluster file, ont
 an already-loaded scene registers overlays and returns without resetting
 anything. Anything else replaces the scene as before.
 
-### One source of clusters
-`ClusteringPane` reads its file-based clusters from the **active overlay**
-(`kind === 'clusters'`), not from a separate store field. An earlier version kept
-`fileClusters` in `clusteringStore` as well, which is exactly the two-sources-of-
-truth pattern that caused several bugs in this codebase. "Use DBSCAN again"
-deactivates the overlay rather than discarding it, so switching back is free.
+### Grouping and colouring are separate choices
+The pane's **Clusters** selector picks which cluster set to work with — computed
+(DBSCAN) or any registered cluster overlay — and the control bar's **View** picks
+what colours the scene. They are deliberately independent:
+
+| Clusters | View | Result |
+|----------|------|--------|
+| a file   | that file      | grouped and coloured by cluster |
+| a file   | Particle type  | grouped by cluster, coloured by particle type |
+| DBSCAN   | Particle type  | the plain default |
+
+Tying them together meant choosing "Particle type" also threw away the grouping,
+so there was no way to cluster by a file while colouring by particle type.
+
+The pane publishes cluster colours **only** when the active view is the very
+cluster set it is showing (`colorByCluster`). Otherwise it publishes the
+highlighted and hidden sets alone, so selection, hiding and the 1.3x highlight
+still work while particles keep their type colour. The pane explains which mode
+it is in, because two dropdowns in different panels interacting is not
+self-evident.
+
+Dropping a cluster file still "just works": the new overlay becomes both the
+active view and the pane's cluster source.
 
 ## Loading a second simulation
 

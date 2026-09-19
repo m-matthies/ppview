@@ -88,6 +88,27 @@
     color: var(--ink-dim);
 }
 
+.cluster-source-note {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--ink-mute);
+}
+
+.cluster-source-note strong {
+    color: var(--ink-dim);
+    font-weight: 600;
+}
+
+.cluster-source .field {
+    justify-content: space-between;
+}
+
+.cluster-source .field select {
+    flex: 1;
+    min-width: 0;
+}
+
 .cluster-source-error,
 .cluster-source-warning {
     margin: 0;

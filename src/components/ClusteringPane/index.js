@@ -23,12 +23,17 @@ function ClusteringPane() {
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
   const overlays = useOverlayStore(state => state.overlays);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
-  const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
   const addOverlay = useOverlayStore(state => state.addOverlay);
+  // Which clusters this pane works with is a separate question from which
+  // overlay paints the scene. Tying them together meant choosing "Particle
+  // type" in the View also threw away the cluster grouping, leaving no way to
+  // cluster by a file while colouring by particle type.
+  const [clusterSourceId, setClusterSourceId] = useState(null);   // null = DBSCAN
   // Only a cluster overlay has clusters to list; a future scalar-property
   // overlay would colour particles without any grouping to show here.
-  const activeOverlay = overlays.find(o => o.id === activeOverlayId) || null;
-  const fileClusters = activeOverlay?.kind === 'clusters' ? activeOverlay.clusters : null;
+  const clusterOverlays = overlays.filter(o => o.kind === 'clusters');
+  const clusterSource = clusterOverlays.find(o => o.id === clusterSourceId) || null;
+  const fileClusters = clusterSource?.clusters ?? null;
   const setHiddenParticles = useClusteringStore(state => state.setHiddenParticles);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const fileInputRef = useRef(null);
@@ -67,6 +72,9 @@ function ClusteringPane() {
   // in its particles' type colours, which made two adjacent clusters
   // indistinguishable — usually the exact thing you are trying to see.
   const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
+  // True when the active view is the very cluster set shown here.
+  const colorByCluster = !!clusterSourceId && activeOverlayId === clusterSourceId;
+
   const clusterColorAt = useCallback((index) => (
     colorOverrides[index]
       ?? fileClusters?.[index]?.color
@@ -80,10 +88,17 @@ function ClusteringPane() {
   // place. Those indices then addressed the computed clusters instead, so the
   // scene stayed painted in cluster colours and the colour scheme never
   // reappeared, which looked like the view control had simply stopped working.
+  useEffect(() => {
+    if (activeOverlayId && clusterOverlays.some(o => o.id === activeOverlayId)) {
+      setClusterSourceId(activeOverlayId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeOverlayId]);
+
   const adoptedOverlayRef = useRef(undefined);
   useEffect(() => {
-    if (adoptedOverlayRef.current === activeOverlayId) return;
-    adoptedOverlayRef.current = activeOverlayId;
+    if (adoptedOverlayRef.current === clusterSourceId) return;
+    adoptedOverlayRef.current = clusterSourceId;
     setColorOverrides({});
 
     if (fileClusters) {
@@ -98,7 +113,7 @@ function ClusteringPane() {
       setHiddenClusters(new Set());
       setShowOnlySelected(false);
     }
-  }, [activeOverlayId, fileClusters]);
+  }, [clusterSourceId, fileClusters]);
 
   const handleClusterFile = useCallback(async (event) => {
     const file = event.target.files?.[0];
@@ -121,16 +136,6 @@ function ClusteringPane() {
     }
   }, [positions, addOverlay, colorScheme]);
 
-  const clearClusterFile = useCallback(() => {
-    // Back to the computed clusters: deactivate the overlay rather than
-    // discarding it, so switching back costs nothing.
-    setActiveOverlay(null);
-    setColorOverrides({});
-    setHiddenClusters(new Set());
-    setSelectedClusters(new Set());
-    setFileError(null);
-    setFileWarnings([]);
-  }, [setActiveOverlay]);
 
   // Compute statistics
   const statistics = useMemo(() => {
@@ -220,13 +225,16 @@ function ClusteringPane() {
         const color = clusterColorAt(clusterIndex);
         members.forEach(particleIndex => {
           highlightedParticleIndices.add(particleIndex);
-          colors.set(particleIndex, color);
+          // Only tint by cluster when the view is actually colouring by this
+          // cluster set. Under "Particle type" the grouping still selects,
+          // hides and scales, but the particles keep their type colour.
+          if (colorByCluster) colors.set(particleIndex, color);
         });
       });
     }
 
     highlightClusters(highlightedParticleIndices, showOnlySelected, colors);
-  }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt]);
+  }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt, colorByCluster]);
 
   // Translate hidden *clusters* into hidden *particles*, which is what the
   // renderers work in.
@@ -277,18 +285,39 @@ function ClusteringPane() {
           style={{ display: 'none' }}
           onChange={handleClusterFile}
         />
-        {fileClusters ? (
-          <div className="cluster-source-loaded">
-            <span>{fileClusters.length} clusters from file</span>
-            <button className="select-button" onClick={clearClusterFile}>
-              Use DBSCAN again
-            </button>
-          </div>
-        ) : (
-          <button className="select-button" onClick={() => fileInputRef.current?.click()}>
-            Load clusters from file
-          </button>
+
+        <label className="field">
+          <span className="field-label">Clusters</span>
+          <select
+            value={clusterSourceId ?? ''}
+            onChange={(e) => setClusterSourceId(e.target.value || null)}
+          >
+            <option value="">Computed (DBSCAN)</option>
+            {clusterOverlays.map(overlay => (
+              <option key={overlay.id} value={overlay.id}>{overlay.name}</option>
+            ))}
+          </select>
+        </label>
+
+        <button className="select-button" onClick={() => fileInputRef.current?.click()}>
+          Load clusters from file
+        </button>
+
+        {/* The grouping above and the colours in the scene are separate
+            choices, and that is not obvious, so say it where it matters. */}
+        {clusterSource && !colorByCluster && (
+          <p className="cluster-source-note">
+            Grouping by <strong>{clusterSource.name}</strong>, coloured by particle type.
+            Switch the View to <strong>{clusterSource.name}</strong> to colour by cluster.
+          </p>
         )}
+        {clusterSource && colorByCluster && (
+          <p className="cluster-source-note">
+            Coloured by cluster. Switch the View to <strong>Particle type</strong> to keep
+            this grouping but colour by particle type.
+          </p>
+        )}
+
         {fileError && <p className="cluster-source-error">{fileError}</p>}
         {fileWarnings.map((warning, i) => (
           <p className="cluster-source-warning" key={i}>{warning}</p>
