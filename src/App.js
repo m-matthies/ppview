@@ -22,6 +22,8 @@ import { useParticleStore } from "./store/particleStore";
 import { useUIStore } from "./store/uiStore";
 import { useClusteringStore } from "./store/clusteringStore";
 import { parseClusterFile } from "./utils/clusterFile";
+import { useOverlayStore } from "./store/overlayStore";
+import { clusterOverlayFromFile } from "./utils/overlays";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
@@ -98,7 +100,7 @@ function App() {
   // Clusters dropped alongside the simulation. They cannot be applied until the
   // trajectory has produced positions, because parsing validates every index
   // against the particle count, so the text waits here until then.
-  const [pendingClusterText, setPendingClusterText] = useState(null);
+  const [pendingClusterFiles, setPendingClusterFiles] = useState(null);
   const playbackIntervalRef = useRef(null);
   const speedPopupRef = useRef(null);
 
@@ -124,9 +126,46 @@ function App() {
   }, [sceneRef, currentConfigIndex]);
 
 
+  // Turns cluster files into overlays. Shared by the two ways they arrive:
+  // dropped with the simulation at startup, or dropped onto a loaded scene.
+  const registerClusterOverlays = useCallback(async (clusterFiles, particleCount) => {
+    for (const file of clusterFiles) {
+      try {
+        const { clusters, warnings } = parseClusterFile(await file.text(), { particleCount });
+        useOverlayStore.getState().addOverlay(clusterOverlayFromFile({
+          name: file.name.replace(/\.json$/i, ''),
+          clusters,
+          colorScheme: useUIStore.getState().currentColorScheme,
+        }));
+        warnings.forEach(w => console.warn(`${file.name}:`, w));
+      } catch (error) {
+        console.error(`Could not use ${file.name}:`, error.message);
+        notify(`${file.name} ignored: ${error.message}`);
+      }
+    }
+  }, [notify]);
+
   const handleFilesReceived = useCallback(async (files) => {
     if (!files || files.length === 0) {
       // No files selected or operation cancelled
+      return;
+    }
+
+    // Classify before touching anything: a drop of nothing but overlay files
+    // onto a loaded scene adds to it rather than replacing it.
+    const filesWithTypes = await analyzeFiles(files);
+    const categorizedFiles = categorizeFiles(filesWithTypes);
+
+    const bringsSimulation = !!(categorizedFiles.topology || categorizedFiles.trajectory
+      || categorizedFiles.mglFile || categorizedFiles.mglTrajectory);
+    const sceneIsLoaded = useParticleStore.getState().positions.length > 0;
+
+    if (!bringsSimulation && categorizedFiles.clusterFiles.length > 0 && sceneIsLoaded) {
+      await registerClusterOverlays(
+        categorizedFiles.clusterFiles,
+        useParticleStore.getState().positions.length,
+      );
+      useUIStore.getState().setShowClusteringPane(true);
       return;
     }
 
@@ -142,6 +181,7 @@ function App() {
     // its end.
     useUIStore.getState().setSelectedParticles([]);
     useClusteringStore.getState().resetClusters();
+    useOverlayStore.getState().clearOverlays();
     setTopData(null);
     setPositions([]);
     setTrajFile(null);
@@ -153,26 +193,12 @@ function App() {
     setIsLoading(true);
 
     try {
-      // Analyze file types dynamically based on content
-      console.log("Analyzing file types...");
-      const filesWithTypes = await analyzeFiles(files);
-      if (isStale()) return;
-      const categorizedFiles = categorizeFiles(filesWithTypes);
-
       console.log("File analysis results:", categorizedFiles);
 
-      // A clusters file may be dropped with the simulation; hold its text until
-      // positions exist.
-      setPendingClusterText(null);
-      if (categorizedFiles.clusterFile) {
-        try {
-          const clusterText = await categorizedFiles.clusterFile.text();
-          if (isStale()) return;
-          setPendingClusterText(clusterText);
-        } catch (error) {
-          console.warn('Could not read clusters file:', error);
-        }
-      }
+      // Cluster files dropped with the simulation cannot be parsed yet: their
+      // indices are validated against a particle count that does not exist
+      // until the first frame loads. Hold the files until then.
+      setPendingClusterFiles(categorizedFiles.clusterFiles.length ? categorizedFiles.clusterFiles : null);
 
       // Process input file if present
       let inputFileParams = {};
@@ -365,7 +391,7 @@ function App() {
     }
   }, [setFilesDropped, setIsLoading, setParticleRadius, setTopData, setPositions,
       setCurrentBoxSize, setCurrentTime, setCurrentEnergy, setConfigIndex,
-      setCurrentConfigIndex, setTotalConfigs, setTrajFile]);
+      setCurrentConfigIndex, setTotalConfigs, setTrajFile, registerClusterOverlays]);
 
   // Load configuration when topData, trajFile, and configIndex are available
   useEffect(() => {
@@ -602,26 +628,16 @@ function App() {
 
   useIframeBridge({ handleFilesReceived, makeOutputFiles, notify });
 
-  // Clusters dropped with the simulation are applied as soon as the first frame
-  // has produced positions — any earlier and every index would look
+  // Clusters dropped with the simulation are registered as soon as the first
+  // frame has produced positions — any earlier and every index would look
   // out-of-range.
   useEffect(() => {
-    if (!pendingClusterText || positions.length === 0) return;
-    try {
-      const { clusters, warnings } = parseClusterFile(pendingClusterText, {
-        particleCount: positions.length,
-      });
-      useClusteringStore.getState().setFileClusters(clusters);
-      // Open the pane so the loaded clusters can be seen and recoloured;
-      // otherwise the colours appear with no visible explanation.
-      useUIStore.getState().setShowClusteringPane(true);
-      warnings.forEach(w => console.warn('Clusters file:', w));
-    } catch (error) {
-      console.error('Could not use the clusters file:', error.message);
-      notify(`Clusters file ignored: ${error.message}`);
-    }
-    setPendingClusterText(null);
-  }, [pendingClusterText, positions.length, notify]);
+    if (!pendingClusterFiles || positions.length === 0) return;
+    const files = pendingClusterFiles;
+    setPendingClusterFiles(null);
+    registerClusterOverlays(files, positions.length)
+      .then(() => useUIStore.getState().setShowClusteringPane(true));
+  }, [pendingClusterFiles, positions.length, registerClusterOverlays]);
 
   useKeyboardShortcuts({
     togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot,

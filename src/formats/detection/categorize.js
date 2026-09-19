@@ -12,7 +12,7 @@ export function categorizeFiles(filesWithTypes) {
     mglFile: null,
     mglTrajectory: null,
     inputFile: null,
-    clusterFile: null,
+    clusterFiles: [],
     unknown: []
   };
 
@@ -47,7 +47,7 @@ export function categorizeFiles(filesWithTypes) {
         categorized.mglTrajectory = file;
         break;
       case 'clusters':
-        categorized.clusterFile = file;
+        categorized.clusterFiles.push(file);
         break;
 
       case 'input':

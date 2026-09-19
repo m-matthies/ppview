@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore } from '../../store/clusteringStore';
+import { useOverlayStore } from '../../store/overlayStore';
+import { clusterOverlayFromFile } from '../../utils/overlays';
 import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
 import { dbscan, generateHistogram } from '../../utils/clustering';
@@ -19,8 +21,14 @@ function ClusteringPane() {
   // reads. A second local flag here let the two disagree about whether the
   // pane was open.
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
-  const fileClusters = useClusteringStore(state => state.fileClusters);
-  const setFileClusters = useClusteringStore(state => state.setFileClusters);
+  const overlays = useOverlayStore(state => state.overlays);
+  const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
+  const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
+  const addOverlay = useOverlayStore(state => state.addOverlay);
+  // Only a cluster overlay has clusters to list; a future scalar-property
+  // overlay would colour particles without any grouping to show here.
+  const activeOverlay = overlays.find(o => o.id === activeOverlayId) || null;
+  const fileClusters = activeOverlay?.kind === 'clusters' ? activeOverlay.clusters : null;
   const setHiddenParticles = useClusteringStore(state => state.setHiddenParticles);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const fileInputRef = useRef(null);
@@ -89,23 +97,29 @@ function ClusteringPane() {
       const { clusters: loaded, warnings } = parseClusterFile(await file.text(), {
         particleCount: positions?.length ?? 0,
       });
-      setFileClusters(loaded);
+      addOverlay(clusterOverlayFromFile({
+        name: file.name.replace(/\.json$/i, ''),
+        clusters: loaded,
+        colorScheme,
+      }));
       setFileError(null);
       setFileWarnings(warnings);
     } catch (error) {
       setFileError(error.message);
       setFileWarnings([]);
     }
-  }, [positions, setFileClusters]);
+  }, [positions, addOverlay, colorScheme]);
 
   const clearClusterFile = useCallback(() => {
-    setFileClusters(null);
+    // Back to the computed clusters: deactivate the overlay rather than
+    // discarding it, so switching back costs nothing.
+    setActiveOverlay(null);
     setColorOverrides({});
     setHiddenClusters(new Set());
     setSelectedClusters(new Set());
     setFileError(null);
     setFileWarnings([]);
-  }, [setFileClusters]);
+  }, [setActiveOverlay]);
 
   // Compute statistics
   const statistics = useMemo(() => {

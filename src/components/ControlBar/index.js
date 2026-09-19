@@ -1,5 +1,6 @@
 import React from 'react';
 import ColorSchemeSelector from '../ColorSchemeSelector';
+import { useOverlayStore } from '../../store/overlayStore';
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
@@ -73,6 +74,10 @@ function ControlBar(props) {
     particleRadius, handleRadiusChange,
     takeScreenshot, exportGLTF,
   } = props;
+
+  const overlays = useOverlayStore(state => state.overlays);
+  const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
+  const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
 
   const energyReadout = formatEnergy(currentEnergy);
   const hasTrajectory = totalConfigs > 1;
@@ -237,6 +242,24 @@ function ControlBar(props) {
             </div>
 
             <div className="settings-cluster">
+              {/* Only worth showing once something can be switched to. */}
+              {overlays.length > 0 && (
+                <label className="field" title="What the particle colours mean">
+                  <span className="field-label">View</span>
+                  <select
+                    value={activeOverlayId ?? ''}
+                    onChange={(e) => setActiveOverlay(e.target.value || null)}
+                  >
+                    <option value="">Particle type</option>
+                    {overlays.map(overlay => (
+                      <option key={overlay.id} value={overlay.id}>
+                        {overlay.name}{overlay.summary ? ` — ${overlay.summary}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
               <ColorSchemeSelector />
 
               <label className="field" title="Geometry resolution for spheres, patch cones and spring cylinders">

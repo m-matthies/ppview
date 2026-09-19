@@ -11,6 +11,8 @@ import * as THREE from "three";
 import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import { useClusteringStore } from "../../store/clusteringStore";
+import { useOverlayStore } from "../../store/overlayStore";
+import { overlayColorFor } from "../../utils/overlays";
 import { getParticleColors } from "../../colors";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
@@ -40,6 +42,9 @@ function OxDNANucleotides() {
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
   const { selectedParticles, sphereSegments } = useUIStore();
   const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
+  // An active overlay replaces the base colour for the particles it covers.
+  const overlayColors = useOverlayStore(state =>
+    state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
 
   const bbRef = useRef();
   const nsRef = useRef();
@@ -126,13 +131,13 @@ function OxDNANucleotides() {
         hasHighlightedClusters: highlightedClusters.size > 0,
         showOnlyHighlightedClusters,
         dimNonSelectedClusters,
-        baseColor: strandColor,
+        baseColor: overlayColorFor(overlayColors, i, THREE) ?? strandColor,
         clusterColor: clusterColorFor(clusterColors, i, THREE),
       });
     }
     return out;
   }, [count, positions, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles,
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, overlayColors,
       strandColors]);
 
   const scratch = useMemo(() => ({

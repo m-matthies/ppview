@@ -20,14 +20,10 @@ export const useClusteringStore = create((set) => ({
   // selection: hiding a cluster works whether or not "show only selected" is on.
   hiddenParticles: new Set(),
 
-  // Clusters loaded from a file, which replace the computed ones while present.
-  fileClusters: null,
-
   // Actions
   setHighlightedClusters: (clusters) => set({ highlightedClusters: clusters }),
   setShowOnlyHighlightedClusters: (show) => set({ showOnlyHighlightedClusters: show }),
   setDimNonSelectedClusters: (dim) => set({ dimNonSelectedClusters: dim }),
-  setFileClusters: (clusters) => set({ fileClusters: clusters }),
   setHiddenParticles: (particles) => set({ hiddenParticles: particles }),
 
   // Combined action for cluster highlighting
@@ -51,6 +47,5 @@ export const useClusteringStore = create((set) => ({
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
     hiddenParticles: new Set(),
-    fileClusters: null,
   }),
 }));

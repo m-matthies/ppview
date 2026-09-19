@@ -6,6 +6,8 @@ import { getParticleColors } from "../../colors";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import { useClusteringStore } from "../../store/clusteringStore";
+import { useOverlayStore } from "../../store/overlayStore";
+import { overlayColorFor } from "../../utils/overlays";
 import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
@@ -27,6 +29,9 @@ function Particles() {
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
   const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
+  // An active overlay replaces the base colour for the particles it covers.
+  const overlayColors = useOverlayStore(state =>
+    state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
   const meshRef = useRef();
 
   const count = positions?.length ?? 0;
@@ -89,7 +94,7 @@ function Particles() {
       hasHighlightedClusters: highlightedClusters.size > 0,
       showOnlyHighlightedClusters,
       dimNonSelectedClusters,
-      baseColor: data.typeColor,
+      baseColor: overlayColorFor(overlayColors, i, THREE) ?? data.typeColor,
       clusterColor: clusterColorFor(clusterColors, i, THREE),
     });
 
@@ -108,7 +113,7 @@ function Particles() {
     setColor(color);
     return true;
   }, [particleData, positions, boxSize, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, scratch]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, overlayColors, scratch]);
 
   // The sphere mesh is clickable except where a raspberry particle's hidden
   // centre sits — those clicks belong to the beads.

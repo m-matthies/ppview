@@ -420,6 +420,38 @@ This means a trajectory frame update only re-renders `Particles.js` (or `OxDNANu
 
 Ignored while a form field has focus.
 
+## Overlays (`store/overlayStore.js`, `utils/overlays.js`)
+
+An overlay is a named, per-particle source of colour. The default view colours
+by particle type from the active colour scheme; an overlay replaces that **base**
+colour for the particles it covers. Cluster membership is the first kind; the
+model is deliberately a plain `Map<particleIndex, '#rrggbb'>` rather than
+anything cluster-shaped, so per-particle scalar properties can be added without
+reworking it.
+
+- Several overlays can be registered at once. Exactly one is active, or none.
+- The **View** control in the control bar switches between them, and only
+  appears once at least one is registered.
+- A newly dropped overlay becomes active immediately — dropping a file and
+  seeing nothing change would read as the drop having failed.
+- Overlays are keyed by particle index, so loading a new simulation clears them.
+
+Overlay colour is the *base* colour, so cluster selection, highlighting and
+per-cluster visibility still apply on top of it.
+
+### Additive drops
+`handleFilesReceived` classifies the drop **before** touching any state: a drop
+carrying no topology, trajectory or MGL file, but at least one cluster file, onto
+an already-loaded scene registers overlays and returns without resetting
+anything. Anything else replaces the scene as before.
+
+### One source of clusters
+`ClusteringPane` reads its file-based clusters from the **active overlay**
+(`kind === 'clusters'`), not from a separate store field. An earlier version kept
+`fileClusters` in `clusteringStore` as well, which is exactly the two-sources-of-
+truth pattern that caused several bugs in this codebase. "Use DBSCAN again"
+deactivates the overlay rather than discarding it, so switching back is free.
+
 ## Loading a second simulation
 
 `FileDropZone` unmounts once the first files land, so `FileDropOverlay` takes

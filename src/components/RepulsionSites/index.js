@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { useUIStore } from "../../store/uiStore";
 import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../../store/particleStore";
 import { useClusteringStore } from "../../store/clusteringStore";
+import { useOverlayStore } from "../../store/overlayStore";
+import { overlayColorFor } from "../../utils/overlays";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox, rotationMatrixOf } from "../../rendering/transforms";
@@ -20,6 +22,9 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const { selectedParticles, sphereSegments } = useUIStore();
   const particleRadius = useParticleStore(state => state.particleRadius);
   const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
+  // An active overlay replaces the base colour for the particles it covers.
+  const overlayColors = useOverlayStore(state =>
+    state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
 
   // Bead sizes and offsets come from the topology. Scaling both by the same
   // factor resizes the whole raspberry particle while preserving the shape the
@@ -55,12 +60,12 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
         hasHighlightedClusters: highlightedClusters.size > 0,
         showOnlyHighlightedClusters,
         dimNonSelectedClusters,
-        baseColor: typeColor,
+        baseColor: overlayColorFor(overlayColors, globalIndex, THREE) ?? typeColor,
         clusterColor: clusterColorFor(clusterColors, globalIndex, THREE),
       });
     });
   }, [particles, globalIndices, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles,
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, overlayColors,
       typeColor, hasValidData]);
 
   const scratch = useMemo(() => ({
