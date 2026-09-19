@@ -26,7 +26,7 @@ function Particles() {
   const { selectedParticles, sphereSegments } = useUIStore();
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
   const meshRef = useRef();
 
   const count = positions?.length ?? 0;
@@ -82,6 +82,7 @@ function Particles() {
 
     const isInHighlightedCluster = highlightedClusters.has(i);
     const { color, scaleFactor, dimmed } = getClusterAppearance({
+      forceHidden: hiddenParticles.has(i),
       isSelected: Array.isArray(selectedParticles) && selectedParticles.includes(i),
       isInHighlightedCluster,
       shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
@@ -107,7 +108,7 @@ function Particles() {
     setColor(color);
     return true;
   }, [particleData, positions, boxSize, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, scratch]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, scratch]);
 
   // The sphere mesh is clickable except where a raspberry particle's hidden
   // centre sits — those clicks belong to the beads.

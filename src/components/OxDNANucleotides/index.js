@@ -39,7 +39,7 @@ function OxDNANucleotides() {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
   const { selectedParticles, sphereSegments } = useUIStore();
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
 
   const bbRef = useRef();
   const nsRef = useRef();
@@ -119,6 +119,7 @@ function OxDNANucleotides() {
       const inCluster = highlightedClusters.has(i);
       const strandColor = strandColors[(positions?.[i]?.typeIndex ?? 0) % Math.max(strandColors.length, 1)];
       out[i] = getClusterAppearance({
+        forceHidden: hiddenParticles.has(i),
         isSelected: selected.includes(i),
         isInHighlightedCluster: inCluster,
         shouldShow: !showOnlyHighlightedClusters || inCluster,
@@ -131,7 +132,8 @@ function OxDNANucleotides() {
     }
     return out;
   }, [count, positions, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, strandColors]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles,
+      strandColors]);
 
   const scratch = useMemo(() => ({
     p: new THREE.Vector3(),

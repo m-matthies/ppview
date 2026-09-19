@@ -16,6 +16,10 @@ export const useClusteringStore = create((set) => ({
   // a given particle without knowing which cluster it came from.
   clusterColors: new Map(),
 
+  // Particles belonging to a cluster switched off in the pane. Independent of
+  // selection: hiding a cluster works whether or not "show only selected" is on.
+  hiddenParticles: new Set(),
+
   // Clusters loaded from a file, which replace the computed ones while present.
   fileClusters: null,
 
@@ -24,6 +28,7 @@ export const useClusteringStore = create((set) => ({
   setShowOnlyHighlightedClusters: (show) => set({ showOnlyHighlightedClusters: show }),
   setDimNonSelectedClusters: (dim) => set({ dimNonSelectedClusters: dim }),
   setFileClusters: (clusters) => set({ fileClusters: clusters }),
+  setHiddenParticles: (particles) => set({ hiddenParticles: particles }),
 
   // Combined action for cluster highlighting
   highlightClusters: (clusterIndices, showOnlySelected, clusterColors = new Map()) => set({
@@ -37,6 +42,7 @@ export const useClusteringStore = create((set) => ({
     highlightedClusters: new Set(),
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
+    hiddenParticles: new Set(),
   }),
 
   // Dropping a new simulation must also drop clusters computed for the old one.
@@ -44,6 +50,7 @@ export const useClusteringStore = create((set) => ({
     highlightedClusters: new Set(),
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
+    hiddenParticles: new Set(),
     fileClusters: null,
   }),
 }));

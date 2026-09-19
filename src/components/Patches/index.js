@@ -18,7 +18,7 @@ import { getClusterAppearance } from '../../utils/clusterAppearance';
 function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, colorScheme = null }) {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const coneSegments = useUIStore(state => state.sphereSegments);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, hiddenParticles } = useClusteringStore();
 
   // Patch cone dimensions — scaled proportionally to particle radius so patches
   // stay visually consistent across formats with different particle sizes.
@@ -60,6 +60,7 @@ function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, 
       const globalIndex = globalIndices ? globalIndices[i] : i;
       const isInHighlightedCluster = highlightedClusters.has(globalIndex);
       return getClusterAppearance({
+        forceHidden: hiddenParticles.has(globalIndex),
         isInHighlightedCluster,
         shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
         hasHighlightedClusters: highlightedClusters.size > 0,
@@ -69,7 +70,8 @@ function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, 
         allowSelectionColor: false,
       });
     });
-  }, [particles, globalIndices, highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, hasValidPatchData]);
+  }, [particles, globalIndices, highlightedClusters, showOnlyHighlightedClusters,
+      dimNonSelectedClusters, hiddenParticles, hasValidPatchData]);
 
   // Patch colours are per patch ID and change only with the colour scheme.
   const patchColors = useMemo(

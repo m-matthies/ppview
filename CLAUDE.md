@@ -498,6 +498,20 @@ the dimmed marker is the one exception, because one sphere at the particle's cen
 better than a swarm of shrunken beads. `RepulsionSites` collapses its beads whenever the particle
 is `hidden` *or* `dimmed` so the two never draw at once.
 
+### Per-cluster visibility
+Each row in the pane has an eye control that hides that cluster, and
+`clusters.json` can start one hidden with `"visible": false`.
+
+This is deliberately a separate axis from selection. Selection drives
+highlighting and, with *show only selected*, what else stays on screen; the eye
+hides one cluster regardless of either. `forceHidden` is therefore checked
+*first* in `getClusterAppearance`, before the selection branch — otherwise
+hiding a selected cluster would appear to do nothing.
+
+The pane thinks in cluster indices; renderers think in particle indices. An
+effect translates `hiddenClusters` into `clusteringStore.hiddenParticles`, which
+is what the renderers read.
+
 ### Cluster colours
 Each cluster gets its own colour, cycling the active scheme's palette, and each
 row in the pane has a swatch that overrides it. Highlighting previously kept
@@ -533,12 +547,16 @@ an unrelated JSON file dropped with a simulation is not mistaken for clustering.
 disabled, because they cannot change clusters that came from a file.
 
 ```json
-{ "clusters": [ { "name": "Core", "color": "#e7298a", "particles": [0, 1, 2] } ] }
+{ "clusters": [
+  { "name": "Core", "color": "#e7298a", "visible": true, "particles": [0, 1, 2] }
+] }
 ```
 
 A bare array works too, and the particle list may be `particles`, `indices` or
 `ids` — analysis scripts in this space spell it all three ways. `color` is
-optional and falls back to the palette. A malformed entry is skipped with a
+optional and falls back to the palette. `visible` is optional and defaults to
+true: only an explicit `false` starts a cluster switched off, so a file that
+omits the field behaves exactly as before. A malformed entry is skipped with a
 warning rather than failing the whole file, but a cluster with any *invalid*
 index is rejected outright: silently dropping one would misreport its membership.
 Indices past the end of the current system are reported, since that usually

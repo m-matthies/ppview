@@ -37,6 +37,10 @@ export const SELECTED_COLOR = new THREE.Color('yellow');
  * over cluster state, and highlighting wins over hiding.
  */
 export function getClusterAppearance({
+  // Switched off by the pane's per-cluster visibility control. Checked before
+  // anything else: an explicitly hidden cluster stays hidden even when it is
+  // selected, because the control would otherwise appear not to work.
+  forceHidden = false,
   isSelected = false,
   isInHighlightedCluster = false,
   shouldShow = true,
@@ -52,6 +56,9 @@ export function getClusterAppearance({
   // turning them yellow would throw away the identity the colour encodes.
   allowSelectionColor = true,
 }) {
+  if (forceHidden) {
+    return { color: baseColor, scaleFactor: CLUSTER_HIDDEN_SCALE, hidden: true };
+  }
   if (isSelected) {
     return { color: allowSelectionColor ? SELECTED_COLOR : baseColor, scaleFactor: 1 };
   }

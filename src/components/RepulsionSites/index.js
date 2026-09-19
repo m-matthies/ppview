@@ -19,7 +19,7 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const meshRef = useRef();
   const { selectedParticles, sphereSegments } = useUIStore();
   const particleRadius = useParticleStore(state => state.particleRadius);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors } = useClusteringStore();
+  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
 
   // Bead sizes and offsets come from the topology. Scaling both by the same
   // factor resizes the whole raspberry particle while preserving the shape the
@@ -48,6 +48,7 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
       const globalIndex = globalIndices ? globalIndices[i] : i;
       const isInHighlightedCluster = highlightedClusters.has(globalIndex);
       return getClusterAppearance({
+        forceHidden: hiddenParticles.has(globalIndex),
         isSelected: Array.isArray(selectedParticles) && selectedParticles.includes(globalIndex),
         isInHighlightedCluster,
         shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
@@ -59,7 +60,8 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
       });
     });
   }, [particles, globalIndices, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, typeColor, hasValidData]);
+      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles,
+      typeColor, hasValidData]);
 
   const scratch = useMemo(() => ({
     centre: new THREE.Vector3(),

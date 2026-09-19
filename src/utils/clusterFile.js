@@ -6,7 +6,10 @@
  * space spell it all three ways, and rejecting a file over the key name would
  * be a poor trade.
  *
- *   [ { "name": "core", "color": "#e7298a", "particles": [0, 1, 2] }, ... ]
+ *   [ { "name": "core", "color": "#e7298a", "visible": true, "particles": [0, 1, 2] }, ... ]
+ *
+ * `visible` is optional and defaults to true; it sets the cluster's initial
+ * visibility, which the pane can then toggle.
  */
 
 const COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
@@ -80,6 +83,9 @@ export function parseClusterFile(text, { particleCount = Infinity } = {}) {
     clusters.push({
       name: typeof entry.name === 'string' && entry.name.trim() ? entry.name.trim() : `Cluster ${position + 1}`,
       color,
+      // Anything other than an explicit false counts as visible, so a file that
+      // omits the field behaves exactly as before.
+      visible: entry.visible !== false,
       indices: inRange,
     });
   });

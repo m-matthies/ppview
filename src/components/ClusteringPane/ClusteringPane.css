@@ -114,6 +114,34 @@
     pointer-events: none;
 }
 
+.cluster-visibility {
+    display: flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 20px;
+    margin-left: auto;
+    padding: 0;
+    border: none;
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--ink-dim);
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.cluster-visibility:hover {
+    background: var(--surface-hover);
+    color: var(--ink);
+}
+
+/* A hidden cluster reads as switched off rather than merely unhovered. */
+.cluster-visibility.is-hidden {
+    color: var(--ink-mute);
+    opacity: 0.75;
+}
+
 .cluster-swatch {
     flex: none;
     width: 22px;

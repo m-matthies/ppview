@@ -6,7 +6,7 @@ import DraggablePanel from '../DraggablePanel';
 import { dbscan, generateHistogram } from '../../utils/clustering';
 import { parseClusterFile } from '../../utils/clusterFile';
 import { getParticleColors } from '../../colors';
-import { CloseIcon } from '../Icons';
+import { CloseIcon, EyeIcon, EyeOffIcon } from '../Icons';
 import './ClusteringPane.css';
 
 function ClusteringPane() {
@@ -21,12 +21,16 @@ function ClusteringPane() {
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
   const fileClusters = useClusteringStore(state => state.fileClusters);
   const setFileClusters = useClusteringStore(state => state.setFileClusters);
+  const setHiddenParticles = useClusteringStore(state => state.setHiddenParticles);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
   const [fileWarnings, setFileWarnings] = useState([]);
   // Per-cluster colour overrides, keyed by cluster index in the active list.
   const [colorOverrides, setColorOverrides] = useState({});
+  // Cluster indices switched off by the eye control. Separate from selection:
+  // hiding a cluster works whether or not "show only selected" is on.
+  const [hiddenClusters, setHiddenClusters] = useState(new Set());
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
   const [selectedClusters, setSelectedClusters] = useState(new Set());
@@ -70,6 +74,10 @@ function ClusteringPane() {
     adoptedClustersRef.current = fileClusters;
     setColorOverrides({});
     setSelectedClusters(new Set(fileClusters.map((_, i) => i)));
+    // `"visible": false` in the file starts that cluster switched off.
+    setHiddenClusters(new Set(
+      fileClusters.map((c, i) => (c.visible === false ? i : null)).filter(i => i !== null),
+    ));
     setShowOnlySelected(true);
   }, [fileClusters]);
 
@@ -93,6 +101,7 @@ function ClusteringPane() {
   const clearClusterFile = useCallback(() => {
     setFileClusters(null);
     setColorOverrides({});
+    setHiddenClusters(new Set());
     setSelectedClusters(new Set());
     setFileError(null);
     setFileWarnings([]);
@@ -193,6 +202,25 @@ function ClusteringPane() {
 
     highlightClusters(highlightedParticleIndices, showOnlySelected, colors);
   }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt]);
+
+  // Translate hidden *clusters* into hidden *particles*, which is what the
+  // renderers work in.
+  useEffect(() => {
+    const hidden = new Set();
+    hiddenClusters.forEach(clusterIndex => {
+      clusters[clusterIndex]?.forEach(particleIndex => hidden.add(particleIndex));
+    });
+    setHiddenParticles(hidden);
+  }, [hiddenClusters, clusters, setHiddenParticles]);
+
+  const toggleClusterVisible = (clusterIndex) => {
+    setHiddenClusters(previous => {
+      const next = new Set(previous);
+      if (next.has(clusterIndex)) next.delete(clusterIndex);
+      else next.add(clusterIndex);
+      return next;
+    });
+  };
   
   // Early return if no positions loaded
   if (!positions || positions.length === 0) {
@@ -414,7 +442,7 @@ function ClusteringPane() {
           <div className="cluster-list">
             <div className="cluster-list-header">
               <span>Cluster (Size)</span>
-              <span>Selected</span>
+              <span>Show / select</span>
             </div>
             <div className="cluster-items">
               {clusters
@@ -436,6 +464,15 @@ function ClusteringPane() {
                       {fileClusters?.[originalIndex]?.name ?? `Cluster ${originalIndex + 1}`}
                       {' '}({cluster.length} particles)
                     </span>
+                    <button
+                      className={`cluster-visibility ${hiddenClusters.has(originalIndex) ? 'is-hidden' : ''}`}
+                      onClick={() => toggleClusterVisible(originalIndex)}
+                      title={hiddenClusters.has(originalIndex) ? 'Show this cluster' : 'Hide this cluster'}
+                      aria-pressed={!hiddenClusters.has(originalIndex)}
+                      aria-label={`Toggle visibility of ${fileClusters?.[originalIndex]?.name ?? `cluster ${originalIndex + 1}`}`}
+                    >
+                      {hiddenClusters.has(originalIndex) ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
+                    </button>
                     <label className="cluster-checkbox">
                       <input
                         type="checkbox"
