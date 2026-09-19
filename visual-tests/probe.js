@@ -102,11 +102,20 @@ const quickHash = () => ${QUICK_HASH};
 /**
  * Wait until the canvas stops changing, rather than guessing how long a redraw
  * takes. frameloop is "demand", so once the scene has redrawn the pixels are
- * final — two identical samples in a row means finished. Fixed sleeps were the
+ * final — three identical samples in a row means finished. Fixed sleeps were the
  * entire cost of this suite.
  */
 const settle = async (timeout = 4000) => {
   const started = Date.now();
+  // Give the action a chance to commit before sampling at all. React commits
+  // asynchronously and a heavy scene under a software rasteriser can take
+  // longer to redraw than the three samples below span, so sampling
+  // immediately can find the *pre-action* frame already "stable" and return
+  // before anything has changed. That recorded a light frame as a dark
+  // background in one baseline run, and a hidden cluster as a restored one in
+  // another — both times passing the very next run, which is the worst way for
+  // a harness to be wrong.
+  await sleep(60);
   let previous = quickHash();
   let stable = 0;
   while (Date.now() - started < timeout) {
@@ -119,7 +128,9 @@ const settle = async (timeout = 4000) => {
       stable = 0;
       previous = next;
     } else if (next === previous) {
-      if (++stable >= 2) return;
+      // Three in a row, not two: one extra 40ms sample is far cheaper than a
+      // baseline recorded mid-transition.
+      if (++stable >= 3) return;
     } else {
       stable = 0;
       previous = next;

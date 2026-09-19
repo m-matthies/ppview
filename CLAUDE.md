@@ -357,13 +357,27 @@ first is deliberate — a stale render target left bound would otherwise swallow
 ## Visual regression tests (`visual-tests/`)
 
 Headless Chrome drives the real app over CDP: 6 fixtures (one per format, each
-laid out as 5 DBSCAN-separable blobs) x 5 scenarios (load, detail/radius,
-clustering, selection, appearance). It records pixel-bucket counts rather than
+laid out as 5 DBSCAN-separable blobs) x 6 scenarios (load, detail/radius,
+clustering, selection, appearance, overlays). It records pixel-bucket counts rather than
 image hashes, so it tolerates antialiasing jitter but moves decisively when
 geometry appears, vanishes, resizes or loses its colour.
 
 - `edges` counts horizontal gradient: colour buckets cannot see white geometry
   against a light background, which is exactly how the invisible-bead bug hid.
+- `tintR/G/B` are channel means over the *coloured* pixels only — what colour the
+  geometry is, as opposed to how much of it there is. Pixel counts cannot tell
+  magenta from green, so a regression that dropped cluster colours entirely read
+  as no change at all.
+- **Anything that changes the scene must wait for the change, not just for the
+  canvas to hold still.** `settle()` samples a lead-in delay then three identical
+  frames, but a heavy scene under a software rasteriser can still commit slower
+  than that — which recorded a light frame as `darkBackground` in one baseline
+  run and a hidden cluster as `clusterRestored` in another, both passing the very
+  next run. Steps with a known outcome assert it with `waitFor` instead. A
+  baseline recorded mid-transition is worse than a slow suite.
+- `dropFiles` waits for actual geometry, not just `.controls-panel`: the canvas
+  can be mounted and still showing bare background, and settle() calls that
+  stable.
 - The `selection` scenario enlarges particles first. Only some elements are
   clickable — an oxDNA backbone sphere is r=0.2 in a 60-unit box, roughly 4px —
   so at default size it would measure marksmanship, not correctness. It also
@@ -374,7 +388,7 @@ geometry appears, vanishes, resizes or loses its colour.
   win — scenarios are independent and the suite looks like it is mostly waiting —
   but every worker shares one software rasteriser. Three workers took the same
   244s as one while stalling four scenarios past the CDP timeout on every run.
-  Serial finishes all 30 in ~260s with no failures. `--workers=N` is still there
+  Serial finishes all 36 in ~330s with no failures. `--workers=N` is still there
   for a machine with a real GPU.
 - `settle()` must not await `requestAnimationFrame`: it never fires in a
   background tab, which is a trap if anyone re-enables workers.
@@ -542,6 +556,44 @@ patch color    = scheme.colors[patchID   % scheme.colors.length]
 
 Stored in `localStorage` under key `ppview_color_scheme`.
 
+## DBSCAN (`utils/clustering.js`)
+
+Textbook DBSCAN (Ester et al. 1996) over periodic distances. Pinned by
+`clustering.test.js`, which is the coverage for all of this — the visual suite's
+fixtures cluster identically under every variant tried, so it cannot see changes
+here.
+
+**Periodic distances.** `dbscan(points, epsilon, minPoints, boxSize)` measures
+separation under the **minimum image convention**: each axis difference has the
+nearest whole number of box lengths subtracted. Without it a cluster straddling a
+box wall reads as two clusters a whole box apart — the one thing periodic
+boundaries exist to prevent. `ClusteringPane` passes `currentBoxSize`, which is
+identity-stable, so this does not re-run DBSCAN on every trajectory frame.
+
+`Math.round`, not one wrap: oxDNA trajectories are **not** wrapped into the box,
+so a coordinate difference can legitimately span several box lengths. Omitting
+`boxSize` (or passing zeros) falls back to plain Euclidean distance, which is
+what a non-periodic system wants.
+
+**`epsilon` is capped at `maxMinimumImageRadius(boxSize)`** — half the shortest
+box dimension. Past that the nearest image stops being unique: a particle comes
+back into range as its own neighbour from the other side and pairs are counted
+through two images at once, which invents clusters rather than merely blurring
+them. Every MD code caps its interaction cutoff the same way. The epsilon slider
+also stops there, and says so when the box is what limits it.
+
+**Core, border and noise are the textbook definitions.** `minPoints` **counts the
+point itself**, so `minPoints: 3` means three particles within epsilon including
+this one. A point with at least `minPoints` neighbours is *core* and extends its
+cluster; a point within epsilon of a core point but not core itself is a *border*
+point, which joins that cluster but does **not** extend it — that is what stops
+two dense groups linked by a thin trail of stragglers from being reported as one.
+A point rejected as noise early can still be adopted later as a border point.
+
+This changed in the commit that added periodic distances: the previous
+implementation excluded the point itself from the count, so `minPoints: 3`
+behaved like a textbook 4.
+
 ## Cluster Visualization States
 
 | State | Color | Scale |
@@ -582,10 +634,26 @@ effect translates `hiddenClusters` into `clusteringStore.hiddenParticles`, which
 is what the renderers read.
 
 ### Cluster colours
-Each cluster gets its own colour, cycling the active scheme's palette, and each
-row in the pane has a swatch that overrides it. Highlighting previously kept
-every particle's *type* colour, which made two adjacent clusters
-indistinguishable — usually the exact thing you are trying to see.
+**Colour encodes cluster size, not cluster identity.** The distinct cluster sizes
+are ranked ascending and the palette is indexed by that rank, so two clusters of
+the same size always share a colour and the palette walks in size order. A
+cluster's *index* is an artefact of the order DBSCAN happened to walk the
+particles: colouring by it said nothing about the structure. This also matches the
+histogram, which already treats an exact size as the unit you select by — and the
+histogram bars are painted in the same colours, so it doubles as the legend.
+
+The bar colour arrives as a `--bar-color` custom property rather than an inline
+`background`, because an inline background would outrank the class rule that
+paints a *selected* bar accent-blue.
+
+Two consequences, both inherent to the choice: a system whose clusters are all
+the same size renders in one colour, and the colours are relative to the sizes
+present, so changing epsilon can reshuffle them.
+
+A per-cluster swatch in each row still overrides the colour, and a `color` in a
+cluster file still wins over both. Highlighting previously kept every particle's
+*type* colour, which made two adjacent clusters indistinguishable — usually the
+exact thing you are trying to see.
 
 The colours reach the renderers as `clusteringStore.clusterColors`, a
 `Map<particleIndex, '#rrggbb'>`. Per particle rather than per cluster because

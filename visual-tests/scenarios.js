@@ -175,9 +175,18 @@ const SCENARIOS = {
       const chip = preset(name);
       if (chip) { chip.click(); await settle(); out['light_' + name] = measure(); }
     }
-    document.querySelector('.scene-bg-toggle').click(); await settle();
+    // Wait for the background to actually flip, not just for the canvas to hold
+    // still. settle() needs three samples 40ms apart, and a heavy scene under a
+    // software rasteriser can take longer than that to commit the change — so
+    // settle() saw two identical *pre-toggle* frames and called it done. That
+    // recorded a light frame as darkBackground in one baseline run and not the
+    // next. Asserting the outcome removes the race; mean splits the two
+    // backgrounds by 200 points, so the threshold is not delicate.
+    document.querySelector('.scene-bg-toggle').click();
+    await waitFor(() => measure().mean < 150, 8000); await settle();
     out.darkBackground = measure();
-    document.querySelector('.scene-bg-toggle').click(); await settle();
+    document.querySelector('.scene-bg-toggle').click();
+    await waitFor(() => measure().mean > 150, 8000); await settle();
     out.lightBackground = measure();
     return out;
   `,
@@ -229,11 +238,17 @@ const SCENARIOS = {
     out.schemePickerHidden = document.querySelector('.color-scheme-selector') ? 1 : 0;
 
     // The eye control hides that cluster's particles outright.
+    //
+    // Both toggles wait for the pixel count to actually move rather than for the
+    // canvas to hold still: settle() alone recorded the still-hidden frame as
+    // clusterRestored in one baseline run and the restored one in the next.
+    const beforeHide = measure().coloured;
     document.querySelector('.cluster-visibility').click();
-    await settle();
+    await waitFor(() => measure().coloured < beforeHide - 10, 8000); await settle();
     out.oneClusterHidden = measure();
+    const whileHidden = out.oneClusterHidden.coloured;
     document.querySelector('.cluster-visibility').click();
-    await settle();
+    await waitFor(() => measure().coloured > whileHidden + 10, 8000); await settle();
     out.clusterRestored = measure();
 
     // A per-cluster colour override repaints only its own cluster.

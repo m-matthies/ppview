@@ -5,7 +5,7 @@ import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { clusterOverlayFromFile } from '../../utils/overlays';
 import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
-import { dbscan, generateHistogram } from '../../utils/clustering';
+import { dbscan, generateHistogram, maxMinimumImageRadius } from '../../utils/clustering';
 import { parseClusterFile } from '../../utils/clusterFile';
 import { getParticleColors } from '../../colors';
 import { CloseIcon, EyeIcon, EyeOffIcon } from '../Icons';
@@ -14,6 +14,9 @@ import './ClusteringPane.css';
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
+  // Identity-stable across frames (particleStore ignores numerically equal
+  // updates), so this does not re-run DBSCAN on every trajectory step.
+  const currentBoxSize = useParticleStore(state => state.currentBoxSize);
   const highlightClusters = useClusteringStore(state => state.highlightClusters);
   const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
   const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
@@ -55,12 +58,22 @@ function ClusteringPane() {
     if (!positions || positions.length === 0) return [];
     
     try {
-      return dbscan(positions, epsilon, minPoints);
+      // Distances are measured under periodic boundaries: a cluster straddling
+      // a box wall is one cluster, not two. dbscan caps epsilon itself, so a
+      // value saved from a larger box cannot produce nonsense here.
+      return dbscan(positions, epsilon, minPoints, currentBoxSize);
     } catch (error) {
       console.error('Error computing clusters:', error);
       return [];
     }
-  }, [positions, epsilon, minPoints]);
+  }, [positions, epsilon, minPoints, currentBoxSize]);
+
+  // Past half the shortest box dimension the minimum image convention stops
+  // being meaningful, so the slider does not offer it.
+  const epsilonLimit = useMemo(
+    () => maxMinimumImageRadius(currentBoxSize),
+    [currentBoxSize],
+  );
 
   // A loaded file replaces the computed clusters while it is present, so the
   // rest of the pane does not need to care where the clusters came from.
@@ -78,11 +91,30 @@ function ClusteringPane() {
   // DBSCAN as "no view" left its clusters with no colours at all.
   const colorByCluster = activeOverlayId === (clusterSourceId ?? COMPUTED_VIEW);
 
+  // Colour encodes cluster *size*, not cluster identity.
+  //
+  // A cluster's index is an artefact of the order DBSCAN happened to walk the
+  // particles — it says nothing about the structure, so coloring by it made two
+  // clusters of the same size look unrelated and told you nothing you could read
+  // off the scene. Ranking the distinct sizes and indexing the palette by that
+  // rank means same size always means same colour, and the palette walks in size
+  // order. It also matches the histogram, which already treats an exact size as
+  // the unit you select by.
+  const sizeRanks = useMemo(() => {
+    const sizes = [...new Set(clusters.map(c => c.length))].sort((a, b) => a - b);
+    return new Map(sizes.map((size, rank) => [size, rank]));
+  }, [clusters]);
+
+  const colorForSize = useCallback(
+    (size) => palette[(sizeRanks.get(size) ?? 0) % palette.length],
+    [palette, sizeRanks],
+  );
+
   const clusterColorAt = useCallback((index) => (
     colorOverrides[index]
       ?? fileClusters?.[index]?.color
-      ?? palette[index % palette.length]
-  ), [colorOverrides, fileClusters, palette]);
+      ?? colorForSize(clusters[index]?.length)
+  ), [colorOverrides, fileClusters, colorForSize, clusters]);
 
   // Selection lives in this component, so a change of active overlay has to be
   // adopted here — including a change *to* none.
@@ -338,13 +370,14 @@ function ClusteringPane() {
       <div className={`clustering-controls ${fileClusters ? 'is-disabled' : ''}`}>
         <div className="parameter-control">
           <label htmlFor="epsilon-slider">
-            Epsilon Distance: {epsilon.toFixed(2)}
+            Epsilon Distance: {Math.min(epsilon, epsilonLimit).toFixed(2)}
+            {epsilonLimit < 10 && <span className="checkbox-hint"> · max {epsilonLimit.toFixed(1)} (half box)</span>}
           </label>
           <input
             id="epsilon-slider"
             type="range"
             min="0.5"
-            max="10.0"
+            max={Math.min(10, epsilonLimit)}
             step="0.1"
             value={epsilon}
             onChange={(e) => setEpsilon(parseFloat(e.target.value))}
@@ -439,7 +472,15 @@ function ClusteringPane() {
                         title={`Select the ${bin.count} cluster${bin.count === 1 ? '' : 's'} of ${bin.size} particles. Cmd/Ctrl+click to add to the selection.`}
                       >
                         <div className="histogram-bar-track">
-                          <div className="histogram-bar" style={{ height: `${finalHeight}%` }} />
+                          {/* Each bar carries the colour its clusters are drawn
+                              in, so the histogram doubles as the legend for what
+                              the scene colours mean. Set as a custom property,
+                              not `background`: an inline background would beat
+                              the class rule that paints a selected bar blue. */}
+                          <div
+                            className="histogram-bar"
+                            style={{ height: `${finalHeight}%`, '--bar-color': colorForSize(bin.size) }}
+                          />
                         </div>
                         <div className="histogram-labels">
                           <span className="histogram-label-count">{bin.count}</span>

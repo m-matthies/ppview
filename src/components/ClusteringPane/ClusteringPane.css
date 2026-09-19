@@ -309,18 +309,23 @@
     min-height: 0;
 }
 
-/* Blue means selected here, as everywhere else in the app. Unselected bars stay
-   neutral so the selection is the only thing that reads as coloured. */
+/* A bar carries the colour the clusters of that size are drawn in, so the
+   histogram is also the legend for the scene. `--bar-color` comes from the
+   component; the fallback covers a bar with no clusters behind it.
+
+   Blue still means selected, as everywhere else in the app — which is why the
+   colour arrives as a custom property rather than an inline background, since
+   an inline background would outrank the .is-active rule below. */
 .histogram-bar {
     width: 100%;
     min-height: 2px;
     border-radius: 2px 2px 0 0;
-    background: rgba(255, 255, 255, 0.22);
-    transition: background var(--dur) var(--ease);
+    background: var(--bar-color, rgba(255, 255, 255, 0.22));
+    transition: background var(--dur) var(--ease), filter var(--dur) var(--ease);
 }
 
 .histogram-bar-container:hover .histogram-bar {
-    background: rgba(255, 255, 255, 0.36);
+    filter: brightness(1.25);
 }
 
 .histogram-bar-container.is-active .histogram-bar {

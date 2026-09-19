@@ -124,10 +124,35 @@ async function connect(port = 9222, wsUrl = null) {
       // The controls bar only mounts once positions are in the store, so it is
       // a reliable "the scene is up" signal.
       await this.waitForSelector('.controls-panel');
-      await send('Runtime.evaluate', {
-        expression: `new Promise(r => setTimeout(() => requestAnimationFrame(() => r(1)), 250))`,
-        awaitPromise: true,
-      });
+
+      // But "up" is not "drawn". The canvas can be present and still showing
+      // bare background, and settle() will happily call that stable — two
+      // identical all-background frames look exactly like a finished render.
+      // A scenario measuring there records zeros, which surfaced as a run where
+      // every tint in `load.loaded` came back 0 and did not reproduce. Waiting
+      // for actual geometry removes the race rather than sleeping past it.
+      const drawn = await this.evaluate(`(async () => {
+        const started = Date.now();
+        while (Date.now() - started < 15000) {
+          const canvas = document.querySelector('canvas');
+          if (canvas && canvas.width) {
+            const w = 160, h = Math.max(1, Math.round(canvas.height * (w / canvas.width)));
+            const c = document.createElement('canvas');
+            c.width = w; c.height = h;
+            const ctx = c.getContext('2d', { willReadFrequently: true });
+            ctx.drawImage(canvas, 0, 0, w, h);
+            const d = ctx.getImageData(0, 0, w, h).data;
+            for (let i = 0; i < d.length; i += 4) {
+              const mx = Math.max(d[i], d[i + 1], d[i + 2]);
+              const mn = Math.min(d[i], d[i + 1], d[i + 2]);
+              if (mx - mn > 45) return true;
+            }
+          }
+          await new Promise(r => setTimeout(r, 50));
+        }
+        return false;
+      })()`);
+      if (!drawn) throw new Error('scene never drew any geometry');
     },
 
     async clearStorage(origin) {
