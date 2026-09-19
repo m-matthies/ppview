@@ -468,6 +468,17 @@ what colours the scene. They are deliberately independent:
 Tying them together meant choosing "Particle type" also threw away the grouping,
 so there was no way to cluster by a file while colouring by particle type.
 
+The computed clusters are a **view in their own right** (`COMPUTED_VIEW`), which
+is also the default. They have no colour map — the pane paints its own clusters —
+but naming them means "what is colouring the scene" always has an answer.
+Treating DBSCAN as "no view" instead left its clusters with no colours at all,
+while a loaded cluster file carried on tinting them.
+
+Changing the **Clusters** selector points the View at whatever was chosen, so a
+cluster file left active cannot keep colouring a different grouping. The View can
+still be changed afterwards — that is how you group by one thing and colour by
+another.
+
 The pane publishes cluster colours **only** when the active view is the very
 cluster set it is showing (`colorByCluster`). Otherwise it publishes the
 highlighted and hidden sets alone, so selection, hiding and the 1.3x highlight

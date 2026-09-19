@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore } from '../../store/clusteringStore';
-import { useOverlayStore } from '../../store/overlayStore';
+import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { clusterOverlayFromFile } from '../../utils/overlays';
 import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
@@ -24,6 +24,7 @@ function ClusteringPane() {
   const overlays = useOverlayStore(state => state.overlays);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const addOverlay = useOverlayStore(state => state.addOverlay);
+  const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
   // Which clusters this pane works with is a separate question from which
   // overlay paints the scene. Tying them together meant choosing "Particle
   // type" in the View also threw away the cluster grouping, leaving no way to
@@ -72,8 +73,10 @@ function ClusteringPane() {
   // in its particles' type colours, which made two adjacent clusters
   // indistinguishable — usually the exact thing you are trying to see.
   const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
-  // True when the active view is the very cluster set shown here.
-  const colorByCluster = !!clusterSourceId && activeOverlayId === clusterSourceId;
+  // True when the active view is the very cluster set shown here — including
+  // the computed clusters, which are a view in their own right. Treating
+  // DBSCAN as "no view" left its clusters with no colours at all.
+  const colorByCluster = activeOverlayId === (clusterSourceId ?? COMPUTED_VIEW);
 
   const clusterColorAt = useCallback((index) => (
     colorOverrides[index]
@@ -290,7 +293,14 @@ function ClusteringPane() {
           <span className="field-label">Clusters</span>
           <select
             value={clusterSourceId ?? ''}
-            onChange={(e) => setClusterSourceId(e.target.value || null)}
+            onChange={(e) => {
+              const next = e.target.value || null;
+              setClusterSourceId(next);
+              // Point the view at whatever was just chosen. Otherwise a cluster
+              // file left active in the View keeps colouring the scene while
+              // the pane groups by something else entirely.
+              setActiveOverlay(next ?? COMPUTED_VIEW);
+            }}
           >
             <option value="">Computed (DBSCAN)</option>
             {clusterOverlays.map(overlay => (

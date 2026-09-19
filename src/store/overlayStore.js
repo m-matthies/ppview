@@ -13,9 +13,19 @@ import { create } from 'zustand';
  */
 let nextOverlayId = 1;
 
+/**
+ * The pane's own DBSCAN output, as a view. It is not an overlay — it has no
+ * colour map, because the pane paints its clusters itself — but naming it here
+ * lets the View control describe every possibility, so "which thing is
+ * colouring the scene" always has an answer.
+ */
+export const COMPUTED_VIEW = 'computed';
+
 export const useOverlayStore = create((set, get) => ({
   overlays: [],
-  activeOverlayId: null,
+  // Defaults to the computed clusters, which is what the pane coloured by
+  // before overlays existed.
+  activeOverlayId: COMPUTED_VIEW,
 
   addOverlay: (overlay) => {
     const id = `overlay-${nextOverlayId++}`;
@@ -28,13 +38,13 @@ export const useOverlayStore = create((set, get) => ({
 
   removeOverlay: (id) => set(state => ({
     overlays: state.overlays.filter(o => o.id !== id),
-    activeOverlayId: state.activeOverlayId === id ? null : state.activeOverlayId,
+    activeOverlayId: state.activeOverlayId === id ? COMPUTED_VIEW : state.activeOverlayId,
   })),
 
   setActiveOverlay: (id) => set({ activeOverlayId: id }),
 
   // A new simulation invalidates every overlay: they are keyed by particle index.
-  clearOverlays: () => set({ overlays: [], activeOverlayId: null }),
+  clearOverlays: () => set({ overlays: [], activeOverlayId: COMPUTED_VIEW }),
 
   getActiveOverlay: () => {
     const { overlays, activeOverlayId } = get();

@@ -1,6 +1,6 @@
 import React from 'react';
 import ColorSchemeSelector from '../ColorSchemeSelector';
-import { useOverlayStore } from '../../store/overlayStore';
+import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
@@ -251,6 +251,7 @@ function ControlBar(props) {
                     onChange={(e) => setActiveOverlay(e.target.value || null)}
                   >
                     <option value="">Particle type</option>
+                    <option value={COMPUTED_VIEW}>Computed clusters</option>
                     {overlays.map(overlay => (
                       <option key={overlay.id} value={overlay.id}>
                         {overlay.name}{overlay.summary ? ` — ${overlay.summary}` : ''}
@@ -262,7 +263,7 @@ function ControlBar(props) {
 
               {/* The scheme only describes the default view; under an overlay it
                   controls nothing visible, so showing it would be misleading. */}
-              {!activeOverlayId && <ColorSchemeSelector />}
+              {!overlays.some(o => o.id === activeOverlayId) && <ColorSchemeSelector />}
 
               <label className="field" title="Geometry resolution for spheres, patch cones and spring cylinders">
                 <span className="field-label">Detail</span>
