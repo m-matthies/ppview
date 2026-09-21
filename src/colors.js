@@ -163,3 +163,78 @@ export const getParticleColors = (schemeName = null, particleTypeCount = null) =
 // Backward compatibility - this will use the current selected scheme
 export const mutedParticleColors = getParticleColors();
 
+
+// Palette entries come in two spellings: '#rrggbb' from the static schemes and
+// 'hsl(h,s%,l%)' from the golden-angle generator. Anything deriving a colour
+// from the palette has to read both, and must hand back '#rrggbb' — an
+// <input type="color"> accepts nothing else.
+const HEX_COLOR = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i;
+const HSL_COLOR = /^hsl\(\s*(-?[\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)$/i;
+
+const clamp = (value, low, high) => Math.min(high, Math.max(low, value));
+
+// Wrapping unconditionally costs precision for no reason: ((137.508 % 360) +
+// 360) % 360 comes back as 137.50800000000004.
+const normaliseHue = (h) => (h >= 0 && h < 360 ? h : ((h % 360) + 360) % 360);
+
+/** Parse a palette entry to `{h: 0-360, s: 0-100, l: 0-100}`, or null. */
+export const parseColorToHsl = (color) => {
+  if (typeof color !== 'string') return null;
+  const text = color.trim();
+
+  const hsl = text.match(HSL_COLOR);
+  if (hsl) {
+    return {
+      h: normaliseHue(Number(hsl[1])),
+      s: clamp(Number(hsl[2]), 0, 100),
+      l: clamp(Number(hsl[3]), 0, 100),
+    };
+  }
+
+  const hex = text.match(HEX_COLOR);
+  if (!hex) return null;
+  const digits = hex[1].length === 3
+    ? hex[1].split('').map(d => d + d).join('')
+    : hex[1];
+  const r = parseInt(digits.slice(0, 2), 16) / 255;
+  const g = parseInt(digits.slice(2, 4), 16) / 255;
+  const b = parseInt(digits.slice(4, 6), 16) / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2;
+  if (max === min) return { h: 0, s: 0, l: l * 100 };
+
+  const d = max - min;
+  const s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+  let h;
+  if (max === r) h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+  else if (max === g) h = ((b - r) / d + 2) / 6;
+  else h = ((r - g) / d + 4) / 6;
+  return { h: h * 360, s: s * 100, l: l * 100 };
+};
+
+export const hslToHex = (h, s, l) => {
+  const sat = clamp(s, 0, 100) / 100;
+  const light = clamp(l, 0, 100) / 100;
+  const k = (n) => (n + h / 30) % 12;
+  const a = sat * Math.min(light, 1 - light);
+  const channel = (n) => {
+    const value = light - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+    return Math.round(255 * value).toString(16).padStart(2, '0');
+  };
+  return `#${channel(0)}${channel(8)}${channel(4)}`;
+};
+
+/**
+ * The same colour, lighter or darker by `delta` points of HSL lightness.
+ *
+ * Lightness is clamped well inside the ends of the range: a colour pushed to
+ * pure black or pure white loses its hue, and hue is what carries the meaning
+ * wherever this is used. Returns the input unchanged if it cannot be parsed.
+ */
+export const shiftLightness = (color, delta) => {
+  const hsl = parseColorToHsl(color);
+  if (!hsl) return color;
+  return hslToHex(hsl.h, hsl.s, clamp(hsl.l + delta, 30, 84));
+};

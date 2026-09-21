@@ -646,9 +646,24 @@ The bar colour arrives as a `--bar-color` custom property rather than an inline
 `background`, because an inline background would outrank the class rule that
 paints a *selected* bar accent-blue.
 
-Two consequences, both inherent to the choice: a system whose clusters are all
-the same size renders in one colour, and the colours are relative to the sizes
-present, so changing epsilon can reshuffle them.
+**Lightness separates clusters that share a size.** Hue alone made a system of
+uniformly sized clusters render in one colour, which is exactly the problem
+per-cluster colours were introduced to fix. Each cluster is nudged by its
+position among the clusters of its size, in steps of 7.5 lightness points
+cycling every five. Steps that cycle, not a range spread across the group: a
+hundred clusters of one size would put a fraction of a point between neighbours
+and look uniform again. The steps are centred on however many shades the group
+actually uses, so a lone cluster gets the base colour exactly — otherwise it
+rendered a step darker than the histogram bar that is meant to be its legend.
+
+`shiftLightness` in `colors.js` does the work. It reads both palette spellings —
+`#rrggbb` from the static schemes and `hsl(h,s%,l%)` from the golden-angle
+generator — and always returns hex, because an `<input type="color">` accepts
+nothing else. Lightness is clamped to 30-84 so a shade never loses the hue that
+carries the size.
+
+One consequence remains inherent: colours are relative to the sizes present, so
+changing epsilon can reshuffle them.
 
 A per-cluster swatch in each row still overrides the colour, and a `color` in a
 cluster file still wins over both. Highlighting previously kept every particle's

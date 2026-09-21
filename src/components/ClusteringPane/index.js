@@ -7,7 +7,7 @@ import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
 import { dbscan, generateHistogram, maxMinimumImageRadius } from '../../utils/clustering';
 import { parseClusterFile } from '../../utils/clusterFile';
-import { getParticleColors } from '../../colors';
+import { getParticleColors, shiftLightness } from '../../colors';
 import { CloseIcon, EyeIcon, EyeOffIcon } from '../Icons';
 import './ClusteringPane.css';
 
@@ -91,30 +91,65 @@ function ClusteringPane() {
   // DBSCAN as "no view" left its clusters with no colours at all.
   const colorByCluster = activeOverlayId === (clusterSourceId ?? COMPUTED_VIEW);
 
-  // Colour encodes cluster *size*, not cluster identity.
+  // Hue encodes cluster *size*; lightness separates clusters that share one.
   //
   // A cluster's index is an artefact of the order DBSCAN happened to walk the
-  // particles — it says nothing about the structure, so coloring by it made two
+  // particles — it says nothing about the structure, so colouring by it made two
   // clusters of the same size look unrelated and told you nothing you could read
   // off the scene. Ranking the distinct sizes and indexing the palette by that
   // rank means same size always means same colour, and the palette walks in size
   // order. It also matches the histogram, which already treats an exact size as
   // the unit you select by.
+  //
+  // On its own that made a system of uniformly sized clusters render in a single
+  // colour, which is the very problem per-cluster colours were introduced to
+  // fix: two adjacent clusters became indistinguishable again. So each cluster
+  // is also nudged in lightness according to its position among the clusters of
+  // its size. Hue still answers "how big", and the shade says "not the same one".
   const sizeRanks = useMemo(() => {
     const sizes = [...new Set(clusters.map(c => c.length))].sort((a, b) => a - b);
     return new Map(sizes.map((size, rank) => [size, rank]));
   }, [clusters]);
 
+  // The base colour for a size, with no nudge — what the histogram bar for that
+  // size is painted in, since a bar stands for the whole group.
   const colorForSize = useCallback(
     (size) => palette[(sizeRanks.get(size) ?? 0) % palette.length],
     [palette, sizeRanks],
   );
 
-  const clusterColorAt = useCallback((index) => (
-    colorOverrides[index]
-      ?? fileClusters?.[index]?.color
-      ?? colorForSize(clusters[index]?.length)
-  ), [colorOverrides, fileClusters, colorForSize, clusters]);
+  // Each cluster's position among those of its own size, and how many share it.
+  const sizeGroups = useMemo(() => {
+    const counts = new Map();
+    clusters.forEach(c => counts.set(c.length, (counts.get(c.length) ?? 0) + 1));
+    const seen = new Map();
+    return clusters.map(cluster => {
+      const ordinal = seen.get(cluster.length) ?? 0;
+      seen.set(cluster.length, ordinal + 1);
+      return { ordinal, count: counts.get(cluster.length) ?? 1 };
+    });
+  }, [clusters]);
+
+  // Fixed steps that cycle, rather than a fixed range spread across the group:
+  // a hundred clusters of one size would put a fraction of a point between
+  // neighbours and look uniform again. Repeating every five keeps every step
+  // visible, and five shades is already more than anyone reads off a scene.
+  //
+  // Centred on however many shades the group actually uses, so a lone cluster
+  // gets the base colour exactly — otherwise it rendered a step darker than the
+  // histogram bar that is supposed to be its legend.
+  const LIGHTNESS_STEPS = 5;
+  const LIGHTNESS_STEP = 7.5;
+  const clusterColorAt = useCallback((index) => {
+    const explicit = colorOverrides[index] ?? fileClusters?.[index]?.color;
+    if (explicit) return explicit;
+    const base = colorForSize(clusters[index]?.length);
+    const { ordinal, count } = sizeGroups[index] ?? { ordinal: 0, count: 1 };
+    const used = Math.min(count, LIGHTNESS_STEPS);
+    const step = (ordinal % LIGHTNESS_STEPS) - (used - 1) / 2;
+    return shiftLightness(base, step * LIGHTNESS_STEP);
+  }, [colorOverrides, fileClusters, colorForSize, clusters, sizeGroups]);
+
 
   // Selection lives in this component, so a change of active overlay has to be
   // adopted here — including a change *to* none.
