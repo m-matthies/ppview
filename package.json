@@ -37,6 +37,10 @@
         {
           "selector": "CallExpression[callee.name=/^use[A-Za-z]*Store$/][arguments.length=0]",
           "message": "Subscribe with a selector: useXStore(s => s.field), or useShallow for several. A bare useXStore() re-renders on every write to that store."
+        },
+        {
+          "selector": "CallExpression[callee.name=/^use[A-Za-z]*Store$/] > ArrowFunctionExpression > ObjectExpression",
+          "message": "A selector that builds an object returns a new reference every render. Wrap it in useShallow(...), or take one field at a time."
         }
       ]
     }

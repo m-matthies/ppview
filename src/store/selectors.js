@@ -20,6 +20,3 @@
  * position, no longer re-renders the whole application.
  */
 export const selectParticleCount = (state) => state.positions.length;
-
-/** True once a structure is on screen. */
-export const selectHasStructure = (state) => state.positions.length > 0;

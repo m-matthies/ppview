@@ -66,12 +66,28 @@ describe('clearClustering', () => {
 });
 
 describe('store independence', () => {
-  it('clusteringStore does not reach into overlayStore', async () => {
-    // The combined action lives in commands.js precisely so neither store needs
-    // to know about the other; a second cross-store action would otherwise
-    // close a cycle.
-    const source = await import('./clusteringStore');
-    expect(Object.keys(source)).not.toContain('useOverlayStore');
+  // Reads the file. An earlier version of this test imported the module and
+  // checked Object.keys(source) — which lists *exports*, so it passed just as
+  // happily with the cross-store import present. A guard that cannot fail is
+  // worse than none, because it is believed.
+  const sourceOf = (file) =>
+    require('fs').readFileSync(require('path').join(__dirname, file), 'utf8');
+
+  it('clusteringStore does not import overlayStore', () => {
+    expect(sourceOf('clusteringStore.js')).not.toMatch(/from\s+['"]\.\/overlayStore['"]/);
+  });
+
+  it('overlayStore does not import clusteringStore', () => {
+    expect(sourceOf('overlayStore.js')).not.toMatch(/from\s+['"]\.\/clusteringStore['"]/);
+  });
+
+  it('commands.js is the only place that imports both', () => {
+    const commands = sourceOf('commands.js');
+    expect(commands).toMatch(/from\s+['"]\.\/clusteringStore['"]/);
+    expect(commands).toMatch(/from\s+['"]\.\/overlayStore['"]/);
+  });
+
+  it('the combined action is not on the store itself', () => {
     expect(useClusteringStore.getState().clearClustering).toBeUndefined();
   });
 });

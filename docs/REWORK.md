@@ -254,9 +254,14 @@ control bar with it.
 
 `clusteringStore` no longer imports `overlayStore`. The combined action moved to
 `store/commands.js`, which is where anything coordinating two stores belongs; the
-store keeps `resetClusterState`, which is its own half. A test asserts the
-independence directly, so the next cross-store action has somewhere to go instead
-of closing a cycle.
+store keeps `resetClusterState`, which is its own half, and `clearHighlighting` —
+byte-identical to it, and one drift away from disagreeing — is gone.
+
+The independence is asserted by reading the two files and checking their import
+statements. The first version of that test imported the module and inspected
+`Object.keys(source)`, which lists *exports*: it passed just as happily with the
+cross-store import present. It now fails when the import is re-added, which was
+checked rather than assumed.
 
 ### Phase 3 — Split `ClusteringPane`
 

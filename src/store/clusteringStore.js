@@ -89,16 +89,6 @@ export const useClusteringStore = create((set) => ({
     clusterColors,
   }),
 
-  // Clear highlighting
-  clearHighlighting: () => set({
-    highlightedClusters: new Set(),
-    showOnlyHighlightedClusters: false,
-    clusterColors: new Map(),
-    hiddenParticles: new Set(),
-    selectedClusters: new Set(),
-    showOnlySelected: false,
-    hiddenClusters: new Set(),
-  }),
 
   // Dropping a new simulation must also drop clusters computed for the old one.
   resetClusters: () => set({

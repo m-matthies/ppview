@@ -27,7 +27,7 @@ const seedPositions = (positions) => useParticleStore.setState({ positions });
 describe('ClusteringPane', () => {
   beforeEach(() => {
     seedPositions(mockPositions);
-    useClusteringStore.getState().clearHighlighting();
+    useClusteringStore.getState().resetClusterState();
     useUIStore.getState().setShowClusteringPane(true);
   });
 
