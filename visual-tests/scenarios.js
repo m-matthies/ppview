@@ -82,6 +82,27 @@ const SCENARIOS = {
     if (first) { first.click(); await settle(); }
     out.oneSelected = measure();
 
+    // The View control has to be there for computed clusters, not just for
+    // clusters a file brought — that is the whole point of the pane's
+    // grouping/colouring split, and it was reachable only with a file loaded.
+    out.viewControl = viewSelect() ? 1 : 0;
+    out.viewOptions = viewSelect() ? viewSelect().options.length : 0;
+    setNative(viewSelect(), '');
+    await settle();
+    out.groupedColouredByType = measure();   // same grouping, type colours
+    setNative(viewSelect(), 'computed');
+    await settle();
+
+    // One click back to an unrestricted scene, however deep in you are.
+    const resetButton = () => [...document.querySelectorAll('.select-button')]
+      .find(b => b.textContent.trim() === 'Show all particles');
+    out.resetOffered = resetButton() ? 1 : 0;
+    const restricted = measure().coloured;
+    resetButton().click();
+    await waitFor(() => measure().coloured > restricted + 10, 8000); await settle();
+    out.afterReset = measure();
+    out.resetWithdrawn = resetButton() ? 1 : 0;
+
     clusterBoxes()[0].click(); await settle();  // back off
     out.restored = measure();
     return out;

@@ -39,6 +39,7 @@ function ClusteringPane() {
   const clusterSource = clusterOverlays.find(o => o.id === clusterSourceId) || null;
   const fileClusters = clusterSource?.clusters ?? null;
   const setHiddenParticles = useClusteringStore(state => state.setHiddenParticles);
+  const setClusterCount = useClusteringStore(state => state.setClusterCount);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
@@ -90,6 +91,7 @@ function ClusteringPane() {
   // the computed clusters, which are a view in their own right. Treating
   // DBSCAN as "no view" left its clusters with no colours at all.
   const colorByCluster = activeOverlayId === (clusterSourceId ?? COMPUTED_VIEW);
+  const groupingName = clusterSource?.name ?? 'Computed clusters';
 
   // Hue encodes cluster *size*; lightness separates clusters that share one.
   //
@@ -304,6 +306,12 @@ function ClusteringPane() {
     highlightClusters(highlightedParticleIndices, showOnlySelected, colors);
   }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt, colorByCluster]);
 
+  // Tell the control bar that "Computed clusters" is a real choice. Without it
+  // the View control only appeared once a cluster file was registered.
+  useEffect(() => {
+    setClusterCount(clusters.length);
+  }, [clusters.length, setClusterCount]);
+
   // Translate hidden *clusters* into hidden *particles*, which is what the
   // renderers work in.
   useEffect(() => {
@@ -313,6 +321,22 @@ function ClusteringPane() {
     });
     setHiddenParticles(hidden);
   }, [hiddenClusters, clusters, setHiddenParticles]);
+
+  // Everything the pane can do to the scene, undone in one click.
+  //
+  // Getting back out used to mean finding four controls across two panels:
+  // clear the selection, uncheck "show only selected", un-hide any clusters
+  // switched off by their eye, and set the View back. Worse, "Clear All" on its
+  // own *emptied* the scene, because showing only the selected clusters when
+  // nothing is selected shows nothing — the opposite of what the name promises.
+  // Colours need no undoing: with nothing highlighted the pane publishes no
+  // colours, so particles fall back to their type colour by themselves.
+  const sceneIsRestricted = showOnlySelected || hiddenClusters.size > 0;
+  const showEverything = () => {
+    setSelectedClusters(new Set());
+    setShowOnlySelected(false);
+    setHiddenClusters(new Set());
+  };
 
   const toggleClusterVisible = (clusterIndex) => {
     setHiddenClusters(previous => {
@@ -380,13 +404,16 @@ function ClusteringPane() {
 
         {/* The grouping above and the colours in the scene are separate
             choices, and that is not obvious, so say it where it matters. */}
-        {clusterSource && !colorByCluster && (
+        {/* The computed clusters are a grouping like any other, so they get the
+            same explanation. Gating this on a loaded file meant the commonest
+            case — a plain DBSCAN run — was the one left unexplained. */}
+        {clusters.length > 0 && !colorByCluster && (
           <p className="cluster-source-note">
-            Grouping by <strong>{clusterSource.name}</strong>, coloured by particle type.
-            Switch the View to <strong>{clusterSource.name}</strong> to colour by cluster.
+            Grouping by <strong>{groupingName}</strong>, coloured by particle type.
+            Switch the View to <strong>{groupingName}</strong> to colour by cluster.
           </p>
         )}
-        {clusterSource && colorByCluster && (
+        {clusters.length > 0 && colorByCluster && (
           <p className="cluster-source-note">
             Coloured by cluster. Switch the View to <strong>Particle type</strong> to keep
             this grouping but colour by particle type.
@@ -543,11 +570,22 @@ function ClusteringPane() {
           <h4>Cluster Highlighting</h4>
           <div className="selection-buttons">
             <button onClick={selectAllClusters} className="select-button">
-              Select All
+              Select all
             </button>
+            {/* Named for what it does. "Clear All" read as "undo all of this"
+                and did the reverse. */}
             <button onClick={clearSelection} className="select-button">
-              Clear All
+              Clear selection
             </button>
+            {sceneIsRestricted && (
+              <button
+                onClick={showEverything}
+                className="select-button is-reset"
+                title="Stop restricting the scene: clear the selection, show every cluster again"
+              >
+                Show all particles
+              </button>
+            )}
           </div>
           <label className="highlight-checkbox">
             <input

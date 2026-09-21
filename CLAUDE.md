@@ -493,6 +493,15 @@ cluster file left active cannot keep colouring a different grouping. The View ca
 still be changed afterwards — that is how you group by one thing and colour by
 another.
 
+**The View control appears as soon as there is a cluster set, computed or from a
+file.** It used to be gated on `overlays.length > 0`, so a plain DBSCAN run —
+the commonest case by far — could never be switched to particle-type colours,
+which is the one combination this split exists to offer. `clusteringStore.clusterCount`
+carries that signal to the control bar; it outlives the pane deliberately, because
+closing the pane leaves the clustering applied to the scene and the control that
+explains it has to stay. The pane's explanatory note is likewise no longer gated
+on a loaded file: "Grouping by Computed clusters, coloured by particle type".
+
 The pane publishes cluster colours **only** when the active view is the very
 cluster set it is showing (`colorByCluster`). Otherwise it publishes the
 highlighted and hidden sets alone, so selection, hiding and the 1.3x highlight
@@ -742,6 +751,18 @@ a sphere radius, a bead offset and a cone share one rule.
   particles by comparing floating-point coordinates with `positions.findIndex`, once per
   particle.
 
+### Getting back out
+**"Show all particles"** appears in the pane whenever the scene is restricted
+(`showOnlySelected`, or any cluster hidden by its eye) and clears all of it in one
+click. Before it, leaving a clustered view meant finding four controls across two
+panels — and the button then named *Clear All* **emptied** the scene rather than
+restoring it, because showing only the selected clusters when nothing is selected
+shows nothing. It is now *Clear selection*, which is what it does. Colours need no
+undoing: with nothing highlighted the pane publishes no colours and particles fall
+back to their type colour on their own.
+
 Note: `ClusteringPane` only populates `highlightedClusters` while *Show only selected clusters*
 is on, so the 1.3× highlight state never appears on its own — selecting a cluster with that box
-unchecked currently has no visual effect.
+unchecked currently has no visual effect. Left as-is deliberately: making selection always
+highlight would add another piece of state with no obvious way to switch off, which is the
+problem "Show all particles" was added to solve.

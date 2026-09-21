@@ -20,11 +20,22 @@ export const useClusteringStore = create((set) => ({
   // selection: hiding a cluster works whether or not "show only selected" is on.
   hiddenParticles: new Set(),
 
+  // How many clusters the pane currently has, computed or from a file.
+  //
+  // The View control needs this to know whether "Computed clusters" is a real
+  // choice. It used to appear only once a cluster *file* was registered, so a
+  // DBSCAN run could never be switched to particle-type colours — the one
+  // combination the pane's own grouping/colouring split exists to offer.
+  // It outlives the pane deliberately: closing the pane leaves the clustering
+  // applied to the scene, so the control that explains it has to stay too.
+  clusterCount: 0,
+
   // Actions
   setHighlightedClusters: (clusters) => set({ highlightedClusters: clusters }),
   setShowOnlyHighlightedClusters: (show) => set({ showOnlyHighlightedClusters: show }),
   setDimNonSelectedClusters: (dim) => set({ dimNonSelectedClusters: dim }),
   setHiddenParticles: (particles) => set({ hiddenParticles: particles }),
+  setClusterCount: (count) => set({ clusterCount: count }),
 
   // Combined action for cluster highlighting
   highlightClusters: (clusterIndices, showOnlySelected, clusterColors = new Map()) => set({
@@ -47,5 +58,6 @@ export const useClusteringStore = create((set) => ({
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
     hiddenParticles: new Set(),
+    clusterCount: 0,
   }),
 }));

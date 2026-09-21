@@ -1,6 +1,7 @@
 import React from 'react';
 import ColorSchemeSelector from '../ColorSchemeSelector';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
+import { useClusteringStore } from '../../store/clusteringStore';
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
@@ -76,6 +77,7 @@ function ControlBar(props) {
   } = props;
 
   const overlays = useOverlayStore(state => state.overlays);
+  const clusterCount = useClusteringStore(state => state.clusterCount);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
 
@@ -242,8 +244,12 @@ function ControlBar(props) {
             </div>
 
             <div className="settings-cluster">
-              {/* Only worth showing once something can be switched to. */}
-              {overlays.length > 0 && (
+              {/* Only worth showing once something can be switched to — which
+                  includes clusters DBSCAN computed, not just ones a file
+                  brought. Gating on overlays alone meant the commonest case,
+                  a plain DBSCAN run, had no way to keep particle-type colours
+                  while grouping by cluster. */}
+              {(overlays.length > 0 || clusterCount > 0) && (
                 <label className="field" title="What the particle colours mean">
                   <span className="field-label">View</span>
                   <select

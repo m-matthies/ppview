@@ -404,6 +404,7 @@
 
 .selection-buttons {
     display: flex;
+    flex-wrap: wrap;          /* the reset button takes a row of its own */
     gap: var(--space-2);
     margin-bottom: var(--space-3);
 }
@@ -425,6 +426,22 @@
     background: var(--surface-hover);
     border-color: var(--line-strong);
     color: var(--ink);
+}
+
+/* The way back out of a restricted scene. Accented because it only appears
+   while the scene is actually restricted, and it is the thing you are looking
+   for at that moment — it takes a whole row rather than competing for width
+   with the two selection buttons. */
+.select-button.is-reset {
+    flex-basis: 100%;
+    border-color: var(--accent);
+    color: var(--accent-bright);
+}
+
+.select-button.is-reset:hover {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
 }
 
 .highlight-checkbox,
