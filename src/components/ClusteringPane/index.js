@@ -6,24 +6,25 @@ import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { clusterOverlayFromFile } from '../../utils/overlays';
 import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
-import { dbscan, generateHistogram, maxMinimumImageRadius } from '../../utils/clustering';
+import { generateHistogram } from '../../utils/clustering';
 import { parseClusterFile } from '../../utils/clusterFile';
-import { getParticleColors, lightnessLadder } from '../../colors';
-import { CloseIcon, EyeIcon, EyeOffIcon } from '../Icons';
+import ClusterHistogram from './ClusterHistogram';
+import ClusterSourceControls from './ClusterSourceControls';
+import ClusterStatistics from './ClusterStatistics';
+import ClusterParameters from './ClusterParameters';
+import ClusterList from './ClusterList';
+import useClusterSource from './useClusterSource';
+import useClusterColours from './useClusterColours';
+import useClusterPublication from './useClusterPublication';
+import { CloseIcon } from '../Icons';
 import './ClusteringPane.css';
 
-// One shared empty array: returning a fresh [] would give every downstream memo
-// and effect a new identity on each render, which is the churn this gating
-// exists to avoid.
-const NO_CLUSTERS = [];
 
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
   // Identity-stable across frames (particleStore ignores numerically equal
   // updates), so this does not re-run DBSCAN on every trajectory step.
-  const currentBoxSize = useParticleStore(state => state.currentBoxSize);
-  const highlightClusters = useClusteringStore(state => state.highlightClusters);
   const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
   const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
   // Visibility belongs to the UI store, which is what the control-bar toggle
@@ -31,7 +32,6 @@ function ClusteringPane() {
   // pane was open.
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
   const showClusteringPane = useUIStore(state => state.showClusteringPane);
-  const overlays = useOverlayStore(state => state.overlays);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const addOverlay = useOverlayStore(state => state.addOverlay);
   const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
@@ -39,14 +39,6 @@ function ClusteringPane() {
   // overlay paints the scene. Tying them together meant choosing "Particle
   // type" in the View also threw away the cluster grouping, leaving no way to
   // cluster by a file while colouring by particle type.
-  const [clusterSourceId, setClusterSourceId] = useState(null);   // null = DBSCAN
-  // Only a cluster overlay has clusters to list; a future scalar-property
-  // overlay would colour particles without any grouping to show here.
-  const clusterOverlays = overlays.filter(o => o.kind === 'clusters');
-  const clusterSource = clusterOverlays.find(o => o.id === clusterSourceId) || null;
-  const fileClusters = clusterSource?.clusters ?? null;
-  const setHiddenParticles = useClusteringStore(state => state.setHiddenParticles);
-  const setClusterCount = useClusteringStore(state => state.setClusterCount);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
@@ -67,116 +59,22 @@ function ClusteringPane() {
   const showOnlySelected = useClusteringStore(state => state.showOnlySelected);
   const setShowOnlySelected = useClusteringStore(state => state.setShowOnlySelected);
   const sceneIsRestricted = useClusteringStore(isSceneRestricted);
-  const [epsilon, setEpsilon] = useState(2.0);
-  const [minPoints, setMinPoints] = useState(3);
 
-  // Only cluster when something is actually using the result.
-  //
-  // This component is mounted for every structure now, and `positions` gets a
-  // fresh identity on every trajectory frame, so an ungated memo ran DBSCAN —
-  // O(n^2) — once per frame for every user, including the ones who never open
-  // the panel. A file's clusters replace the computed ones outright, so they
-  // make it unnecessary too.
-  // Selection on its own changes nothing on screen unless something is being
-  // hidden, so it is not a reason to keep an O(n^2) clustering running once the
-  // panel is shut.
-  const clusteringIsInUse = !fileClusters && (showClusteringPane || sceneIsRestricted);
+  const {
+    clusters, clusterSource, clusterSourceId, setClusterSourceId, clusterOverlays,
+    fileClusters, epsilon, setEpsilon, epsilonLimit, minPoints, setMinPoints,
+  } = useClusterSource();
 
-  const computedClusters = useMemo(() => {
-    if (!clusteringIsInUse) return NO_CLUSTERS;
-    if (!positions || positions.length === 0) return NO_CLUSTERS;
 
-    try {
-      // Distances are measured under periodic boundaries: a cluster straddling
-      // a box wall is one cluster, not two. dbscan caps epsilon itself, so a
-      // value saved from a larger box cannot produce nonsense here.
-      return dbscan(positions, epsilon, minPoints, currentBoxSize);
-    } catch (error) {
-      console.error('Error computing clusters:', error);
-      return NO_CLUSTERS;
-    }
-  }, [clusteringIsInUse, positions, epsilon, minPoints, currentBoxSize]);
-
-  // Past half the shortest box dimension the minimum image convention stops
-  // being meaningful, so the slider does not offer it.
-  const epsilonLimit = useMemo(
-    () => maxMinimumImageRadius(currentBoxSize),
-    [currentBoxSize],
-  );
-
-  // A loaded file replaces the computed clusters while it is present, so the
-  // rest of the pane does not need to care where the clusters came from.
-  const clusters = useMemo(
-    () => (fileClusters ? fileClusters.map(c => c.indices) : computedClusters),
-    [fileClusters, computedClusters],
-  );
-
-  // Every cluster gets its own colour. Highlighting used to paint every cluster
-  // in its particles' type colours, which made two adjacent clusters
-  // indistinguishable — usually the exact thing you are trying to see.
-  const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
   // True when the active view is the very cluster set shown here — including
-  // the computed clusters, which are a view in their own right. Treating
-  // DBSCAN as "no view" left its clusters with no colours at all.
+  // the computed clusters, which are a view in their own right. Treating DBSCAN
+  // as "no view" left its clusters with no colours at all.
   const colorByCluster = activeOverlayId === (clusterSourceId ?? COMPUTED_VIEW);
   const groupingName = clusterSource?.name ?? 'Computed clusters';
 
-  // Hue encodes cluster *size*; lightness separates clusters that share one.
-  //
-  // A cluster's index is an artefact of the order DBSCAN happened to walk the
-  // particles — it says nothing about the structure, so colouring by it made two
-  // clusters of the same size look unrelated and told you nothing you could read
-  // off the scene. Ranking the distinct sizes and indexing the palette by that
-  // rank means same size always means same colour, and the palette walks in size
-  // order. It also matches the histogram, which already treats an exact size as
-  // the unit you select by.
-  //
-  // On its own that made a system of uniformly sized clusters render in a single
-  // colour, which is the very problem per-cluster colours were introduced to
-  // fix: two adjacent clusters became indistinguishable again. So each cluster
-  // is also nudged in lightness according to its position among the clusters of
-  // its size. Hue still answers "how big", and the shade says "not the same one".
-  const sizeRanks = useMemo(() => {
-    const sizes = [...new Set(clusters.map(c => c.length))].sort((a, b) => a - b);
-    return new Map(sizes.map((size, rank) => [size, rank]));
-  }, [clusters]);
-
-  // The base colour for a size, with no nudge — what the histogram bar for that
-  // size is painted in, since a bar stands for the whole group.
-  const colorForSize = useCallback(
-    (size) => palette[(sizeRanks.get(size) ?? 0) % palette.length],
-    [palette, sizeRanks],
-  );
-
-  // Each cluster's position among those of its own size, and how many share it.
-  const sizeGroups = useMemo(() => {
-    const counts = new Map();
-    clusters.forEach(c => counts.set(c.length, (counts.get(c.length) ?? 0) + 1));
-    const seen = new Map();
-    return clusters.map(cluster => {
-      const ordinal = seen.get(cluster.length) ?? 0;
-      seen.set(cluster.length, ordinal + 1);
-      return { ordinal, count: counts.get(cluster.length) ?? 1 };
-    });
-  }, [clusters]);
-
-  // A ladder of shades per size, cycling every five: a hundred clusters of one
-  // size would put a fraction of a point between neighbours and look uniform
-  // again, and five shades is already more than anyone reads off a scene.
-  //
-  // lightnessLadder centres the ladder on the palette colour where there is
-  // room and slides it to fit where there is not, so a group of one gets the
-  // base colour exactly — matching the histogram bar that is meant to be its
-  // legend — and a base near black or white still yields five distinct shades.
-  const LIGHTNESS_STEPS = 5;
-  const clusterColorAt = useCallback((index) => {
-    const explicit = colorOverrides[index] ?? fileClusters?.[index]?.color;
-    if (explicit) return explicit;
-    const { ordinal, count } = sizeGroups[index] ?? { ordinal: 0, count: 1 };
-    const rungs = Math.min(count, LIGHTNESS_STEPS);
-    const ladder = lightnessLadder(colorForSize(clusters[index]?.length), rungs);
-    return ladder[ordinal % rungs];
-  }, [colorOverrides, fileClusters, colorForSize, clusters, sizeGroups]);
+  const { colorForSize, clusterColorAt } = useClusterColours({
+    clusters, colorScheme, fileClusters, colorOverrides,
+  });
 
 
   // Selection lives in this component, so a change of active overlay has to be
@@ -320,56 +218,10 @@ function ClusteringPane() {
   };
 
   // Notify store about highlighted clusters
-  useEffect(() => {
-    const highlightedParticleIndices = new Set();
-    const colors = new Map();
-
-    if (showOnlySelected && selectedClusters.size > 0) {
-      selectedClusters.forEach(clusterIndex => {
-        const members = clusters[clusterIndex];
-        if (!members) return;
-        const color = clusterColorAt(clusterIndex);
-        members.forEach(particleIndex => {
-          highlightedParticleIndices.add(particleIndex);
-          // Only tint by cluster when the view is actually colouring by this
-          // cluster set. Under "Particle type" the grouping still selects,
-          // hides and scales, but the particles keep their type colour.
-          if (colorByCluster) colors.set(particleIndex, color);
-        });
-      });
-    }
-
-    // Every renderer subscribes to this store without a selector, so a write
-    // re-renders all five and re-runs their per-instance colour effects. Skip
-    // the write when it would change nothing — which is the usual case now that
-    // this component stays mounted for structures nobody is clustering.
-    const current = useClusteringStore.getState();
-    const unchanged = current.showOnlyHighlightedClusters === showOnlySelected
-      && current.highlightedClusters.size === highlightedParticleIndices.size
-      && current.clusterColors.size === colors.size
-      && highlightedParticleIndices.size === 0
-      && colors.size === 0;
-    if (unchanged) return;
-
-    highlightClusters(highlightedParticleIndices, showOnlySelected, colors);
-  }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt, colorByCluster]);
-
-  // Tell the control bar that "Computed clusters" is a real choice. Without it
-  // the View control only appeared once a cluster file was registered.
-  useEffect(() => {
-    setClusterCount(clusters.length);
-  }, [clusters.length, setClusterCount]);
-
-  // Translate hidden *clusters* into hidden *particles*, which is what the
-  // renderers work in.
-  useEffect(() => {
-    const hidden = new Set();
-    hiddenClusters.forEach(clusterIndex => {
-      clusters[clusterIndex]?.forEach(particleIndex => hidden.add(particleIndex));
-    });
-    if (hidden.size === 0 && useClusteringStore.getState().hiddenParticles.size === 0) return;
-    setHiddenParticles(hidden);
-  }, [hiddenClusters, clusters, setHiddenParticles]);
+  useClusterPublication({
+    clusters, selectedClusters, showOnlySelected, hiddenClusters,
+    colorByCluster, clusterColorAt,
+  });
 
   // Everything the pane can do to the scene, undone in one click.
   //
@@ -381,6 +233,18 @@ function ClusteringPane() {
   // Colours need no undoing: with nothing highlighted the pane publishes no
   // colours, so particles fall back to their type colour by themselves.
   const showEverything = clearClustering;
+
+  // Point the View at whatever was just chosen. Otherwise a cluster file left
+  // active in the View keeps colouring the scene while the pane groups by
+  // something else entirely.
+  const chooseClusterSource = useCallback((next) => {
+    setClusterSourceId(next);
+    setActiveOverlay(next ?? COMPUTED_VIEW);
+  }, [setClusterSourceId, setActiveOverlay]);
+
+  const setClusterColor = useCallback((index, color) => {
+    setColorOverrides(previous => ({ ...previous, [index]: color }));
+  }, []);
 
   const toggleClusterVisible = (clusterIndex) => {
     // Read through the store, not the render closure: the setter takes a value
@@ -415,201 +279,39 @@ function ClusteringPane() {
 
       <div className="clustering-body">
 
-      {/* Clusters computed elsewhere can be loaded instead of running DBSCAN. */}
-      <div className="cluster-source">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".json,application/json"
-          style={{ display: 'none' }}
-          onChange={handleClusterFile}
-        />
+      <ClusterSourceControls
+        clusterSourceId={clusterSourceId}
+        clusterOverlays={clusterOverlays}
+        onSourceChange={chooseClusterSource}
+        onLoadFile={() => fileInputRef.current?.click()}
+        fileInputRef={fileInputRef}
+        onFileChosen={handleClusterFile}
+        fileError={fileError}
+        fileWarnings={fileWarnings}
+        hasClusters={clusters.length > 0}
+        colorByCluster={colorByCluster}
+        groupingName={groupingName}
+      />
 
-        <label className="field">
-          <span className="field-label">Clusters</span>
-          <select
-            value={clusterSourceId ?? ''}
-            onChange={(e) => {
-              const next = e.target.value || null;
-              setClusterSourceId(next);
-              // Point the view at whatever was just chosen. Otherwise a cluster
-              // file left active in the View keeps colouring the scene while
-              // the pane groups by something else entirely.
-              setActiveOverlay(next ?? COMPUTED_VIEW);
-            }}
-          >
-            <option value="">Computed (DBSCAN)</option>
-            {clusterOverlays.map(overlay => (
-              <option key={overlay.id} value={overlay.id}>{overlay.name}</option>
-            ))}
-          </select>
-        </label>
+      <ClusterParameters
+        epsilon={epsilon}
+        onEpsilonChange={setEpsilon}
+        epsilonLimit={epsilonLimit}
+        minPoints={minPoints}
+        onMinPointsChange={setMinPoints}
+        disabled={!!fileClusters}
+      />
 
-        <button className="select-button" onClick={() => fileInputRef.current?.click()}>
-          Load clusters from file
-        </button>
+      <ClusterStatistics statistics={statistics} />
 
-        {/* The grouping above and the colours in the scene are separate
-            choices, and that is not obvious, so say it where it matters. */}
-        {/* The computed clusters are a grouping like any other, so they get the
-            same explanation. Gating this on a loaded file meant the commonest
-            case — a plain DBSCAN run — was the one left unexplained. */}
-        {clusters.length > 0 && !colorByCluster && (
-          <p className="cluster-source-note">
-            Grouping by <strong>{groupingName}</strong>, coloured by particle type.
-            Switch the View to <strong>{groupingName}</strong> to colour by cluster.
-          </p>
-        )}
-        {clusters.length > 0 && colorByCluster && (
-          <p className="cluster-source-note">
-            Coloured by cluster. Switch the View to <strong>Particle type</strong> to keep
-            this grouping but colour by particle type.
-          </p>
-        )}
-
-        {fileError && <p className="cluster-source-error">{fileError}</p>}
-        {fileWarnings.map((warning, i) => (
-          <p className="cluster-source-warning" key={i}>{warning}</p>
-        ))}
-      </div>
-
-      {/* Clustering Parameters */}
-      <div className={`clustering-controls ${fileClusters ? 'is-disabled' : ''}`}>
-        <div className="parameter-control">
-          <label htmlFor="epsilon-slider">
-            Epsilon Distance: {Math.min(epsilon, epsilonLimit).toFixed(2)}
-            {epsilonLimit < 10 && <span className="checkbox-hint"> · max {epsilonLimit.toFixed(1)} (half box)</span>}
-          </label>
-          <input
-            id="epsilon-slider"
-            type="range"
-            min="0.5"
-            max={Math.min(10, epsilonLimit)}
-            step="0.1"
-            value={epsilon}
-            onChange={(e) => setEpsilon(parseFloat(e.target.value))}
-            className="parameter-slider"
-          />
-        </div>
-
-        <div className="parameter-control">
-          <label htmlFor="minpoints-slider">
-            Min Points: {minPoints}
-          </label>
-          <input
-            id="minpoints-slider"
-            type="range"
-            min="2"
-            max="20"
-            step="1"
-            value={minPoints}
-            onChange={(e) => setMinPoints(parseInt(e.target.value))}
-            className="parameter-slider"
-          />
-        </div>
-      </div>
-
-      {/* Statistics */}
-      <div className="clustering-statistics">
-        <h4>Statistics</h4>
-        <div className="stats-grid">
-          <div className="stat-item">
-            <span className="stat-label">Total Clusters:</span>
-            <span className="stat-value">{statistics.totalClusters}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Clustered Particles:</span>
-            <span className="stat-value">{statistics.clusteredParticles}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Noise Particles:</span>
-            <span className="stat-value">{statistics.noiseParticles}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Avg Cluster Size:</span>
-            <span className="stat-value">{statistics.avgClusterSize.toFixed(1)}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Max Cluster Size:</span>
-            <span className="stat-value">{statistics.maxClusterSize}</span>
-          </div>
-          <div className="stat-item">
-            <span className="stat-label">Min Cluster Size:</span>
-            <span className="stat-value">{statistics.minClusterSize}</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Histogram */}
-      <div className="clustering-histogram">
-        <h4>Cluster Size Distribution</h4>
-        <p className="histogram-hint">
-          Click a bar to select every cluster of that size, or Cmd/Ctrl+click to add it to the
-          selection. Each bar is labelled with its count above and its size below.
-        </p>
-        <div className="histogram-container">
-          {histogramData.length > 0 ? (
-            <>
-              <div className="histogram-plot">
-                <div className="histogram-y-axis">Count</div>
-                {/* Bars keep a legible fixed minimum width and this scrolls once
-                    there are more distinct sizes than fit. Binning them instead
-                    would break the interaction, which selects clusters of one
-                    exact size. */}
-                <div className="histogram-scroll">
-                <div className="histogram-bars">
-                  {histogramData.map((bin) => {
-                    // Simple linear scaling with minimum height for visibility
-                    // Scales against the bar track, which is laid out above the
-                    // labels rather than sharing space with them.
-                    const linearHeight = maxBinCount > 0 ? (bin.count / maxBinCount) * 100 : 0;
-                    const minHeight = 4; // keep a one-count bar visible
-                    const finalHeight = Math.max(linearHeight, bin.count > 0 ? minHeight : 0);
-                    
-                    // Check if any selected clusters have this size
-                    const isActive = Array.from(selectedClusters).some(clusterIndex => 
-                      clusters[clusterIndex]?.length === bin.size
-                    );
-                    
-                    return (
-                      <div
-                        key={`size-${bin.size}`}
-                        className={`histogram-bar-container ${isActive ? 'is-active' : ''}`}
-                        onClick={(e) => handleHistogramBarClick(bin.size, e)}
-                        title={`Select the ${bin.count} cluster${bin.count === 1 ? '' : 's'} of ${bin.size} particles. Cmd/Ctrl+click to add to the selection.`}
-                      >
-                        <div className="histogram-bar-track">
-                          {/* Each bar carries the colour its clusters are drawn
-                              in, so the histogram doubles as the legend for what
-                              the scene colours mean. Set as a custom property,
-                              not `background`: an inline background would beat
-                              the class rule that paints a selected bar blue. */}
-                          <div
-                            className="histogram-bar"
-                            style={{ height: `${finalHeight}%`, '--bar-color': colorForSize(bin.size) }}
-                          />
-                        </div>
-                        <div className="histogram-labels">
-                          <span className="histogram-label-count">{bin.count}</span>
-                          <span className="histogram-label-size">{bin.size}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                </div>
-              </div>
-              <div className="histogram-axis-labels">
-                <span>Cluster Size (particles)</span>
-              </div>
-            </>
-          ) : (
-            <div className="histogram-empty">
-              <span>No clusters found</span>
-            </div>
-          )}
-        </div>
-      </div>
+      <ClusterHistogram
+        bins={histogramData}
+        maxBinCount={maxBinCount}
+        clusters={clusters}
+        selectedClusters={selectedClusters}
+        colorForSize={colorForSize}
+        onBarClick={handleHistogramBarClick}
+      />
 
       {/* Cluster Selection */}
       <div className="cluster-selection">
@@ -662,51 +364,16 @@ function ClusteringPane() {
         </div>
 
         {clusters.length > 0 && (
-          <div className="cluster-list">
-            <div className="cluster-list-header">
-              <span>Cluster (Size)</span>
-              <span>Show / select</span>
-            </div>
-            <div className="cluster-items">
-              {clusters
-                .map((cluster, index) => ({ cluster, originalIndex: index }))
-                .sort((a, b) => b.cluster.length - a.cluster.length) // Sort by size (largest first)
-                .map(({ cluster, originalIndex }, sortedIndex) => (
-                  <div key={originalIndex} className="cluster-item">
-                    <input
-                      className="cluster-swatch"
-                      type="color"
-                      value={clusterColorAt(originalIndex)}
-                      onChange={(e) => setColorOverrides(previous => ({
-                        ...previous, [originalIndex]: e.target.value,
-                      }))}
-                      title="Colour for this cluster"
-                      aria-label={`Colour for cluster ${originalIndex + 1}`}
-                    />
-                    <span className="cluster-info">
-                      {fileClusters?.[originalIndex]?.name ?? `Cluster ${originalIndex + 1}`}
-                      {' '}({cluster.length} particles)
-                    </span>
-                    <button
-                      className={`cluster-visibility ${hiddenClusters.has(originalIndex) ? 'is-hidden' : ''}`}
-                      onClick={() => toggleClusterVisible(originalIndex)}
-                      title={hiddenClusters.has(originalIndex) ? 'Show this cluster' : 'Hide this cluster'}
-                      aria-pressed={!hiddenClusters.has(originalIndex)}
-                      aria-label={`Toggle visibility of ${fileClusters?.[originalIndex]?.name ?? `cluster ${originalIndex + 1}`}`}
-                    >
-                      {hiddenClusters.has(originalIndex) ? <EyeOffIcon size={14} /> : <EyeIcon size={14} />}
-                    </button>
-                    <label className="cluster-checkbox">
-                      <input
-                        type="checkbox"
-                        checked={selectedClusters.has(originalIndex)}
-                        onChange={() => handleClusterToggle(originalIndex)}
-                      />
-                    </label>
-                  </div>
-                ))}
-            </div>
-          </div>
+          <ClusterList
+            clusters={clusters}
+            selectedClusters={selectedClusters}
+            hiddenClusters={hiddenClusters}
+            fileClusters={fileClusters}
+            clusterColorAt={clusterColorAt}
+            onColorChange={setClusterColor}
+            onToggleVisible={toggleClusterVisible}
+            onToggleSelected={handleClusterToggle}
+          />
         )}
       </div>
 

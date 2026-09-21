@@ -271,6 +271,30 @@ pane becomes composition.
 
 *Done when:* no file in the folder exceeds 200 lines.
 
+**Status: partly done.** The 718-line file is now nine, and every extracted one
+is small:
+
+| file | lines |
+|---|---|
+| `ClusterStatistics` | 38 |
+| `ClusterList` | 63 |
+| `useClusterPublication` | 68 |
+| `ClusterParameters` | 71 |
+| `ClusterSourceControls` | 72 |
+| `useClusterColours` | 76 |
+| `ClusterHistogram` | 89 |
+| `useClusterSource` | 91 |
+| `index.js` | **385** |
+
+`index.js` is the composition root and still misses the 200-line target. What
+remains is the selection-controls markup, the statistics computation, and the
+handlers wiring the pieces together — one more component's worth. It is no longer
+a file with seven responsibilities, which was the point, but the number is not
+met and should not be reported as though it were.
+
+The split is behaviour-preserving: 224 tests and the full visual suite unchanged
+after each extraction, which is how a refactor of this size stays honest.
+
 ### Phase 4 — One shared renderer hook
 
 `useClusterVisuals()` returns the memoised inputs every renderer feeds to
