@@ -40,7 +40,11 @@ function OxDNANucleotides() {
   const topData = useParticleStore(state => state.topData);
   const particleRadius = useParticleStore(state => state.particleRadius);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
-  const { selectedParticles, sphereSegments } = useUIStore();
+  // One value at a time. A bare useUIStore() re-renders this layer on any
+  // write to that store — a legend toggle, a lighting slider — and each
+  // re-render re-runs the per-instance matrix and colour loops below.
+  const selectedParticles = useUIStore(state => state.selectedParticles);
+  const sphereSegments = useUIStore(state => state.sphereSegments);
   // Subscribed field by field. A bare useClusteringStore() re-renders this
   // layer on *any* write to that store — including the pane's own controls,
   // which now live there — and each re-render re-runs the per-instance matrix

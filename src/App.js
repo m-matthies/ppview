@@ -10,7 +10,9 @@ import ClusteringPane from "./components/ClusteringPane";
 import ControlBar from "./components/ControlBar";
 import LightingControlsModal from "./components/LightingControlsModal";
 import { analyzeFiles, categorizeFiles } from "./formats/detection";
+import { useShallow } from "zustand/react/shallow";
 import { useParticleStore } from "./store/particleStore";
+import { selectParticleCount } from "./store/selectors";
 import { useUIStore } from "./store/uiStore";
 import { useClusteringStore } from "./store/clusteringStore";
 import { parseClusterFile } from "./utils/clusterFile";
@@ -28,30 +30,44 @@ import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
 
 function App() {
-  // Zustand stores
-  const {
-    positions,
-    topData,
-    trajFile,
-    configIndex,
-    currentConfigIndex,
-    currentTime,
-    totalConfigs,
-    setPositions,
-    setCurrentBoxSize,
-    setTopData,
-    setTrajFile,
-    setConfigIndex,
-    setCurrentConfigIndex,
-    setCurrentTime,
-    setCurrentEnergy,
-    setTotalConfigs,
-    setParticleRadius,
-    setFormatParticleRadius,
-    resetParticleRadius,
-    currentEnergy,
-    particleRadius,
-  } = useParticleStore();
+  // Subscribed to values, not to stores. A bare useParticleStore() re-rendered
+  // this component — and the control bar with it — on any write to the store,
+  // including every position array a frame or an axis shift produces.
+  //
+  // particleCount rather than positions: nothing here reads the array, only
+  // whether there is a structure and how big it is.
+  const particleCount = useParticleStore(selectParticleCount);
+  const { topData, trajFile, configIndex, currentConfigIndex, currentTime,
+          totalConfigs, currentEnergy, particleRadius } = useParticleStore(useShallow(state => ({
+    topData: state.topData,
+    trajFile: state.trajFile,
+    configIndex: state.configIndex,
+    currentConfigIndex: state.currentConfigIndex,
+    currentTime: state.currentTime,
+    totalConfigs: state.totalConfigs,
+    currentEnergy: state.currentEnergy,
+    particleRadius: state.particleRadius,
+  })));
+
+  // Setters are stable for the life of the store, so one shallow pick of them
+  // never causes a render on its own.
+  const { setPositions, setCurrentBoxSize, setTopData, setTrajFile, setConfigIndex,
+          setCurrentConfigIndex, setCurrentTime, setCurrentEnergy, setTotalConfigs,
+          setParticleRadius, setFormatParticleRadius,
+          resetParticleRadius } = useParticleStore(useShallow(state => ({
+    setPositions: state.setPositions,
+    setCurrentBoxSize: state.setCurrentBoxSize,
+    setTopData: state.setTopData,
+    setTrajFile: state.setTrajFile,
+    setConfigIndex: state.setConfigIndex,
+    setCurrentConfigIndex: state.setCurrentConfigIndex,
+    setCurrentTime: state.setCurrentTime,
+    setCurrentEnergy: state.setCurrentEnergy,
+    setTotalConfigs: state.setTotalConfigs,
+    setParticleRadius: state.setParticleRadius,
+    setFormatParticleRadius: state.setFormatParticleRadius,
+    resetParticleRadius: state.resetParticleRadius,
+  })));
 
   // The store writers the load pipeline needs, bundled once. Store setters are
   // stable, so this object is too — it can sit in a dependency array without
@@ -62,40 +78,51 @@ function App() {
   }), [setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
        setConfigIndex, setTotalConfigs, setTrajFile, setFormatParticleRadius]);
 
+  // Same again for the UI store: a value at a time, shallow-compared, so an
+  // unrelated toggle no longer re-renders the whole application.
   const {
-    showPatchLegend,
-    showParticleLegend,
-    showSimulationBox,
-    showBackdropPlanes,
-    showCoordinateAxis,
-    showStats,
-    isControlsVisible,
-    showClusteringPane,
-    filesDropped,
-    isLoading,
-    sceneRef,
-    isIframeMode,
-    isDragDropEnabled,
-    isPlaying,
-    playbackSpeed,
-    isSpeedPopupVisible,
-    isLightingControlsModalOpen,
-    setShowPatchLegend,
-    setShowParticleLegend,
-    setShowSimulationBox,
-    setShowBackdropPlanes,
-    setShowCoordinateAxis,
-    setShowStats,
-    setIsControlsVisible,
-    setShowClusteringPane,
-    setFilesDropped,
-    setIsLoading,
-    setPlaybackSpeed,
-    setIsSpeedPopupVisible,
-    setIsLightingControlsModalOpen,
-    sphereSegments,
-    setSphereSegments,
-  } = useUIStore();
+    showPatchLegend, showParticleLegend, showSimulationBox, showBackdropPlanes,
+    showCoordinateAxis, showStats, isControlsVisible, showClusteringPane,
+    filesDropped, isLoading, sceneRef, isIframeMode,
+    isDragDropEnabled, isPlaying, playbackSpeed, isSpeedPopupVisible,
+    isLightingControlsModalOpen, setShowPatchLegend, setShowParticleLegend, setShowSimulationBox,
+    setShowBackdropPlanes, setShowCoordinateAxis, setShowStats, setIsControlsVisible,
+    setShowClusteringPane, setFilesDropped, setIsLoading, setPlaybackSpeed,
+    setIsSpeedPopupVisible, setIsLightingControlsModalOpen, sphereSegments, setSphereSegments,
+  } = useUIStore(useShallow(state => ({
+    showPatchLegend: state.showPatchLegend,
+    showParticleLegend: state.showParticleLegend,
+    showSimulationBox: state.showSimulationBox,
+    showBackdropPlanes: state.showBackdropPlanes,
+    showCoordinateAxis: state.showCoordinateAxis,
+    showStats: state.showStats,
+    isControlsVisible: state.isControlsVisible,
+    showClusteringPane: state.showClusteringPane,
+    filesDropped: state.filesDropped,
+    isLoading: state.isLoading,
+    sceneRef: state.sceneRef,
+    isIframeMode: state.isIframeMode,
+    isDragDropEnabled: state.isDragDropEnabled,
+    isPlaying: state.isPlaying,
+    playbackSpeed: state.playbackSpeed,
+    isSpeedPopupVisible: state.isSpeedPopupVisible,
+    isLightingControlsModalOpen: state.isLightingControlsModalOpen,
+    setShowPatchLegend: state.setShowPatchLegend,
+    setShowParticleLegend: state.setShowParticleLegend,
+    setShowSimulationBox: state.setShowSimulationBox,
+    setShowBackdropPlanes: state.setShowBackdropPlanes,
+    setShowCoordinateAxis: state.setShowCoordinateAxis,
+    setShowStats: state.setShowStats,
+    setIsControlsVisible: state.setIsControlsVisible,
+    setShowClusteringPane: state.setShowClusteringPane,
+    setFilesDropped: state.setFilesDropped,
+    setIsLoading: state.setIsLoading,
+    setPlaybackSpeed: state.setPlaybackSpeed,
+    setIsSpeedPopupVisible: state.setIsSpeedPopupVisible,
+    setIsLightingControlsModalOpen: state.setIsLightingControlsModalOpen,
+    sphereSegments: state.sphereSegments,
+    setSphereSegments: state.setSphereSegments,
+  })));
 
 
   // Refs
@@ -285,12 +312,12 @@ function App() {
   // frame has produced positions — any earlier and every index would look
   // out-of-range.
   useEffect(() => {
-    if (!pendingClusterFiles || positions.length === 0) return;
+    if (!pendingClusterFiles || particleCount === 0) return;
     const files = pendingClusterFiles;
     setPendingClusterFiles(null);
-    registerClusterOverlays(files, positions.length)
+    registerClusterOverlays(files, particleCount)
       .then(() => useUIStore.getState().setShowClusteringPane(true));
-  }, [pendingClusterFiles, positions.length, registerClusterOverlays]);
+  }, [pendingClusterFiles, particleCount, registerClusterOverlays]);
 
   useKeyboardShortcuts({
     togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot,
@@ -316,7 +343,7 @@ function App() {
         />
       )}
 
-      {positions.length > 0 && <ParticleScene />}
+      {particleCount > 0 && <ParticleScene />}
 
       {/* Once a scene is up the initial drop zone is gone, so dragging more
           files anywhere over the window reveals a target for them. */}
@@ -325,9 +352,9 @@ function App() {
         enabled={filesDropped && isDragDropEnabled}
       />
 
-      {positions.length > 0 && !isLoading && !isIframeMode && <SceneBackgroundToggle />}
+      {particleCount > 0 && !isLoading && !isIframeMode && <SceneBackgroundToggle />}
 
-      {positions.length > 0 && !isLoading && (
+      {particleCount > 0 && !isLoading && (
         <ControlBar
           isControlsVisible={isControlsVisible} setIsControlsVisible={setIsControlsVisible}
           isPlaying={isPlaying} togglePlayback={togglePlayback}
@@ -359,7 +386,7 @@ function App() {
       {/* Mounted whenever there is a structure, not only while the panel is
           open: it owns the clustering applied to the scene, which outlives the
           panel. It renders nothing when closed. */}
-      {positions.length > 0 && !isLoading && <ClusteringPane />}
+      {particleCount > 0 && !isLoading && <ClusteringPane />}
 
       {isLoading && (
         <div className="loading-overlay">

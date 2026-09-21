@@ -2,6 +2,7 @@ import React from 'react';
 import ColorSchemeSelector from '../ColorSchemeSelector';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
+import { clearClustering } from '../../store/commands';
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
@@ -79,7 +80,6 @@ function ControlBar(props) {
   const overlays = useOverlayStore(state => state.overlays);
   const clusterCount = useClusteringStore(state => state.clusterCount);
   const sceneIsRestricted = useClusteringStore(isSceneRestricted);
-  const clearClustering = useClusteringStore(state => state.clearClustering);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
 

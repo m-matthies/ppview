@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { useOverlayStore, COMPUTED_VIEW } from './overlayStore';
 
 /**
  * True when the clustering is currently holding something back from the scene.
@@ -70,25 +69,10 @@ export const useClusteringStore = create((set) => ({
   setShowOnlySelected: (show) => set({ showOnlySelected: show }),
   setHiddenClusters: (clusters) => set({ hiddenClusters: clusters }),
 
-  // Everything the clustering does to the scene, undone at once. Reachable from
-  // the control bar as well as the pane, because the effect it undoes is visible
-  // whether or not the pane is open.
-  clearClustering: () => {
-    // Also point the View away from a cluster overlay. A cluster file supplies
-    // the particles' *base* colour, so clearing the selection alone left every
-    // particle still painted by its cluster after a button that says otherwise.
-    //
-    // COMPUTED_VIEW, not null: that is what a fresh load and every other reset in
-    // overlayStore use, and landing on null instead left the next selection
-    // rendering in particle-type colours for no visible reason. And only for a
-    // *cluster* overlay — a scalar-property overlay is a colour view the user
-    // chose, not something this button is undoing.
-    const overlays = useOverlayStore.getState();
-    const active = overlays.overlays.find(o => o.id === overlays.activeOverlayId);
-    if (!active || active.kind === 'clusters') {
-      overlays.setActiveOverlay(COMPUTED_VIEW);
-    }
-    set({
+  // The clustering half of clearing the scene. The View also has to be pointed
+  // away from a cluster overlay, which is a second store's business — see
+  // store/commands.js, which owns the combined action.
+  resetClusterState: () => set({
     selectedClusters: new Set(),
     showOnlySelected: false,
     hiddenClusters: new Set(),
@@ -96,8 +80,7 @@ export const useClusteringStore = create((set) => ({
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
     hiddenParticles: new Set(),
-    });
-  },
+  }),
 
   // Combined action for cluster highlighting
   highlightClusters: (clusterIndices, showOnlySelected, clusterColors = new Map()) => set({

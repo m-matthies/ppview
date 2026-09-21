@@ -19,7 +19,11 @@ import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppear
  */
 function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale = 1.0, typeColor, globalIndices, typeIndex }) {
   const meshRef = useRef();
-  const { selectedParticles, sphereSegments } = useUIStore();
+  // One value at a time. A bare useUIStore() re-renders this layer on any
+  // write to that store — a legend toggle, a lighting slider — and each
+  // re-render re-runs the per-instance matrix and colour loops below.
+  const selectedParticles = useUIStore(state => state.selectedParticles);
+  const sphereSegments = useUIStore(state => state.sphereSegments);
   const particleRadius = useParticleStore(state => state.particleRadius);
   // Subscribed field by field. A bare useClusteringStore() re-renders this
   // layer on *any* write to that store — including the pane's own controls,

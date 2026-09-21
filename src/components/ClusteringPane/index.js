@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
+import { clearClustering } from '../../store/commands';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { clusterOverlayFromFile } from '../../utils/overlays';
 import { useUIStore } from '../../store/uiStore';
@@ -65,7 +66,6 @@ function ClusteringPane() {
   const setSelectedClusters = useClusteringStore(state => state.setSelectedClusters);
   const showOnlySelected = useClusteringStore(state => state.showOnlySelected);
   const setShowOnlySelected = useClusteringStore(state => state.setShowOnlySelected);
-  const clearClustering = useClusteringStore(state => state.clearClustering);
   const sceneIsRestricted = useClusteringStore(isSceneRestricted);
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);

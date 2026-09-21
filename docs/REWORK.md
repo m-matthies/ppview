@@ -240,6 +240,24 @@ import.
 
 *Done when:* no component subscribes to a whole store; no store imports another.
 
+**Status: done.** No bare `useXStore()` remains anywhere in `src`, and an ESLint
+rule (`no-restricted-syntax` on a zero-argument `useXStore()` call) now rejects
+one — verified by reintroducing a bare subscription and watching it fail, rather
+than trusting a rule that matched nothing.
+
+`App` no longer subscribes to `positions` at all. It only ever read
+`positions.length`, so it takes `selectParticleCount`: dragging particles along
+an axis rewrites every position and no longer re-renders the application. The two
+whole-store destructurings became `useShallow` picks — 32 UI fields and 20
+particle fields — so an unrelated toggle no longer re-renders `App` and the
+control bar with it.
+
+`clusteringStore` no longer imports `overlayStore`. The combined action moved to
+`store/commands.js`, which is where anything coordinating two stores belongs; the
+store keeps `resetClusterState`, which is its own half. A test asserts the
+independence directly, so the next cross-store action has somewhere to go instead
+of closing a cycle.
+
 ### Phase 3 — Split `ClusteringPane`
 
 Hooks: `useClusterSource`, `useClusterColours`, `useClusterPublication`.

@@ -19,7 +19,8 @@ function ColorPreview({ schemeName, count }) {
 
 function ColorSchemeSelector() {
   const getUniqueParticleTypes = useParticleStore(state => state.getUniqueParticleTypes);
-  const { currentColorScheme, setCurrentColorScheme } = useUIStore();
+  const currentColorScheme = useUIStore(state => state.currentColorScheme);
+  const setCurrentColorScheme = useUIStore(state => state.setCurrentColorScheme);
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef(null);
 

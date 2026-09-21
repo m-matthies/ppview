@@ -1,3 +1,4 @@
+import { useShallow } from 'zustand/react/shallow';
 import React, { useState, useEffect, useCallback } from 'react';
 import { CloseIcon, ResetIcon } from '../Icons';
 import { useUIStore } from '../../store/uiStore';
@@ -67,14 +68,16 @@ const DIRECTIONAL_LIGHTS = [
 
 function LightingControlsModal({ isOpen, onClose }) {
   const {
-    currentLightingPreset,
-    setCurrentLightingPreset,
-    lightingSettings,
-    setLightingSettings,
-    resetLighting,
-    sceneBackground,
-    setSceneBackground,
-  } = useUIStore();
+    currentLightingPreset, setCurrentLightingPreset, lightingSettings, setLightingSettings, resetLighting, sceneBackground, setSceneBackground,
+  } = useUIStore(useShallow(state => ({
+    currentLightingPreset: state.currentLightingPreset,
+    setCurrentLightingPreset: state.setCurrentLightingPreset,
+    lightingSettings: state.lightingSettings,
+    setLightingSettings: state.setLightingSettings,
+    resetLighting: state.resetLighting,
+    sceneBackground: state.sceneBackground,
+    setSceneBackground: state.setSceneBackground,
+  })));
 
   const [settings, setSettings] = useState(lightingSettings);
 

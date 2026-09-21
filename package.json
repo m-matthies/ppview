@@ -30,7 +30,16 @@
     "extends": [
       "react-app",
       "react-app/jest"
-    ]
+    ],
+    "rules": {
+      "no-restricted-syntax": [
+        "error",
+        {
+          "selector": "CallExpression[callee.name=/^use[A-Za-z]*Store$/][arguments.length=0]",
+          "message": "Subscribe with a selector: useXStore(s => s.field), or useShallow for several. A bare useXStore() re-renders on every write to that store."
+        }
+      ]
+    }
   },
   "browserslist": {
     "production": [

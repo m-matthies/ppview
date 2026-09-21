@@ -25,7 +25,11 @@ function Particles() {
   const positions = useParticleStore(state => state.positions);
   const boxSize = useParticleStore(state => state.currentBoxSize);
   const particleRadius = useParticleStore(state => state.particleRadius);
-  const { selectedParticles, sphereSegments } = useUIStore();
+  // One value at a time. A bare useUIStore() re-renders this layer on any
+  // write to that store — a legend toggle, a lighting slider — and each
+  // re-render re-runs the per-instance matrix and colour loops below.
+  const selectedParticles = useUIStore(state => state.selectedParticles);
+  const sphereSegments = useUIStore(state => state.sphereSegments);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
   // Subscribed field by field. A bare useClusteringStore() re-renders this
