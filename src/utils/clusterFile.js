@@ -14,15 +14,29 @@
 
 const COLOR_PATTERN = /^#[0-9a-f]{6}$/i;
 
+// Deliberately not Number(): it maps null, false, "" and [] to 0, so a hole in
+// a particle list would quietly become "particle 0 is in this cluster" — the
+// exact misreporting the whole-entry rejection below exists to prevent.
+// Numeric strings are accepted because some analysis scripts emit them.
+const toIndex = (value) => {
+  if (typeof value === 'number') {
+    return Number.isInteger(value) && value >= 0 ? value : null;
+  }
+  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
+    return Number(value.trim());
+  }
+  return null;
+};
+
 const readIndices = (entry) => {
   const list = entry.particles ?? entry.indices ?? entry.ids;
   if (!Array.isArray(list)) return null;
   const out = [];
   for (const value of list) {
-    const index = Number(value);
+    const index = toIndex(value);
     // Silently dropping a bad index would misreport which particles are in a
     // cluster, so the whole entry is rejected instead.
-    if (!Number.isInteger(index) || index < 0) return null;
+    if (index === null) return null;
     out.push(index);
   }
   return out;

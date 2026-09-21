@@ -197,8 +197,10 @@ const pickTargets = (max = 12) => {
  * boolean "measurement" in a scenario is decoration. A thrown error is recorded
  * as a scenario failure and fails the run, which is what an invariant wants.
  */
+let __assertions = 0;
 const assert = (condition, message) => {
   if (!condition) throw new Error('assertion failed: ' + message);
+  __assertions += 1;
   return 1;
 };
 
@@ -228,6 +230,14 @@ const dropJson = (name, text) => {
 };
 `;
 
-const wrap = (body) => `(async () => {${PRELUDE}\n${body}\n})()`;
+// Every scenario reports how many assertions actually ran, and the runner
+// compares that exactly. A scenario that quietly stops testing — the selection
+// sweep recorded hits: 0 for eight commits against a baseline that also held 0 —
+// is otherwise indistinguishable from one that passes.
+const wrap = (body) => `(async () => {${PRELUDE}
+  const __scenario = async () => {${body}};
+  const __result = await __scenario();
+  return Object.assign({}, __result, { __assertions });
+})()`;
 
 module.exports = { wrap, MEASURE };

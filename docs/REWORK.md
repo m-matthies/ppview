@@ -110,6 +110,30 @@ exercising what it claims to.
 
 *Done when:* every rule module has tests; the unit suite runs in under 10s.
 
+**Status: done** (`45184bc`..). 161 tests across 10 suites, 1,221 lines, running
+in ~1.1s. Covered: `clusterAppearance`, `clusterFile`, `overlays`,
+`detection/signatures`, `trajectoryLoader`, `parsers/oxdnaNucleotide`, on top of
+the existing `clustering`, `colors` and `raspberry` suites.
+
+Two defects fell out of writing them:
+
+- `clusterFile` used `Number()` on each index, which maps `null`, `false`, `""`
+  and `[]` to **0** — a hole in a particle list silently became "particle 0 is in
+  this cluster", the exact misreporting the whole-entry rejection exists to
+  prevent. It now type-checks before converting, and still accepts the numeric
+  strings some analysis scripts emit.
+- `CLAUDE.md` described MGL trajectory detection as needing "multi-frame `.Box:`
+  headers". One header is enough; `isMGLFile` returns false as soon as a header
+  appears, so exactly one of the two predicates claims each file.
+
+The canary: `assert()` counts itself, every scenario reports `__assertions`, and
+the runner compares that **exactly** — no tolerance, because a drop from five to
+zero is smaller than `ABSOLUTE_SLACK` and would otherwise be swallowed, which is
+how the dead selection test hid. Verified by silently disabling one assertion and
+confirming the run fails with `6 → 5 (assertions ran)`. `--update` now also
+refuses to write a baseline from a run with errors, which had twice frozen a
+wrong frame in.
+
 ### Phase 1 — Extract the load pipeline
 
 New `src/loading/`: `classifyDrop`, `loadSimulation`, `loadFrame`. The staleness

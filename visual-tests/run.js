@@ -98,6 +98,14 @@ async function run() {
 function compare(current, baseline) {
   const diffs = [];
   const walk = (a, b, trail) => {
+    // How many assertions ran is a count of coverage, not a pixel measurement:
+    // compared exactly, with no tolerance. A scenario dropping from five
+    // assertions to zero moves by five, which the slack below would swallow —
+    // which is precisely how a dead test hid for eight commits.
+    if (trail.endsWith('.__assertions')) {
+      if (a !== b) diffs.push(`${trail}: ${b} → ${a} (assertions ran)`);
+      return;
+    }
     if (typeof a === 'number' && typeof b === 'number') {
       const delta = Math.abs(a - b);
       if (delta > ABSOLUTE_SLACK && delta / Math.max(Math.abs(b), 1) > TOLERANCE) {
@@ -132,14 +140,19 @@ function compare(current, baseline) {
     (slowest ? ` — slowest: ${slowest}` : ''));
 
   if (UPDATE) {
+    // Refuse to record a baseline captured from a broken run. Writing one
+    // anyway has twice frozen a wrong frame into the baseline — a light one as
+    // darkBackground, a still-hidden cluster as clusterRestored — each passing
+    // on the very next run and so looking like flake rather than corruption.
+    if (errors.length) {
+      console.error('\nnot writing a baseline: scenarios failed while capturing');
+      errors.forEach(e => console.error('  ! ' + e));
+      process.exit(2);
+    }
     // Merge, so --only --update refreshes one format without dropping the rest.
     const previous = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, 'utf8')) : {};
     fs.writeFileSync(BASELINE, JSON.stringify({ ...previous, ...results }, null, 2) + '\n');
     console.log(`\nbaseline written: ${Object.keys(results).length} scenarios`);
-    if (errors.length) {
-      console.log('\nconsole problems recorded while capturing:');
-      errors.forEach(e => console.log('  ! ' + e));
-    }
     process.exit(0);
   }
 

@@ -3,7 +3,7 @@
     "loaded": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1405,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94.1,
@@ -12,65 +12,66 @@
     "boxOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 2499,
+      "edges": 2503,
       "mean": 241.7,
-      "tintR": 95,
-      "tintG": 94.2,
+      "tintR": 94.9,
+      "tintG": 94.3,
       "tintB": 105.2
     },
     "planesOff": {
       "coloured": 418,
       "neutral": 0,
-      "edges": 514,
+      "edges": 519,
       "mean": 244.06,
       "tintR": 94.1,
-      "tintG": 93.3,
+      "tintG": 93.4,
       "tintB": 104.9
     },
     "axesOff": {
       "coloured": 396,
       "neutral": 0,
-      "edges": 1357,
+      "edges": 1356,
       "mean": 241.78,
       "tintR": 96.4,
       "tintG": 94.9,
-      "tintB": 106.8
+      "tintB": 106.7
     },
     "restored": {
       "coloured": 410,
       "neutral": 0,
       "edges": 1405,
       "mean": 241.77,
-      "tintR": 94.7,
-      "tintG": 94,
+      "tintR": 94.8,
+      "tintG": 94.1,
       "tintB": 104.8
-    }
+    },
+    "__assertions": 0
   },
   "mgl/detail": {
     "detailLow": {
       "coloured": 404,
       "neutral": 0,
-      "edges": 1396,
+      "edges": 1395,
       "mean": 241.77,
       "tintR": 94.9,
       "tintG": 93.8,
-      "tintB": 106.3
+      "tintB": 106.2
     },
     "detailUltra": {
       "coloured": 416,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1405,
       "mean": 241.77,
-      "tintR": 95.6,
+      "tintR": 95.5,
       "tintG": 95,
-      "tintB": 105.3
+      "tintB": 105.2
     },
     "detailMedium": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1404,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
     },
@@ -86,19 +87,20 @@
     "radiusDefault": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1404,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
-    }
+    },
+    "__assertions": 0
   },
   "mgl/clustering": {
     "clusterRows": 5,
     "open": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94,
@@ -144,7 +146,7 @@
     "afterReset": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94,
@@ -171,7 +173,7 @@
     "afterClear": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94,
@@ -180,45 +182,46 @@
     "restored": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94,
       "tintB": 104.8
-    }
+    },
+    "__assertions": 9
   },
   "mgl/appearance": {
     "patchesOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94.1,
-      "tintB": 104.8
+      "tintG": 94,
+      "tintB": 104.7
     },
     "legendsOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94.1,
-      "tintB": 104.8
+      "tintG": 94,
+      "tintB": 104.7
     },
     "light_Depth": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94.1,
-      "tintB": 104.8
+      "tintG": 94,
+      "tintB": 104.7
     },
     "light_Publication": {
       "coloured": 411,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1407,
       "mean": 242.6,
       "tintR": 99.7,
       "tintG": 99.1,
@@ -227,11 +230,11 @@
     "light_Relief": {
       "coloured": 399,
       "neutral": 3,
-      "edges": 1042,
+      "edges": 1040,
       "mean": 240.17,
       "tintR": 86.4,
       "tintG": 84.9,
-      "tintB": 97.9
+      "tintB": 98
     },
     "light_Flat": {
       "coloured": 425,
@@ -259,13 +262,14 @@
       "tintR": 117.2,
       "tintG": 115.5,
       "tintB": 120.1
-    }
+    },
+    "__assertions": 0
   },
   "raspberry/load": {
     "loaded": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1409,
+      "edges": 1407,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -274,16 +278,16 @@
     "boxOn": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 2497,
+      "edges": 2498,
       "mean": 241.75,
       "tintR": 133.9,
-      "tintG": 154.2,
-      "tintB": 125.1
+      "tintG": 154.3,
+      "tintB": 125.2
     },
     "planesOff": {
       "coloured": 414,
       "neutral": 1,
-      "edges": 523,
+      "edges": 521,
       "mean": 244.12,
       "tintR": 131.5,
       "tintG": 151.6,
@@ -294,9 +298,9 @@
       "neutral": 1,
       "edges": 1357,
       "mean": 241.84,
-      "tintR": 137,
+      "tintR": 137.1,
       "tintG": 157.3,
-      "tintB": 127.9
+      "tintB": 128
     },
     "restored": {
       "coloured": 408,
@@ -306,7 +310,8 @@
       "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
-    }
+    },
+    "__assertions": 0
   },
   "raspberry/detail": {
     "detailLow": {
@@ -321,7 +326,7 @@
     "detailUltra": {
       "coloured": 409,
       "neutral": 2,
-      "edges": 1405,
+      "edges": 1406,
       "mean": 241.82,
       "tintR": 133.9,
       "tintG": 154.3,
@@ -330,16 +335,16 @@
     "detailMedium": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1408,
       "mean": 241.83,
-      "tintR": 134,
+      "tintR": 134.1,
       "tintG": 154.4,
       "tintB": 125.3
     },
     "radiusLarge": {
       "coloured": 1224,
       "neutral": 3,
-      "edges": 1925,
+      "edges": 1926,
       "mean": 241.52,
       "tintR": 135.2,
       "tintG": 156.8,
@@ -348,12 +353,13 @@
     "radiusDefault": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1408,
       "mean": 241.83,
-      "tintR": 134,
+      "tintR": 134.1,
       "tintG": 154.4,
       "tintB": 125.3
-    }
+    },
+    "__assertions": 0
   },
   "raspberry/clustering": {
     "clusterRows": 5,
@@ -447,53 +453,54 @@
       "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
-    }
+    },
+    "__assertions": 9
   },
   "raspberry/appearance": {
     "patchesOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1433,
+      "edges": 1434,
       "mean": 241.82,
-      "tintR": 133.8,
+      "tintR": 133.7,
       "tintG": 154.2,
       "tintB": 125.1
     },
     "legendsOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1433,
+      "edges": 1434,
       "mean": 241.82,
-      "tintR": 133.8,
+      "tintR": 133.7,
       "tintG": 154.2,
       "tintB": 125.1
     },
     "light_Depth": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1433,
+      "edges": 1434,
       "mean": 241.82,
-      "tintR": 133.8,
+      "tintR": 133.7,
       "tintG": 154.2,
       "tintB": 125.1
     },
     "light_Publication": {
       "coloured": 424,
       "neutral": 6,
-      "edges": 1447,
+      "edges": 1445,
       "mean": 242.66,
       "tintR": 139.7,
       "tintG": 162,
       "tintB": 132.7
     },
     "light_Relief": {
-      "coloured": 354,
-      "neutral": 84,
-      "edges": 1105,
+      "coloured": 353,
+      "neutral": 85,
+      "edges": 1104,
       "mean": 240.2,
-      "tintR": 129,
-      "tintG": 147.6,
-      "tintB": 119.9
+      "tintR": 129.3,
+      "tintG": 147.8,
+      "tintB": 120.1
     },
     "light_Flat": {
       "coloured": 449,
@@ -521,35 +528,36 @@
       "tintR": 146.2,
       "tintG": 171.4,
       "tintB": 138.6
-    }
+    },
+    "__assertions": 0
   },
   "oxdna/load": {
     "loaded": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1264,
       "mean": 241.92,
-      "tintR": 161,
+      "tintR": 161.1,
       "tintG": 158.6,
       "tintB": 133
     },
     "boxOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 2358,
+      "edges": 2359,
       "mean": 241.85,
       "tintR": 160.8,
-      "tintG": 158.4,
-      "tintB": 132.8
+      "tintG": 158.5,
+      "tintB": 132.9
     },
     "planesOff": {
-      "coloured": 184,
+      "coloured": 183,
       "neutral": 0,
-      "edges": 377,
+      "edges": 378,
       "mean": 244.24,
-      "tintR": 155.4,
-      "tintG": 152.4,
-      "tintB": 130.3
+      "tintR": 154.9,
+      "tintG": 151.9,
+      "tintB": 130
     },
     "axesOff": {
       "coloured": 162,
@@ -563,12 +571,13 @@
     "restored": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.6,
+      "tintG": 158.7,
       "tintB": 133
-    }
+    },
+    "__assertions": 0
   },
   "oxdna/detail": {
     "detailLow": {
@@ -577,8 +586,8 @@
       "edges": 1261,
       "mean": 241.93,
       "tintR": 161.8,
-      "tintG": 158.8,
-      "tintB": 133.5
+      "tintG": 158.7,
+      "tintB": 133.4
     },
     "detailUltra": {
       "coloured": 176,
@@ -586,8 +595,8 @@
       "edges": 1266,
       "mean": 241.92,
       "tintR": 160.6,
-      "tintG": 158.6,
-      "tintB": 132.9
+      "tintG": 158.5,
+      "tintB": 132.8
     },
     "detailMedium": {
       "coloured": 176,
@@ -595,7 +604,7 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "radiusLarge": {
@@ -605,7 +614,7 @@
       "mean": 241.84,
       "tintR": 163.7,
       "tintG": 156.6,
-      "tintB": 131.5
+      "tintB": 131.6
     },
     "radiusDefault": {
       "coloured": 176,
@@ -613,9 +622,10 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
-    }
+    },
+    "__assertions": 0
   },
   "oxdna/clustering": {
     "clusterRows": 5,
@@ -624,9 +634,9 @@
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133
+      "tintR": 161,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "hiddenAll": {
       "coloured": 14,
@@ -651,8 +661,8 @@
       "neutral": 0,
       "edges": 1005,
       "mean": 241.97,
-      "tintR": 137.5,
-      "tintG": 101,
+      "tintR": 137.3,
+      "tintG": 100.9,
       "tintB": 82.6
     },
     "viewOptions": 2,
@@ -670,17 +680,17 @@
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133
+      "tintR": 161,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "clusterColoursWhileClosed": {
       "coloured": 39,
       "neutral": 0,
       "edges": 1005,
       "mean": 241.97,
-      "tintR": 137.5,
-      "tintG": 101,
+      "tintR": 137.3,
+      "tintG": 100.9,
       "tintB": 82.6
     },
     "typeColoursWhileClosed": {
@@ -697,19 +707,20 @@
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133
+      "tintR": 161,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "restored": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133
-    }
+      "tintR": 161,
+      "tintG": 158.7,
+      "tintB": 133.1
+    },
+    "__assertions": 9
   },
   "oxdna/appearance": {
     "patchesOn": {
@@ -717,27 +728,27 @@
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.5,
-      "tintB": 132.9
+      "tintR": 161.1,
+      "tintG": 158.6,
+      "tintB": 133
     },
     "legendsOn": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.5,
-      "tintB": 132.9
+      "tintR": 161.1,
+      "tintG": 158.6,
+      "tintB": 133
     },
     "light_Depth": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.5,
-      "tintB": 132.9
+      "tintR": 161.1,
+      "tintG": 158.6,
+      "tintB": 133
     },
     "light_Publication": {
       "coloured": 175,
@@ -783,13 +794,14 @@
       "tintR": 169.3,
       "tintG": 168.5,
       "tintB": 146.7
-    }
+    },
+    "__assertions": 0
   },
   "srs/load": {
     "loaded": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1416,
+      "edges": 1415,
       "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -798,11 +810,11 @@
     "boxOn": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 2506,
+      "edges": 2504,
       "mean": 241.77,
       "tintR": 141.9,
-      "tintG": 161.3,
-      "tintB": 146.8
+      "tintG": 161.4,
+      "tintB": 147
     },
     "planesOff": {
       "coloured": 420,
@@ -816,21 +828,22 @@
     "axesOff": {
       "coloured": 398,
       "neutral": 12,
-      "edges": 1366,
+      "edges": 1365,
       "mean": 241.86,
-      "tintR": 145.4,
-      "tintG": 164.7,
-      "tintB": 150.6
+      "tintR": 145.3,
+      "tintG": 164.6,
+      "tintB": 150.5
     },
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
-      "mean": 241.85,
+      "edges": 1415,
+      "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147.1
-    }
+      "tintB": 147
+    },
+    "__assertions": 0
   },
   "srs/detail": {
     "detailLow": {
@@ -839,13 +852,13 @@
       "edges": 1412,
       "mean": 241.85,
       "tintR": 142.9,
-      "tintG": 161.8,
-      "tintB": 147.2
+      "tintG": 161.9,
+      "tintB": 147.3
     },
     "detailUltra": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1416,
+      "edges": 1413,
       "mean": 241.84,
       "tintR": 141.6,
       "tintG": 161,
@@ -854,37 +867,38 @@
     "detailMedium": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1416,
-      "mean": 241.84,
+      "edges": 1414,
+      "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147
+      "tintB": 147.1
     },
     "radiusLarge": {
-      "coloured": 1233,
+      "coloured": 1232,
       "neutral": 0,
-      "edges": 1854,
+      "edges": 1855,
       "mean": 241.59,
       "tintR": 142.6,
-      "tintG": 165.7,
-      "tintB": 151.2
+      "tintG": 165.6,
+      "tintB": 151.1
     },
     "radiusDefault": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1416,
-      "mean": 241.84,
+      "edges": 1414,
+      "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147
-    }
+      "tintB": 147.1
+    },
+    "__assertions": 0
   },
   "srs/clustering": {
     "clusterRows": 5,
     "open": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -930,7 +944,7 @@
     "afterReset": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -957,7 +971,7 @@
     "afterClear": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -966,54 +980,55 @@
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
       "tintB": 147
-    }
+    },
+    "__assertions": 9
   },
   "srs/appearance": {
     "patchesOn": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1458,
+      "edges": 1459,
       "mean": 241.83,
-      "tintR": 142.9,
-      "tintG": 158.1,
-      "tintB": 144.5
+      "tintR": 142.8,
+      "tintG": 158,
+      "tintB": 144.4
     },
     "legendsOn": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1458,
+      "edges": 1459,
       "mean": 241.83,
-      "tintR": 142.9,
-      "tintG": 158.1,
-      "tintB": 144.5
+      "tintR": 142.8,
+      "tintG": 158,
+      "tintB": 144.4
     },
     "light_Depth": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1458,
+      "edges": 1459,
       "mean": 241.83,
-      "tintR": 142.9,
-      "tintG": 158.1,
-      "tintB": 144.5
+      "tintR": 142.8,
+      "tintG": 158,
+      "tintB": 144.4
     },
     "light_Publication": {
       "coloured": 424,
       "neutral": 17,
-      "edges": 1477,
+      "edges": 1476,
       "mean": 242.67,
       "tintR": 149.6,
-      "tintG": 165.5,
+      "tintG": 165.4,
       "tintB": 152.2
     },
     "light_Relief": {
       "coloured": 343,
       "neutral": 105,
-      "edges": 1114,
+      "edges": 1112,
       "mean": 240.21,
       "tintR": 135.8,
       "tintG": 153.9,
@@ -1045,13 +1060,14 @@
       "tintR": 155.9,
       "tintG": 173,
       "tintB": 158.1
-    }
+    },
+    "__assertions": 0
   },
   "lorenzo/load": {
     "loaded": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1412,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -1060,27 +1076,27 @@
     "boxOn": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 2505,
+      "edges": 2507,
       "mean": 241.76,
       "tintR": 141.2,
-      "tintG": 152.5,
+      "tintG": 152.4,
       "tintB": 126.5
     },
     "planesOff": {
       "coloured": 428,
       "neutral": 0,
-      "edges": 523,
+      "edges": 524,
       "mean": 244.13,
-      "tintR": 139.3,
+      "tintR": 139.4,
       "tintG": 150.4,
       "tintB": 125.8
     },
     "axesOff": {
       "coloured": 405,
       "neutral": 0,
-      "edges": 1364,
+      "edges": 1365,
       "mean": 241.84,
-      "tintR": 144.5,
+      "tintR": 144.6,
       "tintG": 155.5,
       "tintB": 129.3
     },
@@ -1089,25 +1105,26 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.3,
+      "tintR": 141.4,
       "tintG": 152.7,
-      "tintB": 126.6
-    }
+      "tintB": 126.7
+    },
+    "__assertions": 0
   },
   "lorenzo/detail": {
     "detailLow": {
       "coloured": 406,
       "neutral": 1,
-      "edges": 1413,
+      "edges": 1412,
       "mean": 241.83,
       "tintR": 141.9,
-      "tintG": 153,
+      "tintG": 152.9,
       "tintB": 127.1
     },
     "detailUltra": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1412,
       "mean": 241.83,
       "tintR": 141,
       "tintG": 152.2,
@@ -1116,7 +1133,7 @@
     "detailMedium": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -1125,7 +1142,7 @@
     "radiusLarge": {
       "coloured": 1217,
       "neutral": 8,
-      "edges": 1859,
+      "edges": 1858,
       "mean": 241.54,
       "tintR": 142.9,
       "tintG": 155.8,
@@ -1134,23 +1151,24 @@
     "radiusDefault": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
       "tintB": 126.6
-    }
+    },
+    "__assertions": 0
   },
   "lorenzo/clustering": {
     "clusterRows": 5,
     "open": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
+      "tintG": 152.7,
+      "tintB": 126.6
     },
     "hiddenAll": {
       "coloured": 14,
@@ -1192,11 +1210,11 @@
     "afterReset": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
+      "tintG": 152.7,
+      "tintB": 126.6
     },
     "clusterColoursWhileClosed": {
       "coloured": 69,
@@ -1219,27 +1237,28 @@
     "afterClear": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
+      "tintG": 152.7,
+      "tintB": 126.6
     },
     "restored": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
-    }
+      "tintG": 152.7,
+      "tintB": 126.6
+    },
+    "__assertions": 9
   },
   "lorenzo/appearance": {
     "patchesOn": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1447,
+      "edges": 1445,
       "mean": 241.82,
       "tintR": 145,
       "tintG": 146.4,
@@ -1248,7 +1267,7 @@
     "legendsOn": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1447,
+      "edges": 1445,
       "mean": 241.82,
       "tintR": 145,
       "tintG": 146.4,
@@ -1257,7 +1276,7 @@
     "light_Depth": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1447,
+      "edges": 1445,
       "mean": 241.82,
       "tintR": 145,
       "tintG": 146.4,
@@ -1266,20 +1285,20 @@
     "light_Publication": {
       "coloured": 418,
       "neutral": 15,
-      "edges": 1458,
+      "edges": 1457,
       "mean": 242.66,
-      "tintR": 151.5,
+      "tintR": 151.4,
       "tintG": 153.2,
       "tintB": 131.6
     },
     "light_Relief": {
-      "coloured": 346,
-      "neutral": 97,
-      "edges": 1101,
+      "coloured": 344,
+      "neutral": 99,
+      "edges": 1102,
       "mean": 240.2,
-      "tintR": 142.1,
-      "tintG": 139.9,
-      "tintB": 119.7
+      "tintR": 142.4,
+      "tintG": 140.4,
+      "tintB": 120.1
     },
     "light_Flat": {
       "coloured": 442,
@@ -1307,7 +1326,8 @@
       "tintR": 158.1,
       "tintG": 160.4,
       "tintB": 135.8
-    }
+    },
+    "__assertions": 0
   },
   "flavio/load": {
     "loaded": {
@@ -1315,14 +1335,14 @@
       "neutral": 5,
       "edges": 1421,
       "mean": 241.83,
-      "tintR": 149.1,
+      "tintR": 149.2,
       "tintG": 144.9,
       "tintB": 124.4
     },
     "boxOn": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 2509,
+      "edges": 2513,
       "mean": 241.76,
       "tintR": 149.1,
       "tintG": 144.7,
@@ -1331,7 +1351,7 @@
     "planesOff": {
       "coloured": 421,
       "neutral": 5,
-      "edges": 530,
+      "edges": 532,
       "mean": 244.12,
       "tintR": 147,
       "tintG": 142.7,
@@ -1340,7 +1360,7 @@
     "axesOff": {
       "coloured": 398,
       "neutral": 5,
-      "edges": 1373,
+      "edges": 1371,
       "mean": 241.84,
       "tintR": 152.7,
       "tintG": 147.5,
@@ -1349,12 +1369,13 @@
     "restored": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1419,
+      "edges": 1421,
       "mean": 241.83,
-      "tintR": 149.1,
-      "tintG": 144.9,
-      "tintB": 124.3
-    }
+      "tintR": 149.2,
+      "tintG": 145,
+      "tintB": 124.4
+    },
+    "__assertions": 0
   },
   "flavio/detail": {
     "detailLow": {
@@ -1363,31 +1384,31 @@
       "edges": 1420,
       "mean": 241.83,
       "tintR": 149.4,
-      "tintG": 145.4,
-      "tintB": 124.9
+      "tintG": 145.3,
+      "tintB": 124.8
     },
     "detailUltra": {
       "coloured": 412,
       "neutral": 6,
-      "edges": 1421,
+      "edges": 1418,
       "mean": 241.83,
       "tintR": 148.9,
-      "tintG": 144.5,
-      "tintB": 124
+      "tintG": 144.4,
+      "tintB": 123.9
     },
     "detailMedium": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1421,
+      "edges": 1419,
       "mean": 241.83,
-      "tintR": 149.2,
-      "tintG": 145,
+      "tintR": 149.1,
+      "tintG": 144.9,
       "tintB": 124.4
     },
     "radiusLarge": {
       "coloured": 1196,
       "neutral": 18,
-      "edges": 1887,
+      "edges": 1885,
       "mean": 241.53,
       "tintR": 157.1,
       "tintG": 141.4,
@@ -1396,19 +1417,20 @@
     "radiusDefault": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1421,
+      "edges": 1419,
       "mean": 241.83,
-      "tintR": 149.2,
-      "tintG": 145,
+      "tintR": 149.1,
+      "tintG": 144.9,
       "tintB": 124.4
-    }
+    },
+    "__assertions": 0
   },
   "flavio/clustering": {
     "clusterRows": 5,
     "open": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1419,
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
@@ -1454,7 +1476,7 @@
     "afterReset": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1419,
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
@@ -1481,7 +1503,7 @@
     "afterClear": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1419,
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
@@ -1490,18 +1512,19 @@
     "restored": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1419,
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
       "tintB": 124.4
-    }
+    },
+    "__assertions": 9
   },
   "flavio/appearance": {
     "patchesOn": {
       "coloured": 427,
       "neutral": 19,
-      "edges": 1457,
+      "edges": 1459,
       "mean": 241.81,
       "tintR": 149.4,
       "tintG": 140.7,
@@ -1510,7 +1533,7 @@
     "legendsOn": {
       "coloured": 427,
       "neutral": 19,
-      "edges": 1457,
+      "edges": 1459,
       "mean": 241.81,
       "tintR": 149.4,
       "tintG": 140.7,
@@ -1519,7 +1542,7 @@
     "light_Depth": {
       "coloured": 427,
       "neutral": 19,
-      "edges": 1457,
+      "edges": 1459,
       "mean": 241.81,
       "tintR": 149.4,
       "tintG": 140.7,
@@ -1537,9 +1560,9 @@
     "light_Relief": {
       "coloured": 348,
       "neutral": 102,
-      "edges": 1111,
+      "edges": 1112,
       "mean": 240.2,
-      "tintR": 146,
+      "tintR": 145.9,
       "tintG": 136.9,
       "tintB": 123.9
     },
@@ -1569,14 +1592,27 @@
       "tintR": 163.5,
       "tintG": 153.3,
       "tintB": 139.2
-    }
+    },
+    "__assertions": 0
   },
-  "mgl/selection": {},
-  "raspberry/selection": {},
-  "oxdna/selection": {},
-  "srs/selection": {},
-  "lorenzo/selection": {},
-  "flavio/selection": {},
+  "mgl/selection": {
+    "__assertions": 6
+  },
+  "raspberry/selection": {
+    "__assertions": 6
+  },
+  "oxdna/selection": {
+    "__assertions": 6
+  },
+  "srs/selection": {
+    "__assertions": 6
+  },
+  "lorenzo/selection": {
+    "__assertions": 6
+  },
+  "flavio/selection": {
+    "__assertions": 6
+  },
   "mgl/overlays": {
     "before": {
       "coloured": 410,
@@ -1584,17 +1620,17 @@
       "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94,
+      "tintG": 94.1,
       "tintB": 104.8
     },
     "viewControlAppeared": 1,
     "overlayActive": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1277,
+      "edges": 1276,
       "mean": 241.83,
       "tintR": 114.6,
-      "tintG": 117.5,
+      "tintG": 117.6,
       "tintB": 116.7
     },
     "viewOptions": 3,
@@ -1604,19 +1640,19 @@
     "fileClusters": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1277,
+      "edges": 1276,
       "mean": 241.83,
       "tintR": 114.6,
-      "tintG": 117.5,
+      "tintG": 117.6,
       "tintB": 116.7
     },
     "typeColours": {
       "coloured": 347,
       "neutral": 0,
-      "edges": 1275,
+      "edges": 1274,
       "mean": 241.8,
-      "tintR": 100.4,
-      "tintG": 90.3,
+      "tintR": 100.5,
+      "tintG": 90.4,
       "tintB": 103.4
     },
     "schemePickerShown": 1,
@@ -1624,35 +1660,35 @@
     "oneClusterHidden": {
       "coloured": 277,
       "neutral": 1,
-      "edges": 1219,
+      "edges": 1218,
       "mean": 241.85,
       "tintR": 94.4,
-      "tintG": 130.4,
-      "tintB": 112.2
+      "tintG": 130.5,
+      "tintB": 112.3
     },
     "clusterRestored": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1277,
+      "edges": 1276,
       "mean": 241.83,
       "tintR": 114.6,
-      "tintG": 117.5,
+      "tintG": 117.6,
       "tintB": 116.7
     },
     "recoloured": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1275,
+      "edges": 1274,
       "mean": 241.82,
       "tintR": 84.3,
-      "tintG": 147.6,
-      "tintB": 99.5
+      "tintG": 147.7,
+      "tintB": 99.6
     },
     "viewOptionsAfterSecond": 4,
     "secondOverlay": {
       "coloured": 565,
       "neutral": 2,
-      "edges": 1479,
+      "edges": 1478,
       "mean": 241.74,
       "tintR": 134.6,
       "tintG": 119.3,
@@ -1664,9 +1700,10 @@
       "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94,
+      "tintG": 94.1,
       "tintB": 104.8
-    }
+    },
+    "__assertions": 0
   },
   "raspberry/overlays": {
     "before": {
@@ -1675,14 +1712,14 @@
       "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
-      "tintG": 154.4,
+      "tintG": 154.3,
       "tintB": 125.3
     },
     "viewControlAppeared": 1,
     "overlayActive": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1277,
+      "edges": 1279,
       "mean": 241.84,
       "tintR": 119.6,
       "tintG": 115.6,
@@ -1695,7 +1732,7 @@
     "fileClusters": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1277,
+      "edges": 1279,
       "mean": 241.84,
       "tintR": 119.6,
       "tintG": 115.6,
@@ -1715,7 +1752,7 @@
     "oneClusterHidden": {
       "coloured": 272,
       "neutral": 2,
-      "edges": 1222,
+      "edges": 1224,
       "mean": 241.86,
       "tintR": 103.8,
       "tintG": 126.7,
@@ -1724,7 +1761,7 @@
     "clusterRestored": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1277,
+      "edges": 1279,
       "mean": 241.84,
       "tintR": 119.6,
       "tintG": 115.6,
@@ -1733,7 +1770,7 @@
     "recoloured": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1277,
+      "edges": 1279,
       "mean": 241.83,
       "tintR": 93,
       "tintG": 142,
@@ -1743,7 +1780,7 @@
     "secondOverlay": {
       "coloured": 585,
       "neutral": 1,
-      "edges": 1528,
+      "edges": 1530,
       "mean": 241.71,
       "tintR": 120.3,
       "tintG": 116.7,
@@ -1755,17 +1792,18 @@
       "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
-      "tintG": 154.4,
+      "tintG": 154.3,
       "tintB": 125.3
-    }
+    },
+    "__assertions": 0
   },
   "oxdna/overlays": {
     "before": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
-      "tintR": 161,
+      "tintR": 161.1,
       "tintG": 158.6,
       "tintB": 133
     },
@@ -1776,7 +1814,7 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 124.8,
-      "tintG": 132.6,
+      "tintG": 132.4,
       "tintB": 118.7
     },
     "viewOptions": 3,
@@ -1789,16 +1827,16 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 124.8,
-      "tintG": 132.6,
+      "tintG": 132.4,
       "tintB": 118.7
     },
     "typeColours": {
       "coloured": 139,
       "neutral": 1,
-      "edges": 1159,
+      "edges": 1160,
       "mean": 241.94,
       "tintR": 146.6,
-      "tintG": 165.7,
+      "tintG": 165.6,
       "tintB": 125.5
     },
     "schemePickerShown": 1,
@@ -1809,8 +1847,8 @@
       "edges": 1130,
       "mean": 241.93,
       "tintR": 106.9,
-      "tintG": 138.3,
-      "tintB": 113
+      "tintG": 138.1,
+      "tintB": 112.9
     },
     "clusterRestored": {
       "coloured": 141,
@@ -1818,7 +1856,7 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 124.8,
-      "tintG": 132.6,
+      "tintG": 132.4,
       "tintB": 118.7
     },
     "recoloured": {
@@ -1827,37 +1865,38 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 104.2,
-      "tintG": 153.3,
-      "tintB": 106.5
+      "tintG": 153.2,
+      "tintB": 106.4
     },
     "viewOptionsAfterSecond": 4,
     "secondOverlay": {
       "coloured": 237,
       "neutral": 5,
-      "edges": 1306,
+      "edges": 1307,
       "mean": 241.89,
-      "tintR": 152.9,
-      "tintG": 136.3,
-      "tintB": 112.3
+      "tintR": 152.8,
+      "tintG": 136.2,
+      "tintB": 112.2
     },
     "computedClusters": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
-      "tintR": 161,
+      "tintR": 161.1,
       "tintG": 158.6,
       "tintB": 133
-    }
+    },
+    "__assertions": 0
   },
   "srs/overlays": {
     "before": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1415,
       "mean": 241.85,
       "tintR": 142.1,
-      "tintG": 161.5,
+      "tintG": 161.6,
       "tintB": 147.1
     },
     "viewControlAppeared": 1,
@@ -1866,8 +1905,8 @@
       "neutral": 23,
       "edges": 1300,
       "mean": 241.82,
-      "tintR": 113.9,
-      "tintG": 116,
+      "tintR": 114,
+      "tintG": 116.1,
       "tintB": 114.8
     },
     "viewOptions": 3,
@@ -1879,14 +1918,14 @@
       "neutral": 23,
       "edges": 1300,
       "mean": 241.82,
-      "tintR": 113.9,
-      "tintG": 116,
+      "tintR": 114,
+      "tintG": 116.1,
       "tintB": 114.8
     },
     "typeColours": {
       "coloured": 329,
       "neutral": 25,
-      "edges": 1311,
+      "edges": 1312,
       "mean": 241.87,
       "tintR": 143.8,
       "tintG": 168.5,
@@ -1899,8 +1938,8 @@
       "neutral": 30,
       "edges": 1262,
       "mean": 241.84,
-      "tintR": 96.3,
-      "tintG": 128.7,
+      "tintR": 96.4,
+      "tintG": 128.8,
       "tintB": 111.4
     },
     "clusterRestored": {
@@ -1908,8 +1947,8 @@
       "neutral": 23,
       "edges": 1300,
       "mean": 241.82,
-      "tintR": 113.9,
-      "tintG": 116,
+      "tintR": 114,
+      "tintG": 116.1,
       "tintB": 114.8
     },
     "recoloured": {
@@ -1919,13 +1958,13 @@
       "mean": 241.82,
       "tintR": 85.6,
       "tintG": 144.3,
-      "tintB": 98.6
+      "tintB": 98.7
     },
     "viewOptionsAfterSecond": 4,
     "secondOverlay": {
       "coloured": 583,
       "neutral": 3,
-      "edges": 1493,
+      "edges": 1494,
       "mean": 241.72,
       "tintR": 129.2,
       "tintG": 118.7,
@@ -1934,12 +1973,13 @@
     "computedClusters": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1415,
       "mean": 241.85,
       "tintR": 142.1,
-      "tintG": 161.5,
+      "tintG": 161.6,
       "tintB": 147.1
-    }
+    },
+    "__assertions": 0
   },
   "lorenzo/overlays": {
     "before": {
@@ -1947,19 +1987,19 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
+      "tintR": 141.3,
+      "tintG": 152.7,
+      "tintB": 126.6
     },
     "viewControlAppeared": 1,
     "overlayActive": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1271,
+      "edges": 1268,
       "mean": 241.83,
       "tintR": 113.2,
       "tintG": 116.3,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "viewOptions": 3,
     "paneOpen": 1,
@@ -1968,111 +2008,20 @@
     "fileClusters": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1271,
+      "edges": 1268,
       "mean": 241.83,
       "tintR": 113.2,
       "tintG": 116.3,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "typeColours": {
       "coloured": 336,
       "neutral": 0,
-      "edges": 1280,
-      "mean": 241.86,
-      "tintR": 154.7,
-      "tintG": 136.2,
-      "tintB": 120.6
-    },
-    "schemePickerShown": 1,
-    "schemePickerHidden": 0,
-    "oneClusterHidden": {
-      "coloured": 279,
-      "neutral": 1,
-      "edges": 1218,
-      "mean": 241.85,
-      "tintR": 95.7,
-      "tintG": 129,
-      "tintB": 111.4
-    },
-    "clusterRestored": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1271,
-      "mean": 241.83,
-      "tintR": 113.2,
-      "tintG": 116.3,
-      "tintB": 114.8
-    },
-    "recoloured": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1269,
-      "mean": 241.82,
-      "tintR": 85.1,
-      "tintG": 144.4,
-      "tintB": 98.8
-    },
-    "viewOptionsAfterSecond": 4,
-    "secondOverlay": {
-      "coloured": 586,
-      "neutral": 0,
-      "edges": 1491,
-      "mean": 241.72,
-      "tintR": 129.7,
-      "tintG": 118.6,
-      "tintB": 110.3
-    },
-    "computedClusters": {
-      "coloured": 419,
-      "neutral": 0,
-      "edges": 1413,
-      "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
-    }
-  },
-  "flavio/overlays": {
-    "before": {
-      "coloured": 412,
-      "neutral": 5,
-      "edges": 1419,
-      "mean": 241.83,
-      "tintR": 149.2,
-      "tintG": 145,
-      "tintB": 124.4
-    },
-    "viewControlAppeared": 1,
-    "overlayActive": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1268,
-      "mean": 241.83,
-      "tintR": 113.2,
-      "tintG": 116.4,
-      "tintB": 114.8
-    },
-    "viewOptions": 3,
-    "paneOpen": 1,
-    "groupOptions": 2,
-    "clusterRows": 4,
-    "fileClusters": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1268,
-      "mean": 241.83,
-      "tintR": 113.2,
-      "tintG": 116.4,
-      "tintB": 114.8
-    },
-    "typeColours": {
-      "coloured": 329,
-      "neutral": 6,
-      "edges": 1291,
+      "edges": 1275,
       "mean": 241.86,
       "tintR": 154.6,
-      "tintG": 136.8,
-      "tintB": 120.9
+      "tintG": 136.2,
+      "tintB": 120.5
     },
     "schemePickerShown": 1,
     "schemePickerHidden": 0,
@@ -2081,9 +2030,9 @@
       "neutral": 1,
       "edges": 1215,
       "mean": 241.85,
-      "tintR": 95.7,
-      "tintG": 129,
-      "tintB": 111.5
+      "tintR": 95.6,
+      "tintG": 128.9,
+      "tintB": 111.4
     },
     "clusterRestored": {
       "coloured": 334,
@@ -2091,13 +2040,105 @@
       "edges": 1268,
       "mean": 241.83,
       "tintR": 113.2,
-      "tintG": 116.4,
-      "tintB": 114.8
+      "tintG": 116.3,
+      "tintB": 114.7
     },
     "recoloured": {
       "coloured": 334,
       "neutral": 1,
       "edges": 1266,
+      "mean": 241.82,
+      "tintR": 85.1,
+      "tintG": 144.3,
+      "tintB": 98.7
+    },
+    "viewOptionsAfterSecond": 4,
+    "secondOverlay": {
+      "coloured": 586,
+      "neutral": 0,
+      "edges": 1490,
+      "mean": 241.72,
+      "tintR": 129.7,
+      "tintG": 118.7,
+      "tintB": 110.4
+    },
+    "computedClusters": {
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83,
+      "tintR": 141.3,
+      "tintG": 152.7,
+      "tintB": 126.6
+    },
+    "__assertions": 0
+  },
+  "flavio/overlays": {
+    "before": {
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1421,
+      "mean": 241.83,
+      "tintR": 149.2,
+      "tintG": 144.9,
+      "tintB": 124.4
+    },
+    "viewControlAppeared": 1,
+    "overlayActive": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1272,
+      "mean": 241.83,
+      "tintR": 113.2,
+      "tintG": 116.3,
+      "tintB": 114.8
+    },
+    "viewOptions": 3,
+    "paneOpen": 1,
+    "groupOptions": 2,
+    "clusterRows": 4,
+    "fileClusters": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1272,
+      "mean": 241.83,
+      "tintR": 113.2,
+      "tintG": 116.3,
+      "tintB": 114.8
+    },
+    "typeColours": {
+      "coloured": 329,
+      "neutral": 6,
+      "edges": 1290,
+      "mean": 241.86,
+      "tintR": 154.5,
+      "tintG": 136.7,
+      "tintB": 120.8
+    },
+    "schemePickerShown": 1,
+    "schemePickerHidden": 0,
+    "oneClusterHidden": {
+      "coloured": 279,
+      "neutral": 1,
+      "edges": 1219,
+      "mean": 241.85,
+      "tintR": 95.7,
+      "tintG": 129,
+      "tintB": 111.4
+    },
+    "clusterRestored": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1272,
+      "mean": 241.83,
+      "tintR": 113.2,
+      "tintG": 116.3,
+      "tintB": 114.8
+    },
+    "recoloured": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1270,
       "mean": 241.82,
       "tintR": 85.1,
       "tintG": 144.4,
@@ -2107,20 +2148,21 @@
     "secondOverlay": {
       "coloured": 586,
       "neutral": 0,
-      "edges": 1488,
+      "edges": 1492,
       "mean": 241.72,
-      "tintR": 129.8,
+      "tintR": 129.7,
       "tintG": 118.7,
-      "tintB": 110.4
+      "tintB": 110.3
     },
     "computedClusters": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1419,
+      "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 145,
+      "tintG": 144.9,
       "tintB": 124.4
-    }
+    },
+    "__assertions": 0
   }
 }
