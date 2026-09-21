@@ -157,6 +157,19 @@ const setNative = (el, value) => {
 };
 const clusterBoxes = () => [...document.querySelectorAll('.highlight-checkbox input')];
 
+/**
+ * Assert an invariant by throwing, rather than recording it as a 0/1.
+ *
+ * The runner only reports a numeric diff when it moves by more than
+ * ABSOLUTE_SLACK (6), so a flag flipping 1 -> 0 is silently swallowed: every
+ * boolean "measurement" in a scenario is decoration. A thrown error is recorded
+ * as a scenario failure and fails the run, which is what an invariant wants.
+ */
+const assert = (condition, message) => {
+  if (!condition) throw new Error('assertion failed: ' + message);
+  return 1;
+};
+
 // Two <select>s live in the same settings cluster and a third in the clustering
 // pane, so position is not a safe way to tell them apart — the View control only
 // exists once an overlay is registered, which shifts the others along. Identify

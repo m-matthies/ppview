@@ -751,6 +751,24 @@ a sphere radius, a bead offset and a cone share one rule.
   particles by comparing floating-point coordinates with `positions.findIndex`, once per
   particle.
 
+### Clustering is gated, because the pane is always mounted
+`computedClusters` runs DBSCAN only when something uses the result:
+`!fileClusters && (showClusteringPane || sceneIsRestricted || selectedClusters.size > 0)`.
+`positions` gets a fresh identity on every trajectory frame, and the component is
+now mounted for every structure, so an ungated memo ran an O(n^2) clustering once
+per frame for every user — including everyone who never opens the panel. When the
+gate is closed the memo returns the shared `NO_CLUSTERS` constant, so every memo
+and effect below it keeps a stable identity too.
+
+This is also what keeps the **View** control honest: `clusterCount` follows
+`clusters.length`, so the control appears when someone actually clusters rather
+than on every load — where it would have read "Computed clusters" beside a colour
+scheme picker that was in fact driving the colours.
+
+Both publish effects bail when they would write nothing new. Every renderer
+subscribes to `clusteringStore` without a selector, so a write re-renders all five
+and re-runs their per-instance colour effects.
+
 ### The pane's state lives in the store, and the pane outlives its panel
 `selectedClusters`, `showOnlySelected` and `hiddenClusters` are in
 `clusteringStore`, not in `ClusteringPane`'s `useState`, and `App` mounts the
@@ -774,7 +792,18 @@ invisible state is noise.
 **`clearClustering()`** is offered in two places while that holds: **"Clear
 clustering"** beside the View control, and **"Show all particles"** in the pane.
 The control-bar one is the important one — the clustering stays on screen after
-the panel is closed, so the way out has to be reachable from there too. Before it, leaving a clustered view meant finding four controls across two
+the panel is closed, so the way out has to be reachable from there too.
+
+It also points the View back at particle type. A cluster file supplies the
+particles' *base* colour, so clearing the selection alone left every particle
+still painted by its cluster after a button that said otherwise.
+
+### Invariants in the visual suite must throw, not return 0/1
+`run.js` reports a numeric diff only when it moves by more than `ABSOLUTE_SLACK`
+(6), so a flag flipping 1 to 0 is swallowed whole: a boolean "measurement" is
+decoration. Scenarios use `assert(condition, message)` from the prelude, which
+throws and is recorded as a scenario failure. Verified by deliberately failing
+one and confirming the run reports it. Before it, leaving a clustered view meant finding four controls across two
 panels — and the button then named *Clear All* **emptied** the scene rather than
 restoring it, because showing only the selected clusters when nothing is selected
 shows nothing. It is now *Clear selection*, which is what it does. Colours need no

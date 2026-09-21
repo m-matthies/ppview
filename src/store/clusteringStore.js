@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useOverlayStore } from './overlayStore';
 
 /**
  * True when the clustering is currently holding something back from the scene.
@@ -66,7 +67,12 @@ export const useClusteringStore = create((set) => ({
   // Everything the clustering does to the scene, undone at once. Reachable from
   // the control bar as well as the pane, because the effect it undoes is visible
   // whether or not the pane is open.
-  clearClustering: () => set({
+  clearClustering: () => {
+    // Also point the View away from any cluster set. A cluster file supplies the
+    // particles' *base* colour, so clearing the selection alone left every
+    // particle still painted by its cluster after a button that says otherwise.
+    useOverlayStore.getState().setActiveOverlay(null);
+    set({
     selectedClusters: new Set(),
     showOnlySelected: false,
     hiddenClusters: new Set(),
@@ -74,7 +80,8 @@ export const useClusteringStore = create((set) => ({
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
     hiddenParticles: new Set(),
-  }),
+    });
+  },
 
   // Combined action for cluster highlighting
   highlightClusters: (clusterIndices, showOnlySelected, clusterColors = new Map()) => set({

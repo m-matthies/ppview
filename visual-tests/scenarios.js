@@ -85,8 +85,8 @@ const SCENARIOS = {
     // The View control has to be there for computed clusters, not just for
     // clusters a file brought — that is the whole point of the pane's
     // grouping/colouring split, and it was reachable only with a file loaded.
-    out.viewControl = viewSelect() ? 1 : 0;
-    out.viewOptions = viewSelect() ? viewSelect().options.length : 0;
+    assert(viewSelect(), 'View control must exist once DBSCAN has clusters');
+    out.viewOptions = viewSelect().options.length;
     setNative(viewSelect(), '');
     await settle();
     out.groupedColouredByType = measure();   // same grouping, type colours
@@ -96,12 +96,12 @@ const SCENARIOS = {
     // One click back to an unrestricted scene, however deep in you are.
     const resetButton = () => [...document.querySelectorAll('.select-button')]
       .find(b => b.textContent.trim() === 'Show all particles');
-    out.resetOffered = resetButton() ? 1 : 0;
+    assert(resetButton(), 'pane must offer a reset while the scene is restricted');
     const restricted = measure().coloured;
     resetButton().click();
     await waitFor(() => measure().coloured > restricted + 10, 8000); await settle();
     out.afterReset = measure();
-    out.resetWithdrawn = resetButton() ? 1 : 0;
+    assert(!resetButton(), 'pane reset must withdraw once nothing is restricted');
 
     // Closing the panel must not switch the clustering off — and while it is
     // shut, both the View control and the way out have to keep working. They
@@ -112,22 +112,38 @@ const SCENARIOS = {
     await settle();
     const restrictedNow = measure();
     byLabel('Clustering').click(); await settle();
-    out.paneClosed = document.querySelector('.clustering-pane') ? 0 : 1;
-    out.clusteringSurvivesClose = measure().coloured === restrictedNow.coloured ? 1 : 0;
-    out.viewPresentWhileClosed = viewSelect() ? 1 : 0;
+    assert(!document.querySelector('.clustering-pane'), 'panel must be closed');
+    // Tolerance, not equality: the harness itself documents a pixel or two of
+    // antialiasing jitter between reads.
+    assert(Math.abs(measure().coloured - restrictedNow.coloured) <= 6,
+      'closing the panel must not change what is on screen');
+    assert(viewSelect(), 'View control must survive the panel closing');
+
+    // Drive it in both directions with the panel shut. Setting it to whatever it
+    // already holds proves nothing, and the reset above leaves it on "Particle
+    // type" — so switch to cluster colours first, then back.
+    setNative(viewSelect(), 'computed');
+    await settle();
+    out.clusterColoursWhileClosed = measure();
     setNative(viewSelect(), '');
     await settle();
     out.typeColoursWhileClosed = measure();
+    assert(out.clusterColoursWhileClosed.tintG !== out.typeColoursWhileClosed.tintG,
+      'the View control must still recolour the scene while the panel is closed');
     setNative(viewSelect(), 'computed');
     await settle();
 
-    out.clearOfferedWhileClosed = document.querySelector('.clear-clustering') ? 1 : 0;
+    assert(document.querySelector('.clear-clustering'),
+      'control bar must offer a way out while the panel is closed');
     const beforeClear = measure().coloured;
     document.querySelector('.clear-clustering').click();
     await waitFor(() => measure().coloured > beforeClear + 10, 8000); await settle();
     out.afterClear = measure();
-    out.clearWithdrawn = document.querySelector('.clear-clustering') ? 1 : 0;
+    assert(!document.querySelector('.clear-clustering'),
+      'the way out must withdraw once nothing is restricted');
 
+    // Reopen and leave the panel as the other scenarios expect to find it.
+    byLabel('Clustering').click(); await settle();
     out.restored = measure();
     return out;
   `,

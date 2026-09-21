@@ -11,6 +11,11 @@ import { getParticleColors, lightnessLadder } from '../../colors';
 import { CloseIcon, EyeIcon, EyeOffIcon } from '../Icons';
 import './ClusteringPane.css';
 
+// One shared empty array: returning a fresh [] would give every downstream memo
+// and effect a new identity on each render, which is the churn this gating
+// exists to avoid.
+const NO_CLUSTERS = [];
+
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
@@ -61,13 +66,24 @@ function ClusteringPane() {
   const showOnlySelected = useClusteringStore(state => state.showOnlySelected);
   const setShowOnlySelected = useClusteringStore(state => state.setShowOnlySelected);
   const clearClustering = useClusteringStore(state => state.clearClustering);
+  const sceneIsRestricted = useClusteringStore(isSceneRestricted);
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
 
-  // Compute clusters when parameters change
+  // Only cluster when something is actually using the result.
+  //
+  // This component is mounted for every structure now, and `positions` gets a
+  // fresh identity on every trajectory frame, so an ungated memo ran DBSCAN —
+  // O(n^2) — once per frame for every user, including the ones who never open
+  // the panel. A file's clusters replace the computed ones outright, so they
+  // make it unnecessary too.
+  const clusteringIsInUse = !fileClusters
+    && (showClusteringPane || sceneIsRestricted || selectedClusters.size > 0);
+
   const computedClusters = useMemo(() => {
-    if (!positions || positions.length === 0) return [];
-    
+    if (!clusteringIsInUse) return NO_CLUSTERS;
+    if (!positions || positions.length === 0) return NO_CLUSTERS;
+
     try {
       // Distances are measured under periodic boundaries: a cluster straddling
       // a box wall is one cluster, not two. dbscan caps epsilon itself, so a
@@ -75,9 +91,9 @@ function ClusteringPane() {
       return dbscan(positions, epsilon, minPoints, currentBoxSize);
     } catch (error) {
       console.error('Error computing clusters:', error);
-      return [];
+      return NO_CLUSTERS;
     }
-  }, [positions, epsilon, minPoints, currentBoxSize]);
+  }, [clusteringIsInUse, positions, epsilon, minPoints, currentBoxSize]);
 
   // Past half the shortest box dimension the minimum image convention stops
   // being meaningful, so the slider does not offer it.
@@ -315,6 +331,18 @@ function ClusteringPane() {
       });
     }
 
+    // Every renderer subscribes to this store without a selector, so a write
+    // re-renders all five and re-runs their per-instance colour effects. Skip
+    // the write when it would change nothing — which is the usual case now that
+    // this component stays mounted for structures nobody is clustering.
+    const current = useClusteringStore.getState();
+    const unchanged = current.showOnlyHighlightedClusters === showOnlySelected
+      && current.highlightedClusters.size === highlightedParticleIndices.size
+      && current.clusterColors.size === colors.size
+      && highlightedParticleIndices.size === 0
+      && colors.size === 0;
+    if (unchanged) return;
+
     highlightClusters(highlightedParticleIndices, showOnlySelected, colors);
   }, [clusters, selectedClusters, showOnlySelected, highlightClusters, clusterColorAt, colorByCluster]);
 
@@ -331,6 +359,7 @@ function ClusteringPane() {
     hiddenClusters.forEach(clusterIndex => {
       clusters[clusterIndex]?.forEach(particleIndex => hidden.add(particleIndex));
     });
+    if (hidden.size === 0 && useClusteringStore.getState().hiddenParticles.size === 0) return;
     setHiddenParticles(hidden);
   }, [hiddenClusters, clusters, setHiddenParticles]);
 
@@ -343,11 +372,13 @@ function ClusteringPane() {
   // nothing is selected shows nothing — the opposite of what the name promises.
   // Colours need no undoing: with nothing highlighted the pane publishes no
   // colours, so particles fall back to their type colour by themselves.
-  const sceneIsRestricted = useClusteringStore(isSceneRestricted);
   const showEverything = clearClustering;
 
   const toggleClusterVisible = (clusterIndex) => {
-    const next = new Set(hiddenClusters);
+    // Read through the store, not the render closure: the setter takes a value
+    // rather than an updater, so two clicks landing in one tick would both start
+    // from the same pre-click set and the first would be lost.
+    const next = new Set(useClusteringStore.getState().hiddenClusters);
     if (next.has(clusterIndex)) next.delete(clusterIndex);
     else next.add(clusterIndex);
     setHiddenClusters(next);
