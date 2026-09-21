@@ -66,7 +66,11 @@ const SCENARIOS = {
     byLabel('Clustering').click();
     await waitFor(() => document.querySelector('.cluster-item'), 15000);
     await settle();
-    out.clusterRows = document.querySelectorAll('.cluster-item').length;
+    // Asserted, not measured: every fixture is five separable blobs, and a drop
+    // to zero moves by less than ABSOLUTE_SLACK, so as a measurement it would be
+    // swallowed exactly the way the dead selection test was.
+    assert(document.querySelectorAll('.cluster-item').length === 5,
+      'DBSCAN must find the five blobs every fixture is built from');
     out.open = measure();
 
     const boxes = clusterBoxes();
@@ -86,7 +90,8 @@ const SCENARIOS = {
     // clusters a file brought — that is the whole point of the pane's
     // grouping/colouring split, and it was reachable only with a file loaded.
     assert(viewSelect(), 'View control must exist once DBSCAN has clusters');
-    out.viewOptions = viewSelect().options.length;
+    assert(viewSelect().options.length === 2,
+      'with no cluster file loaded the View offers particle type and computed clusters');
     setNative(viewSelect(), '');
     await settle();
     out.groupedColouredByType = measure();   // same grouping, type colours
@@ -281,26 +286,31 @@ const SCENARIOS = {
     const out = { before: measure() };
 
     dropJson('clusters.json', ${JSON.stringify(CLUSTERS_A)});
-    out.viewControlAppeared = (await waitFor(() => viewSelect(), 8000)) ? 1 : 0;
+    assert(await waitFor(() => viewSelect(), 8000),
+      'dropping a cluster file must reveal the View control');
     await settle();
 
     // A dropped overlay makes itself the active view: dropping a file and
     // seeing nothing change would read as the drop having failed.
     out.overlayActive = measure();
-    out.viewOptions = viewSelect() ? viewSelect().options.length : 0;
+    assert(viewSelect().options.length === 3,
+      'View offers particle type, computed clusters and the dropped file');
     // ...and opens the pane, so there is somewhere to see what arrived.
-    out.paneOpen = document.querySelector('.clustering-pane') ? 1 : 0;
+    assert(document.querySelector('.clustering-pane'),
+      'a dropped cluster file must open the pane that explains it');
 
     // The drop sets the View, not the pane's grouping, so the pane is still on
     // DBSCAN. Point it at the file to list the clusters the file describes.
     const groups = clustersSelect();
-    out.groupOptions = groups ? groups.options.length : 0;
+    assert(groups && groups.options.length === 2,
+      'the Clusters selector must offer DBSCAN and the dropped file');
     setNative(groups, groups.options[1].value);
     await waitFor(() => document.querySelectorAll('.cluster-item').length > 0, 8000);
     await settle();
     // Four of the file's five clusters survive; the fifth indexes past the end
     // of a 40-particle structure and is rejected whole.
-    out.clusterRows = document.querySelectorAll('.cluster-item').length;
+    assert(document.querySelectorAll('.cluster-item').length === 4,
+      'four of the five clusters in the file are in range and must be listed');
     out.fileClusters = measure();
 
     // "Particle type" keeps the file's grouping but hands colour back to the
@@ -308,13 +318,15 @@ const SCENARIOS = {
     setNative(viewSelect(), '');
     await settle();
     out.typeColours = measure();
-    out.schemePickerShown = document.querySelector('.color-scheme-selector') ? 1 : 0;
+    assert(document.querySelector('.color-scheme-selector'),
+      'the colour scheme returns under Particle type');
 
     const overlayId = [...viewSelect().options].map(o => o.value).find(v => v.startsWith('overlay-'));
     setNative(viewSelect(), overlayId);
     await settle();
     // Under an overlay the scheme controls nothing visible, so it is hidden.
-    out.schemePickerHidden = document.querySelector('.color-scheme-selector') ? 1 : 0;
+    assert(!document.querySelector('.color-scheme-selector'),
+      'the colour scheme is hidden under an overlay, where it controls nothing');
 
     // The eye control hides that cluster's particles outright.
     //
@@ -340,7 +352,8 @@ const SCENARIOS = {
     dropJson('clusters-b.json', ${JSON.stringify(CLUSTERS_B)});
     await waitFor(() => viewSelect().options.length > optionsBefore, 8000);
     await settle();
-    out.viewOptionsAfterSecond = viewSelect().options.length;
+    assert(viewSelect().options.length === 4,
+      'a second cluster file registers alongside the first, not instead of it');
     out.secondOverlay = measure();
 
     // DBSCAN is a view in its own right, and its colours must be its own — a

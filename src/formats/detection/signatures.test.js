@@ -152,6 +152,16 @@ topology = system.top
     expect(isMGLFile(lines('15.3 15.5 15.6 @ 0.5 C[blue]'))).toBe(true);
   });
 
+  it('lets exactly one predicate claim a headerless MGL file', () => {
+    // isMGLTrajectoryFile used to end with `|| (hasMGLContent && count >= 0)`,
+    // whose right operand is true for any count — so both predicates claimed a
+    // headerless file, and since detectFileType tests the trajectory first,
+    // isMGLFile was unreachable and every .mgl loaded as a trajectory.
+    const headerless = lines('15.3 15.5 15.6 @ 0.5 C[blue]');
+    expect(isMGLFile(headerless)).toBe(true);
+    expect(isMGLTrajectoryFile(headerless)).toBe(false);
+  });
+
   it('hands any MGL file carrying a .Box: header to the trajectory path', () => {
     // isMGLFile deliberately returns false once a header appears, so exactly one
     // of the two claims each file. A *single* header is enough — the file is a

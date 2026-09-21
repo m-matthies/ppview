@@ -92,6 +92,18 @@ describe('buildTrajIndex', () => {
     expect(index).toHaveLength(2);
   });
 
+  it('gives correct byte offsets for a CRLF trajectory', async () => {
+    // Splitting on /\r?\n/ consumed the carriage return while the offset still
+    // counted one byte per line, so each frame was indexed a byte short per
+    // preceding line — file.slice() then landed mid-line and parseConfiguration
+    // read a body row where it expected a header.
+    const crlf = twoFrames.replace(/\n/g, '\r\n');
+    const index = await buildTrajIndex(fileOf(crlf));
+    expect(index).toHaveLength(2);
+    expect(crlf.slice(index[0]).startsWith('t = 0')).toBe(true);
+    expect(crlf.slice(index[1]).startsWith('t = 100')).toBe(true);
+  });
+
   it('returns nothing for a file with no frames', async () => {
     expect(await buildTrajIndex(fileOf('no markers here\nnor here'))).toEqual([]);
   });

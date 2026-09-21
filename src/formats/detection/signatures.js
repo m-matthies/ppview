@@ -360,10 +360,18 @@ export function isMGLTrajectoryFile(lines) {
     }
   }
 
-  // Consider it MGL trajectory if:
-  // - Has any .Box: or .Vol: headers (even one header makes it a trajectory)
-  // - OR has valid MGL content with potential for multiple frames
-  return boxOrVolCount >= 1 || (hasMGLContent && boxOrVolCount >= 0);
+  // A .Box:/.Vol: header is what makes this a trajectory — even a single one,
+  // since a one-frame trajectory is still a trajectory.
+  //
+  // The second half of this used to read `(hasMGLContent && boxOrVolCount >= 0)`,
+  // where the right operand is true for any count, so a headerless MGL file
+  // matched here too. detectFileType checks this predicate first, which made
+  // isMGLFile unreachable and classified every .mgl file as a trajectory.
+  // Exactly one of the two must claim a file.
+  //
+  // Both conditions, not just the header: a file that merely opens with a
+  // ".Box:" line but carries no MGL particles is not a trajectory either.
+  return boxOrVolCount >= 1 && hasMGLContent;
 }
 
 /**

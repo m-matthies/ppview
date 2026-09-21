@@ -11,13 +11,25 @@ export const parseOxDNANucleotideTopology = (content) => {
 
   for (let i = 1; i < lines.length; i++) {
     const tokens = lines[i].split(/\s+/);
-    if (tokens.length < 4) continue;
+    const idx = i - 1;
+
+    // Never skip a body line. OxDNANucleotides reads nucleotides[i] positionally
+    // with i as the trajectory row, so dropping one shifts every nucleotide
+    // after it onto the wrong particle — wrong base colour, wrong backbone bond,
+    // silently. A malformed line yields a placeholder that renders in the
+    // default colour with no bonds, and everything after it stays aligned.
+    if (tokens.length < 4) {
+      console.warn(`Topology line ${i + 1} is malformed; nucleotide ${idx} left unbonded.`);
+      nucleotides.push({ index: idx, strandId: -1, base: '?', n3: -1, n5: -1 });
+      if (!strandParticles.has(-1)) strandParticles.set(-1, []);
+      strandParticles.get(-1).push(idx);
+      continue;
+    }
 
     const strandId = parseInt(tokens[0]);
     const base = tokens[1].toUpperCase();
     const n3 = parseInt(tokens[2]); // index of 3' neighbor (-1 = chain end)
     const n5 = parseInt(tokens[3]); // index of 5' neighbor (-1 = chain end)
-    const idx = i - 1;
 
     nucleotides.push({ index: idx, strandId, base, n3, n5 });
 

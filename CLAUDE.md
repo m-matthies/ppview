@@ -69,12 +69,20 @@ src/
 | Flavio topology | `*particles*.txt` + `*.patch.txt` | companion files (name-flexible) |
 | Raspberry topology | `.top` | `iP`/`iR`/`iC` keywords in file |
 | SRS Springs topology | `.psp` | 4-integer header + `iS` keyword in file |
-| MGL (self-contained) | `.mgl` | `@` separator + optional `.Box:` header |
+| MGL (self-contained) | `.mgl` | `@` separator, **no** `.Box:` header |
 | Trajectory | `.dat`, `.traj`, `.conf` | content keywords |
-| MGL Trajectory | `.mgl` with `.Box:` | multi-frame `.Box:` headers |
+| MGL Trajectory | `.mgl` with `.Box:` | **any** `.Box:` header, even one |
 | Clusters | `.json` | `clusters` array, or entries with `particles`/`indices`/`ids` |
 
 File type priority: `traj > last > init > conf`
+
+The two MGL predicates are mutually exclusive by construction: `isMGLFile`
+returns false as soon as a `.Box:`/`.Vol:` header appears, and
+`isMGLTrajectoryFile` requires one. `detectFileType` tests the trajectory first,
+so an overlap makes `isMGLFile` unreachable — which it was, until
+`isMGLTrajectoryFile` stopped also matching `hasMGLContent && count >= 0` (true
+for any count). A single header is enough; a one-frame trajectory is still a
+trajectory.
 
 Detection order in `analyzeTopologyFile`: SRS Springs → (2-token header check) → Raspberry → **oxDNA nucleotide** → Flavio → Lorenzo. Format extraction uses `type.split('-').slice(1).join('_')` so `topology-oxdna_nucleotide` → format `oxdna_nucleotide`.
 

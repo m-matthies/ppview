@@ -22,8 +22,13 @@ const toIndex = (value) => {
   if (typeof value === 'number') {
     return Number.isInteger(value) && value >= 0 ? value : null;
   }
-  if (typeof value === 'string' && /^\d+$/.test(value.trim())) {
-    return Number(value.trim());
+  if (typeof value === 'string' && value.trim() !== '') {
+    // Parse rather than pattern-match on digits: numpy and pandas round-trips
+    // serialise index arrays as "0.0" and "1e3", which a digits-only rule
+    // rejects — and because a bad index discards its whole cluster, that turned
+    // a working file into "No usable clusters".
+    const parsed = Number(value);
+    return Number.isInteger(parsed) && parsed >= 0 ? parsed : null;
   }
   return null;
 };

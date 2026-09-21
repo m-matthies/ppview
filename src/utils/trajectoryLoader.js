@@ -13,14 +13,19 @@ export const buildTrajIndex = async (file) => {
   while (!(result = await reader.read()).done) {
     const chunk = result.value;
     const textChunk = decoder.decode(chunk, decoderOptions);
-    const lines = (partialLine + textChunk).split(/\r?\n/);
+    // Split on "\n" only, keeping any "\r" on the end of each piece. Splitting
+    // on /\r?\n/ consumed the carriage return while the offset below still
+    // added one byte per line, so every frame in a CRLF trajectory was indexed
+    // one byte short per preceding line — enough that file.slice() landed
+    // mid-line and parseConfiguration read a body row as a header.
+    const lines = (partialLine + textChunk).split("\n");
     partialLine = lines.pop(); // Save the last line in case it's incomplete
 
     for (const line of lines) {
       if (line.startsWith("t =")) {
         index.push(offset);
       }
-      offset += line.length + 1; // ASCII trajectory files: 1 byte per char + 1 for \n
+      offset += line.length + 1; // ASCII: 1 byte per char, including any \r, + 1 for \n
     }
   }
 

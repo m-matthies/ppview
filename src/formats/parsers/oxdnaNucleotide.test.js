@@ -60,10 +60,20 @@ describe('parseOxDNANucleotideTopology', () => {
     expect(out.nucleotides).toHaveLength(2);
   });
 
-  it('ignores a body line with too few tokens rather than emitting NaN', () => {
+  it('keeps array position equal to trajectory index past a malformed line', () => {
+    // This is the invariant that matters: OxDNANucleotides reads nucleotides[i]
+    // positionally with i as the trajectory row. Skipping a malformed line left
+    // a hole, so every nucleotide after it took another particle's base colour
+    // and backbone bond — silently.
     const out = parseOxDNANucleotideTopology(top(['1 A -1 1', '1 G', '1 C 1 -1']));
-    expect(out.nucleotides).toHaveLength(2);
-    expect(out.nucleotides.every(n => Number.isInteger(n.strandId))).toBe(true);
+    expect(out.nucleotides).toHaveLength(3);
+    out.nucleotides.forEach((n, position) => expect(n.index).toBe(position));
+    expect(out.nucleotides[2].base).toBe('C');
+  });
+
+  it('renders a malformed line as an unbonded placeholder', () => {
+    const out = parseOxDNANucleotideTopology(top(['1 A -1 1', 'junk']));
+    expect(out.nucleotides[1]).toEqual({ index: 1, strandId: -1, base: '?', n3: -1, n5: -1 });
   });
 
   it('keeps -1 chain-end markers rather than coercing them', () => {

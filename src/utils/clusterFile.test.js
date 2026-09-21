@@ -56,8 +56,16 @@ describe('parseClusterFile validation', () => {
   });
 
   it('accepts numeric strings, which some analysis scripts emit', () => {
-    const { clusters } = parseClusterFile(json([{ particles: ['0', ' 12 '] }]));
-    expect(clusters[0].indices).toEqual([0, 12]);
+    // numpy and pandas round-trips serialise index arrays this way. A
+    // digits-only rule rejected "12.0", and because a bad index discards its
+    // whole cluster, that turned a working file into "No usable clusters".
+    const { clusters } = parseClusterFile(json([{ particles: ['0', ' 12 ', '3.0', '1e2'] }]));
+    expect(clusters[0].indices).toEqual([0, 12, 3, 100]);
+  });
+
+  it('still rejects a non-integral numeric string', () => {
+    const { warnings } = parseClusterFile(json([{ particles: ['1.5'] }, { particles: [0] }]));
+    expect(warnings.join(' ')).toMatch(/no valid particle list/);
   });
 
   it('skips a malformed entry but keeps the rest', () => {

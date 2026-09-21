@@ -19,6 +19,9 @@ const APP_ORIGIN = new URL(APP_URL).origin;
 const BASELINE = path.join(__dirname, 'baseline.json');
 const SHOTS = path.join(__dirname, 'shots');
 const UPDATE = process.argv.includes('--update');
+// Record a baseline even though scenarios failed. Only for a known-bad
+// environment; a failed scenario normally means the capture is not trustworthy.
+const FORCE = process.argv.includes('--force');
 // Antialiasing shifts counts by a pixel or two between runs, and a purely
 // relative tolerance is far too tight on the small buckets. A real change —
 // geometry appearing, vanishing, resizing or losing its colour — moves counts by
@@ -144,10 +147,20 @@ function compare(current, baseline) {
     // anyway has twice frozen a wrong frame into the baseline — a light one as
     // darkBackground, a still-hidden cluster as clusterRestored — each passing
     // on the very next run and so looking like flake rather than corruption.
-    if (errors.length) {
+    // Only a scenario that actually failed blocks the write. `errors` also
+    // collects scraped console text — one unrelated React warning or a
+    // rasteriser gripe in any of 36 scenarios would otherwise refuse the whole
+    // baseline with no way through.
+    const failed = Object.entries(results).filter(([, v]) => v && v.error);
+    if (failed.length && !FORCE) {
       console.error('\nnot writing a baseline: scenarios failed while capturing');
-      errors.forEach(e => console.error('  ! ' + e));
+      failed.forEach(([k, v]) => console.error(`  ! ${k}: ${v.error}`));
+      console.error('  (re-run, or pass --force to record anyway)');
       process.exit(2);
+    }
+    if (errors.length) {
+      console.log('\nconsole problems recorded while capturing:');
+      errors.forEach(e => console.log('  ! ' + e));
     }
     // Merge, so --only --update refreshes one format without dropping the rest.
     const previous = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, 'utf8')) : {};

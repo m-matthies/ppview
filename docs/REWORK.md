@@ -134,6 +134,38 @@ confirming the run fails with `6 → 5 (assertions ran)`. `--update` now also
 refuses to write a baseline from a run with errors, which had twice frozen a
 wrong frame in.
 
+**Review of Phase 0 found eight more, all fixed in the follow-up commit.** Three
+were real product bugs the new tests were shaped to catch but did not:
+
+- `buildTrajIndex` split on `/\r?\n/` while advancing `offset += line.length + 1`.
+  The split consumes the `\r`, so **every frame of a CRLF trajectory was indexed
+  short by one byte per preceding line** — `file.slice()` then landed mid-line and
+  `parseConfiguration` read a body row as a header. Every fixture in the new
+  suite was joined with `\n`, so the test named "finds the byte offset of every
+  frame" passed while the only real way to break it went untested.
+- `isMGLTrajectoryFile` ended with `|| (hasMGLContent && boxOrVolCount >= 0)`,
+  whose right operand is true for any count, so it claimed headerless MGL files
+  too. `detectFileType` tests it first, which made **`isMGLFile` unreachable**.
+  The two predicates are now mutually exclusive.
+- `parseOxDNANucleotideTopology` skipped malformed body lines while deriving
+  `index` from the line number, leaving a hole. `OxDNANucleotides` reads
+  `nucleotides[i]` positionally with `i` as the trajectory row, so **every
+  nucleotide after a malformed line took another particle's base colour and
+  backbone bond**. It now emits a placeholder per line, keeping position and
+  trajectory index equal.
+
+And four in the Phase 0 work itself: the canary was inert for the `overlays`
+scenario (eight boolean readouts that `ABSOLUTE_SLACK` swallows — now
+assertions), `--update` gated on scraped console text rather than genuine
+scenario failures (one unrelated warning would have blocked the whole baseline,
+with no `--force`), the `clusterFile` string branch narrowed to `/^\d+$/` and so
+rejected the `"12.0"` and `"1e3"` that numpy round-trips emit, and `CLAUDE.md`
+was never actually corrected despite the commit message saying it was wrong.
+
+No scenario now records a small-integer measurement that the tolerance could
+swallow: `clustering` asserts 11 times, `selection` 6, `overlays` 8. The three
+that still assert nothing record only pixel counts, which move by hundreds.
+
 ### Phase 1 — Extract the load pipeline
 
 New `src/loading/`: `classifyDrop`, `loadSimulation`, `loadFrame`. The staleness
