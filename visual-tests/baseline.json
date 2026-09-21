@@ -6,13 +6,13 @@
       "edges": 1405,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94,
+      "tintG": 94.1,
       "tintB": 104.8
     },
     "boxOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 2498,
+      "edges": 2506,
       "mean": 241.7,
       "tintR": 94.9,
       "tintG": 94.3,
@@ -30,10 +30,10 @@
     "axesOff": {
       "coloured": 396,
       "neutral": 0,
-      "edges": 1355,
+      "edges": 1356,
       "mean": 241.78,
       "tintR": 96.4,
-      "tintG": 94.9,
+      "tintG": 94.8,
       "tintB": 106.8
     },
     "restored": {
@@ -41,9 +41,9 @@
       "neutral": 0,
       "edges": 1404,
       "mean": 241.77,
-      "tintR": 94.7,
-      "tintG": 94,
-      "tintB": 104.8
+      "tintR": 94.8,
+      "tintG": 94.1,
+      "tintB": 104.9
     },
     "__assertions": 0
   },
@@ -51,11 +51,11 @@
     "detailLow": {
       "coloured": 404,
       "neutral": 0,
-      "edges": 1395,
+      "edges": 1396,
       "mean": 241.77,
       "tintR": 94.9,
       "tintG": 93.8,
-      "tintB": 106.2
+      "tintB": 106.3
     },
     "detailUltra": {
       "coloured": 416,
@@ -101,7 +101,7 @@
       "neutral": 0,
       "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.7,
+      "tintR": 94.8,
       "tintG": 94.1,
       "tintB": 104.8
     },
@@ -117,7 +117,7 @@
     "dimmedAll": {
       "coloured": 14,
       "neutral": 38,
-      "edges": 1091,
+      "edges": 1092,
       "mean": 241.96,
       "tintR": 49,
       "tintG": 71.9,
@@ -146,7 +146,7 @@
       "neutral": 0,
       "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.7,
+      "tintR": 94.8,
       "tintG": 94.1,
       "tintB": 104.8
     },
@@ -173,7 +173,7 @@
       "neutral": 0,
       "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.7,
+      "tintR": 94.8,
       "tintG": 94.1,
       "tintB": 104.8
     },
@@ -182,7 +182,7 @@
       "neutral": 0,
       "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.7,
+      "tintR": 94.8,
       "tintG": 94.1,
       "tintB": 104.8
     },
@@ -192,7 +192,7 @@
     "patchesOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1407,
+      "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94.1,
@@ -201,7 +201,7 @@
     "legendsOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1407,
+      "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94.1,
@@ -210,7 +210,7 @@
     "light_Depth": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1407,
+      "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94.1,
@@ -231,7 +231,7 @@
       "edges": 1041,
       "mean": 240.17,
       "tintR": 86.4,
-      "tintG": 84.9,
+      "tintG": 85,
       "tintB": 98
     },
     "light_Flat": {
@@ -267,45 +267,45 @@
     "loaded": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1408,
+      "edges": 1406,
       "mean": 241.83,
       "tintR": 134,
-      "tintG": 154.4,
+      "tintG": 154.3,
       "tintB": 125.2
     },
     "boxOn": {
       "coloured": 408,
-      "neutral": 2,
-      "edges": 2495,
+      "neutral": 1,
+      "edges": 2500,
       "mean": 241.75,
-      "tintR": 133.9,
-      "tintG": 154.2,
-      "tintB": 125.1
+      "tintR": 133.8,
+      "tintG": 154.1,
+      "tintB": 125
     },
     "planesOff": {
       "coloured": 414,
       "neutral": 1,
       "edges": 522,
       "mean": 244.12,
-      "tintR": 131.5,
+      "tintR": 131.6,
       "tintG": 151.6,
       "tintB": 124
     },
     "axesOff": {
       "coloured": 394,
       "neutral": 1,
-      "edges": 1358,
+      "edges": 1359,
       "mean": 241.84,
-      "tintR": 137.1,
-      "tintG": 157.4,
-      "tintB": 128
+      "tintR": 137,
+      "tintG": 157.3,
+      "tintB": 127.9
     },
     "restored": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1407,
+      "edges": 1406,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
@@ -317,16 +317,16 @@
       "neutral": 4,
       "edges": 1408,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.7,
       "tintB": 125.4
     },
     "detailUltra": {
       "coloured": 409,
       "neutral": 2,
-      "edges": 1407,
+      "edges": 1409,
       "mean": 241.82,
-      "tintR": 133.9,
+      "tintR": 133.8,
       "tintG": 154.3,
       "tintB": 125.1
     },
@@ -335,14 +335,14 @@
       "neutral": 1,
       "edges": 1406,
       "mean": 241.83,
-      "tintR": 134,
-      "tintG": 154.4,
-      "tintB": 125.3
+      "tintR": 133.9,
+      "tintG": 154.3,
+      "tintB": 125.2
     },
     "radiusLarge": {
       "coloured": 1224,
       "neutral": 3,
-      "edges": 1923,
+      "edges": 1926,
       "mean": 241.52,
       "tintR": 135.2,
       "tintG": 156.8,
@@ -353,9 +353,9 @@
       "neutral": 1,
       "edges": 1406,
       "mean": 241.83,
-      "tintR": 134,
-      "tintG": 154.4,
-      "tintB": 125.3
+      "tintR": 133.9,
+      "tintG": 154.3,
+      "tintB": 125.2
     },
     "__assertions": 0
   },
@@ -363,9 +363,9 @@
     "open": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1407,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
@@ -408,9 +408,9 @@
     "afterReset": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1407,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
@@ -435,18 +435,18 @@
     "afterClear": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1407,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
     "restored": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1407,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
@@ -456,34 +456,34 @@
     "patchesOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1431,
+      "edges": 1433,
       "mean": 241.82,
-      "tintR": 133.8,
-      "tintG": 154.3,
-      "tintB": 125.2
+      "tintR": 133.7,
+      "tintG": 154.2,
+      "tintB": 125.1
     },
     "legendsOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1431,
+      "edges": 1433,
       "mean": 241.82,
-      "tintR": 133.8,
-      "tintG": 154.3,
-      "tintB": 125.2
+      "tintR": 133.7,
+      "tintG": 154.2,
+      "tintB": 125.1
     },
     "light_Depth": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1431,
+      "edges": 1433,
       "mean": 241.82,
-      "tintR": 133.8,
-      "tintG": 154.3,
-      "tintB": 125.2
+      "tintR": 133.7,
+      "tintG": 154.2,
+      "tintB": 125.1
     },
     "light_Publication": {
       "coloured": 424,
       "neutral": 6,
-      "edges": 1446,
+      "edges": 1448,
       "mean": 242.66,
       "tintR": 139.8,
       "tintG": 162,
@@ -492,7 +492,7 @@
     "light_Relief": {
       "coloured": 355,
       "neutral": 83,
-      "edges": 1104,
+      "edges": 1107,
       "mean": 240.2,
       "tintR": 128.8,
       "tintG": 147.5,
@@ -531,7 +531,7 @@
     "loaded": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
       "tintG": 158.6,
@@ -540,7 +540,7 @@
     "boxOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 2358,
+      "edges": 2360,
       "mean": 241.85,
       "tintR": 160.8,
       "tintG": 158.3,
@@ -549,29 +549,29 @@
     "planesOff": {
       "coloured": 184,
       "neutral": 0,
-      "edges": 378,
+      "edges": 376,
       "mean": 244.24,
       "tintR": 155.3,
-      "tintG": 152.4,
-      "tintB": 130.4
+      "tintG": 152.3,
+      "tintB": 130.3
     },
     "axesOff": {
       "coloured": 162,
       "neutral": 0,
       "edges": 1216,
       "mean": 241.94,
-      "tintR": 170.8,
-      "tintG": 166.1,
-      "tintB": 140.3
+      "tintR": 170.7,
+      "tintG": 166,
+      "tintB": 140.2
     },
     "restored": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.6,
-      "tintB": 133
+      "tintR": 161.2,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "__assertions": 0
   },
@@ -581,45 +581,45 @@
       "neutral": 1,
       "edges": 1261,
       "mean": 241.93,
-      "tintR": 161.8,
+      "tintR": 161.9,
       "tintG": 158.8,
-      "tintB": 133.4
+      "tintB": 133.5
     },
     "detailUltra": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 160.6,
-      "tintG": 158.5,
-      "tintB": 132.9
+      "tintR": 160.7,
+      "tintG": 158.6,
+      "tintB": 133
     },
     "detailMedium": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.6,
-      "tintB": 133
+      "tintR": 161.2,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "radiusLarge": {
       "coloured": 445,
       "neutral": 5,
-      "edges": 1495,
+      "edges": 1493,
       "mean": 241.84,
-      "tintR": 163.7,
-      "tintG": 156.6,
-      "tintB": 131.5
+      "tintR": 163.8,
+      "tintG": 156.7,
+      "tintB": 131.6
     },
     "radiusDefault": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.6,
-      "tintB": 133
+      "tintR": 161.2,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "__assertions": 0
   },
@@ -627,10 +627,10 @@
     "open": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "hiddenAll": {
@@ -656,26 +656,26 @@
       "neutral": 0,
       "edges": 1005,
       "mean": 241.97,
-      "tintR": 137.3,
-      "tintG": 100.9,
-      "tintB": 82.5
+      "tintR": 137.5,
+      "tintG": 101,
+      "tintB": 82.6
     },
     "groupedColouredByType": {
       "coloured": 39,
       "neutral": 0,
       "edges": 1004,
       "mean": 241.97,
-      "tintR": 144.1,
-      "tintG": 121.5,
-      "tintB": 104.2
+      "tintR": 144.2,
+      "tintG": 121.7,
+      "tintB": 104.4
     },
     "afterReset": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "clusterColoursWhileClosed": {
@@ -683,35 +683,35 @@
       "neutral": 0,
       "edges": 1005,
       "mean": 241.97,
-      "tintR": 137.3,
-      "tintG": 100.9,
-      "tintB": 82.5
+      "tintR": 137.5,
+      "tintG": 101,
+      "tintB": 82.6
     },
     "typeColoursWhileClosed": {
       "coloured": 39,
       "neutral": 0,
       "edges": 1004,
       "mean": 241.97,
-      "tintR": 144.1,
-      "tintG": 121.5,
-      "tintB": 104.2
+      "tintR": 144.2,
+      "tintG": 121.7,
+      "tintB": 104.4
     },
     "afterClear": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "restored": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "__assertions": 11
@@ -720,7 +720,7 @@
     "patchesOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1264,
       "mean": 241.92,
       "tintR": 161.1,
       "tintG": 158.6,
@@ -729,7 +729,7 @@
     "legendsOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1264,
       "mean": 241.92,
       "tintR": 161.1,
       "tintG": 158.6,
@@ -738,7 +738,7 @@
     "light_Depth": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1264,
       "mean": 241.92,
       "tintR": 161.1,
       "tintG": 158.6,
@@ -747,20 +747,20 @@
     "light_Publication": {
       "coloured": 175,
       "neutral": 0,
-      "edges": 1263,
+      "edges": 1262,
       "mean": 242.76,
       "tintR": 168.9,
       "tintG": 167.3,
       "tintB": 142.8
     },
     "light_Relief": {
-      "coloured": 162,
+      "coloured": 163,
       "neutral": 11,
       "edges": 903,
       "mean": 240.33,
-      "tintR": 147.3,
-      "tintG": 146.9,
-      "tintB": 122.9
+      "tintR": 147.6,
+      "tintG": 147.2,
+      "tintB": 123
     },
     "light_Flat": {
       "coloured": 189,
@@ -795,8 +795,8 @@
     "loaded": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
-      "mean": 241.85,
+      "edges": 1415,
+      "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
       "tintB": 147.1
@@ -806,9 +806,9 @@
       "neutral": 12,
       "edges": 2503,
       "mean": 241.77,
-      "tintR": 141.9,
+      "tintR": 142,
       "tintG": 161.3,
-      "tintB": 146.9
+      "tintB": 147
     },
     "planesOff": {
       "coloured": 420,
@@ -816,13 +816,13 @@
       "edges": 526,
       "mean": 244.14,
       "tintR": 140,
-      "tintG": 158.8,
-      "tintB": 145.7
+      "tintG": 158.7,
+      "tintB": 145.6
     },
     "axesOff": {
       "coloured": 398,
       "neutral": 12,
-      "edges": 1366,
+      "edges": 1367,
       "mean": 241.86,
       "tintR": 145.4,
       "tintG": 164.7,
@@ -831,11 +831,11 @@
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
-      "mean": 241.85,
-      "tintR": 142.1,
+      "edges": 1416,
+      "mean": 241.84,
+      "tintR": 142,
       "tintG": 161.5,
-      "tintB": 147.1
+      "tintB": 147
     },
     "__assertions": 0
   },
@@ -843,7 +843,7 @@
     "detailLow": {
       "coloured": 400,
       "neutral": 12,
-      "edges": 1412,
+      "edges": 1413,
       "mean": 241.85,
       "tintR": 142.9,
       "tintG": 161.9,
@@ -852,7 +852,7 @@
     "detailUltra": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
+      "edges": 1412,
       "mean": 241.84,
       "tintR": 141.6,
       "tintG": 161,
@@ -861,26 +861,26 @@
     "detailMedium": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
-      "mean": 241.85,
+      "edges": 1414,
+      "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
       "tintB": 147.1
     },
     "radiusLarge": {
-      "coloured": 1233,
+      "coloured": 1232,
       "neutral": 0,
-      "edges": 1852,
+      "edges": 1853,
       "mean": 241.59,
       "tintR": 142.6,
       "tintG": 165.6,
-      "tintB": 151.2
+      "tintB": 151.1
     },
     "radiusDefault": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
-      "mean": 241.85,
+      "edges": 1414,
+      "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
       "tintB": 147.1
@@ -891,11 +891,11 @@
     "open": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147
+      "tintB": 147.1
     },
     "hiddenAll": {
       "coloured": 14,
@@ -936,11 +936,11 @@
     "afterReset": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147
+      "tintB": 147.1
     },
     "clusterColoursWhileClosed": {
       "coloured": 69,
@@ -963,50 +963,50 @@
     "afterClear": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147
+      "tintB": 147.1
     },
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
-      "tintB": 147
+      "tintB": 147.1
     },
     "__assertions": 11
   },
   "srs/appearance": {
     "patchesOn": {
-      "coloured": 425,
-      "neutral": 18,
-      "edges": 1460,
+      "coloured": 426,
+      "neutral": 17,
+      "edges": 1458,
       "mean": 241.83,
-      "tintR": 142.7,
+      "tintR": 142.9,
       "tintG": 158,
-      "tintB": 144.4
+      "tintB": 144.5
     },
     "legendsOn": {
-      "coloured": 425,
-      "neutral": 18,
-      "edges": 1460,
+      "coloured": 426,
+      "neutral": 17,
+      "edges": 1458,
       "mean": 241.83,
-      "tintR": 142.7,
+      "tintR": 142.9,
       "tintG": 158,
-      "tintB": 144.4
+      "tintB": 144.5
     },
     "light_Depth": {
-      "coloured": 425,
-      "neutral": 18,
-      "edges": 1460,
+      "coloured": 426,
+      "neutral": 17,
+      "edges": 1458,
       "mean": 241.83,
-      "tintR": 142.7,
+      "tintR": 142.9,
       "tintG": 158,
-      "tintB": 144.4
+      "tintB": 144.5
     },
     "light_Publication": {
       "coloured": 424,
@@ -1018,13 +1018,13 @@
       "tintB": 152.2
     },
     "light_Relief": {
-      "coloured": 342,
-      "neutral": 106,
+      "coloured": 344,
+      "neutral": 104,
       "edges": 1111,
       "mean": 240.21,
-      "tintR": 135.9,
-      "tintG": 153.9,
-      "tintB": 142.9
+      "tintR": 135.6,
+      "tintG": 153.8,
+      "tintB": 142.7
     },
     "light_Flat": {
       "coloured": 442,
@@ -1061,23 +1061,23 @@
       "neutral": 0,
       "edges": 1412,
       "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7
+      "tintR": 141.3,
+      "tintG": 152.7,
+      "tintB": 126.6
     },
     "boxOn": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 2507,
+      "edges": 2503,
       "mean": 241.76,
       "tintR": 141.2,
-      "tintG": 152.4,
-      "tintB": 126.4
+      "tintG": 152.5,
+      "tintB": 126.5
     },
     "planesOff": {
       "coloured": 428,
       "neutral": 0,
-      "edges": 524,
+      "edges": 526,
       "mean": 244.13,
       "tintR": 139.3,
       "tintG": 150.4,
@@ -1086,43 +1086,13 @@
     "axesOff": {
       "coloured": 405,
       "neutral": 0,
-      "edges": 1366,
+      "edges": 1364,
       "mean": 241.84,
       "tintR": 144.5,
-      "tintG": 155.4,
+      "tintG": 155.5,
       "tintB": 129.3
     },
     "restored": {
-      "coloured": 419,
-      "neutral": 0,
-      "edges": 1414,
-      "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.7,
-      "tintB": 126.7
-    },
-    "__assertions": 0
-  },
-  "lorenzo/detail": {
-    "detailLow": {
-      "coloured": 406,
-      "neutral": 1,
-      "edges": 1411,
-      "mean": 241.83,
-      "tintR": 141.9,
-      "tintG": 153,
-      "tintB": 127.1
-    },
-    "detailUltra": {
-      "coloured": 419,
-      "neutral": 0,
-      "edges": 1412,
-      "mean": 241.83,
-      "tintR": 141,
-      "tintG": 152.2,
-      "tintB": 126.2
-    },
-    "detailMedium": {
       "coloured": 419,
       "neutral": 0,
       "edges": 1413,
@@ -1131,10 +1101,40 @@
       "tintG": 152.7,
       "tintB": 126.6
     },
+    "__assertions": 0
+  },
+  "lorenzo/detail": {
+    "detailLow": {
+      "coloured": 406,
+      "neutral": 1,
+      "edges": 1413,
+      "mean": 241.83,
+      "tintR": 141.9,
+      "tintG": 153,
+      "tintB": 127.1
+    },
+    "detailUltra": {
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83,
+      "tintR": 141,
+      "tintG": 152.2,
+      "tintB": 126.1
+    },
+    "detailMedium": {
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1415,
+      "mean": 241.83,
+      "tintR": 141.3,
+      "tintG": 152.7,
+      "tintB": 126.6
+    },
     "radiusLarge": {
       "coloured": 1217,
       "neutral": 8,
-      "edges": 1857,
+      "edges": 1856,
       "mean": 241.54,
       "tintR": 142.9,
       "tintG": 155.8,
@@ -1143,7 +1143,7 @@
     "radiusDefault": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1415,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -1157,7 +1157,7 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
       "tintB": 126.6
     },
@@ -1184,7 +1184,7 @@
       "neutral": 0,
       "edges": 1024,
       "mean": 241.95,
-      "tintR": 145.7,
+      "tintR": 145.8,
       "tintG": 69.3,
       "tintB": 66.2
     },
@@ -1202,7 +1202,7 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
       "tintB": 126.6
     },
@@ -1211,7 +1211,7 @@
       "neutral": 0,
       "edges": 1024,
       "mean": 241.95,
-      "tintR": 145.7,
+      "tintR": 145.8,
       "tintG": 69.3,
       "tintB": 66.2
     },
@@ -1229,7 +1229,7 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
       "tintB": 126.6
     },
@@ -1238,7 +1238,7 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
       "tintB": 126.6
     },
@@ -1250,8 +1250,8 @@
       "neutral": 16,
       "edges": 1446,
       "mean": 241.82,
-      "tintR": 145,
-      "tintG": 146.3,
+      "tintR": 145.1,
+      "tintG": 146.4,
       "tintB": 124.1
     },
     "legendsOn": {
@@ -1259,8 +1259,8 @@
       "neutral": 16,
       "edges": 1446,
       "mean": 241.82,
-      "tintR": 145,
-      "tintG": 146.3,
+      "tintR": 145.1,
+      "tintG": 146.4,
       "tintB": 124.1
     },
     "light_Depth": {
@@ -1268,8 +1268,8 @@
       "neutral": 16,
       "edges": 1446,
       "mean": 241.82,
-      "tintR": 145,
-      "tintG": 146.3,
+      "tintR": 145.1,
+      "tintG": 146.4,
       "tintB": 124.1
     },
     "light_Publication": {
@@ -1277,14 +1277,14 @@
       "neutral": 15,
       "edges": 1458,
       "mean": 242.66,
-      "tintR": 151.4,
-      "tintG": 153.2,
+      "tintR": 151.5,
+      "tintG": 153.3,
       "tintB": 131.6
     },
     "light_Relief": {
       "coloured": 344,
       "neutral": 99,
-      "edges": 1100,
+      "edges": 1101,
       "mean": 240.2,
       "tintR": 142.3,
       "tintG": 140.3,
@@ -1323,25 +1323,25 @@
     "loaded": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1421,
+      "edges": 1423,
       "mean": 241.83,
-      "tintR": 149.1,
+      "tintR": 149.2,
       "tintG": 144.9,
-      "tintB": 124.3
+      "tintB": 124.4
     },
     "boxOn": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 2508,
+      "edges": 2511,
       "mean": 241.76,
       "tintR": 149,
-      "tintG": 144.7,
+      "tintG": 144.6,
       "tintB": 124.2
     },
     "planesOff": {
       "coloured": 421,
       "neutral": 5,
-      "edges": 530,
+      "edges": 531,
       "mean": 244.12,
       "tintR": 147,
       "tintG": 142.7,
@@ -1359,7 +1359,7 @@
     "restored": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1419,
+      "edges": 1423,
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
@@ -1380,11 +1380,11 @@
     "detailUltra": {
       "coloured": 412,
       "neutral": 6,
-      "edges": 1420,
+      "edges": 1422,
       "mean": 241.83,
       "tintR": 148.9,
       "tintG": 144.4,
-      "tintB": 124
+      "tintB": 123.9
     },
     "detailMedium": {
       "coloured": 412,
@@ -1393,12 +1393,12 @@
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
-      "tintB": 124.4
+      "tintB": 124.3
     },
     "radiusLarge": {
       "coloured": 1196,
-      "neutral": 19,
-      "edges": 1886,
+      "neutral": 18,
+      "edges": 1887,
       "mean": 241.53,
       "tintR": 157,
       "tintG": 141.4,
@@ -1411,7 +1411,7 @@
       "mean": 241.83,
       "tintR": 149.2,
       "tintG": 144.9,
-      "tintB": 124.4
+      "tintB": 124.3
     },
     "__assertions": 0
   },
@@ -1419,10 +1419,10 @@
     "open": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 145,
+      "tintG": 144.9,
       "tintB": 124.4
     },
     "hiddenAll": {
@@ -1464,10 +1464,10 @@
     "afterReset": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 145,
+      "tintG": 144.9,
       "tintB": 124.4
     },
     "clusterColoursWhileClosed": {
@@ -1491,19 +1491,19 @@
     "afterClear": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 145,
+      "tintG": 144.9,
       "tintB": 124.4
     },
     "restored": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 145,
+      "tintG": 144.9,
       "tintB": 124.4
     },
     "__assertions": 11
@@ -1514,45 +1514,45 @@
       "neutral": 19,
       "edges": 1459,
       "mean": 241.81,
-      "tintR": 149.3,
+      "tintR": 149.4,
       "tintG": 140.6,
-      "tintB": 126.4
+      "tintB": 126.5
     },
     "legendsOn": {
       "coloured": 427,
       "neutral": 19,
       "edges": 1459,
       "mean": 241.81,
-      "tintR": 149.3,
+      "tintR": 149.4,
       "tintG": 140.6,
-      "tintB": 126.4
+      "tintB": 126.5
     },
     "light_Depth": {
       "coloured": 427,
       "neutral": 19,
       "edges": 1459,
       "mean": 241.81,
-      "tintR": 149.3,
+      "tintR": 149.4,
       "tintG": 140.6,
-      "tintB": 126.4
+      "tintB": 126.5
     },
     "light_Publication": {
       "coloured": 426,
       "neutral": 18,
-      "edges": 1465,
+      "edges": 1466,
       "mean": 242.66,
       "tintR": 156.5,
       "tintG": 148,
-      "tintB": 134.9
+      "tintB": 134.8
     },
     "light_Relief": {
-      "coloured": 349,
-      "neutral": 101,
-      "edges": 1110,
+      "coloured": 348,
+      "neutral": 102,
+      "edges": 1112,
       "mean": 240.2,
-      "tintR": 145.8,
-      "tintG": 136.6,
-      "tintB": 123.7
+      "tintR": 145.9,
+      "tintG": 136.8,
+      "tintB": 123.9
     },
     "light_Flat": {
       "coloured": 449,
@@ -1605,16 +1605,16 @@
     "before": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
     },
     "overlayActive": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1278,
       "mean": 241.83,
       "tintR": 114.6,
       "tintG": 117.6,
@@ -1623,7 +1623,7 @@
     "fileClusters": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1278,
       "mean": 241.83,
       "tintR": 114.6,
       "tintG": 117.6,
@@ -1632,25 +1632,25 @@
     "typeColours": {
       "coloured": 347,
       "neutral": 0,
-      "edges": 1275,
+      "edges": 1278,
       "mean": 241.8,
-      "tintR": 100.4,
+      "tintR": 100.5,
       "tintG": 90.3,
       "tintB": 103.3
     },
     "oneClusterHidden": {
       "coloured": 277,
       "neutral": 1,
-      "edges": 1221,
+      "edges": 1220,
       "mean": 241.85,
       "tintR": 94.4,
       "tintG": 130.4,
-      "tintB": 112.2
+      "tintB": 112.3
     },
     "clusterRestored": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1278,
       "mean": 241.83,
       "tintR": 114.6,
       "tintG": 117.6,
@@ -1659,16 +1659,16 @@
     "recoloured": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1277,
+      "edges": 1276,
       "mean": 241.82,
       "tintR": 84.3,
-      "tintG": 147.6,
+      "tintG": 147.7,
       "tintB": 99.6
     },
     "secondOverlay": {
       "coloured": 565,
       "neutral": 2,
-      "edges": 1480,
+      "edges": 1473,
       "mean": 241.74,
       "tintR": 134.5,
       "tintG": 119.3,
@@ -1677,9 +1677,9 @@
     "computedClusters": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
     },
@@ -1689,43 +1689,43 @@
     "before": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1409,
+      "edges": 1406,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
     "overlayActive": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1272,
+      "edges": 1277,
       "mean": 241.84,
-      "tintR": 119.5,
+      "tintR": 119.6,
       "tintG": 115.6,
       "tintB": 115
     },
     "fileClusters": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1272,
+      "edges": 1277,
       "mean": 241.84,
-      "tintR": 119.5,
+      "tintR": 119.6,
       "tintG": 115.6,
       "tintB": 115
     },
     "typeColours": {
       "coloured": 320,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1283,
       "mean": 241.87,
       "tintR": 150,
-      "tintG": 139.3,
+      "tintG": 139.4,
       "tintB": 121.2
     },
     "oneClusterHidden": {
       "coloured": 272,
       "neutral": 2,
-      "edges": 1217,
+      "edges": 1222,
       "mean": 241.86,
       "tintR": 103.7,
       "tintG": 126.6,
@@ -1734,16 +1734,16 @@
     "clusterRestored": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1272,
+      "edges": 1277,
       "mean": 241.84,
-      "tintR": 119.5,
+      "tintR": 119.6,
       "tintG": 115.6,
       "tintB": 115
     },
     "recoloured": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1272,
+      "edges": 1277,
       "mean": 241.83,
       "tintR": 92.9,
       "tintG": 142,
@@ -1752,7 +1752,7 @@
     "secondOverlay": {
       "coloured": 585,
       "neutral": 1,
-      "edges": 1526,
+      "edges": 1527,
       "mean": 241.71,
       "tintR": 120.3,
       "tintG": 116.7,
@@ -1761,9 +1761,9 @@
     "computedClusters": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1409,
+      "edges": 1406,
       "mean": 241.83,
-      "tintR": 134.1,
+      "tintR": 134,
       "tintG": 154.4,
       "tintB": 125.3
     },
@@ -1775,16 +1775,16 @@
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.5,
-      "tintB": 133
+      "tintR": 161.1,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "overlayActive": {
       "coloured": 141,
       "neutral": 1,
       "edges": 1163,
       "mean": 241.92,
-      "tintR": 124.8,
+      "tintR": 124.7,
       "tintG": 132.5,
       "tintB": 118.8
     },
@@ -1793,14 +1793,14 @@
       "neutral": 1,
       "edges": 1163,
       "mean": 241.92,
-      "tintR": 124.8,
+      "tintR": 124.7,
       "tintG": 132.5,
       "tintB": 118.8
     },
     "typeColours": {
       "coloured": 139,
       "neutral": 1,
-      "edges": 1158,
+      "edges": 1159,
       "mean": 241.94,
       "tintR": 146.6,
       "tintG": 165.6,
@@ -1812,7 +1812,7 @@
       "edges": 1130,
       "mean": 241.93,
       "tintR": 106.9,
-      "tintG": 138.2,
+      "tintG": 138.3,
       "tintB": 113
     },
     "clusterRestored": {
@@ -1820,7 +1820,7 @@
       "neutral": 1,
       "edges": 1163,
       "mean": 241.92,
-      "tintR": 124.8,
+      "tintR": 124.7,
       "tintG": 132.5,
       "tintB": 118.8
     },
@@ -1829,7 +1829,7 @@
       "neutral": 1,
       "edges": 1163,
       "mean": 241.92,
-      "tintR": 104.2,
+      "tintR": 104.1,
       "tintG": 153.3,
       "tintB": 106.5
     },
@@ -1838,18 +1838,18 @@
       "neutral": 5,
       "edges": 1306,
       "mean": 241.89,
-      "tintR": 153,
+      "tintR": 152.9,
       "tintG": 136.3,
-      "tintB": 112.4
+      "tintB": 112.3
     },
     "computedClusters": {
       "coloured": 176,
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161,
-      "tintG": 158.5,
-      "tintB": 133
+      "tintR": 161.1,
+      "tintG": 158.7,
+      "tintB": 133.1
     },
     "__assertions": 8
   },
@@ -1857,7 +1857,7 @@
     "before": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -1865,26 +1865,26 @@
     },
     "overlayActive": {
       "coloured": 331,
-      "neutral": 23,
-      "edges": 1302,
-      "mean": 241.82,
-      "tintR": 114,
+      "neutral": 7,
+      "edges": 1274,
+      "mean": 241.83,
+      "tintR": 113.9,
       "tintG": 116,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "fileClusters": {
       "coloured": 331,
-      "neutral": 23,
-      "edges": 1302,
-      "mean": 241.82,
-      "tintR": 114,
+      "neutral": 7,
+      "edges": 1274,
+      "mean": 241.83,
+      "tintR": 113.9,
       "tintG": 116,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "typeColours": {
       "coloured": 329,
-      "neutral": 25,
-      "edges": 1311,
+      "neutral": 9,
+      "edges": 1283,
       "mean": 241.87,
       "tintR": 143.8,
       "tintG": 168.5,
@@ -1892,26 +1892,26 @@
     },
     "oneClusterHidden": {
       "coloured": 276,
-      "neutral": 30,
-      "edges": 1264,
-      "mean": 241.84,
-      "tintR": 96.4,
+      "neutral": 7,
+      "edges": 1221,
+      "mean": 241.85,
+      "tintR": 96.3,
       "tintG": 128.7,
-      "tintB": 111.4
+      "tintB": 111.3
     },
     "clusterRestored": {
       "coloured": 331,
-      "neutral": 23,
-      "edges": 1302,
-      "mean": 241.82,
-      "tintR": 114,
+      "neutral": 7,
+      "edges": 1274,
+      "mean": 241.83,
+      "tintR": 113.9,
       "tintG": 116,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "recoloured": {
       "coloured": 331,
-      "neutral": 23,
-      "edges": 1300,
+      "neutral": 7,
+      "edges": 1272,
       "mean": 241.82,
       "tintR": 85.6,
       "tintG": 144.3,
@@ -1920,7 +1920,7 @@
     "secondOverlay": {
       "coloured": 583,
       "neutral": 3,
-      "edges": 1493,
+      "edges": 1494,
       "mean": 241.72,
       "tintR": 129.2,
       "tintG": 118.6,
@@ -1929,7 +1929,7 @@
     "computedClusters": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -1941,34 +1941,34 @@
     "before": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1412,
+      "edges": 1414,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.6
+      "tintB": 126.7
     },
     "overlayActive": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1272,
+      "edges": 1270,
       "mean": 241.83,
       "tintR": 113.2,
       "tintG": 116.3,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "fileClusters": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1272,
+      "edges": 1270,
       "mean": 241.83,
       "tintR": 113.2,
       "tintG": 116.3,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "typeColours": {
       "coloured": 336,
       "neutral": 0,
-      "edges": 1280,
+      "edges": 1279,
       "mean": 241.86,
       "tintR": 154.7,
       "tintG": 136.2,
@@ -1977,25 +1977,25 @@
     "oneClusterHidden": {
       "coloured": 279,
       "neutral": 1,
-      "edges": 1219,
+      "edges": 1217,
       "mean": 241.85,
-      "tintR": 95.7,
+      "tintR": 95.6,
       "tintG": 128.9,
       "tintB": 111.4
     },
     "clusterRestored": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1272,
+      "edges": 1270,
       "mean": 241.83,
       "tintR": 113.2,
       "tintG": 116.3,
-      "tintB": 114.8
+      "tintB": 114.7
     },
     "recoloured": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1270,
+      "edges": 1268,
       "mean": 241.82,
       "tintR": 85.1,
       "tintG": 144.3,
@@ -2004,20 +2004,20 @@
     "secondOverlay": {
       "coloured": 586,
       "neutral": 0,
-      "edges": 1491,
+      "edges": 1492,
       "mean": 241.72,
       "tintR": 129.7,
       "tintG": 118.7,
-      "tintB": 110.3
+      "tintB": 110.4
     },
     "computedClusters": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1412,
+      "edges": 1414,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.6
+      "tintB": 126.7
     },
     "__assertions": 8
   },
@@ -2052,11 +2052,11 @@
     "typeColours": {
       "coloured": 329,
       "neutral": 6,
-      "edges": 1291,
+      "edges": 1290,
       "mean": 241.86,
-      "tintR": 154.5,
+      "tintR": 154.4,
       "tintG": 136.6,
-      "tintB": 120.8
+      "tintB": 120.7
     },
     "oneClusterHidden": {
       "coloured": 279,
@@ -2064,7 +2064,7 @@
       "edges": 1218,
       "mean": 241.85,
       "tintR": 95.6,
-      "tintG": 128.9,
+      "tintG": 128.8,
       "tintB": 111.3
     },
     "clusterRestored": {
@@ -2082,13 +2082,13 @@
       "edges": 1269,
       "mean": 241.82,
       "tintR": 85,
-      "tintG": 144.3,
+      "tintG": 144.2,
       "tintB": 98.7
     },
     "secondOverlay": {
       "coloured": 586,
       "neutral": 0,
-      "edges": 1491,
+      "edges": 1494,
       "mean": 241.72,
       "tintR": 129.7,
       "tintG": 118.6,

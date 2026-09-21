@@ -23,8 +23,6 @@ import './ClusteringPane.css';
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
-  // Identity-stable across frames (particleStore ignores numerically equal
-  // updates), so this does not re-run DBSCAN on every trajectory step.
   const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
   const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
   // Visibility belongs to the UI store, which is what the control-bar toggle
@@ -35,10 +33,6 @@ function ClusteringPane() {
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const addOverlay = useOverlayStore(state => state.addOverlay);
   const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
-  // Which clusters this pane works with is a separate question from which
-  // overlay paints the scene. Tying them together meant choosing "Particle
-  // type" in the View also threw away the cluster grouping, leaving no way to
-  // cluster by a file while colouring by particle type.
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const fileInputRef = useRef(null);
   const [fileError, setFileError] = useState(null);
@@ -174,7 +168,7 @@ function ClusteringPane() {
   // same pre-click set and the first would be lost.
   const currentSelection = () => useClusteringStore.getState().selectedClusters;
 
-  const handleClusterToggle = (clusterIndex) => {
+  const handleClusterToggle = useCallback((clusterIndex) => {
     const newSelected = new Set(currentSelection());
     if (newSelected.has(clusterIndex)) {
       newSelected.delete(clusterIndex);
@@ -182,7 +176,7 @@ function ClusteringPane() {
       newSelected.add(clusterIndex);
     }
     setSelectedClusters(newSelected);
-  };
+  }, [setSelectedClusters]);
 
   // Select all clusters
   const selectAllClusters = () => {
@@ -195,7 +189,7 @@ function ClusteringPane() {
   };
   
   // Handle clicking on histogram bar to select clusters of that size
-  const handleHistogramBarClick = (clusterSize, event) => {
+  const handleHistogramBarClick = useCallback((clusterSize, event) => {
     const clustersOfSize = [];
     clusters.forEach((cluster, index) => {
       if (cluster.length === clusterSize) {
@@ -215,7 +209,7 @@ function ClusteringPane() {
     
     // Automatically enable "show only selected" mode
     setShowOnlySelected(true);
-  };
+  }, [clusters, setSelectedClusters, setShowOnlySelected]);
 
   // Notify store about highlighted clusters
   useClusterPublication({
@@ -242,11 +236,24 @@ function ClusteringPane() {
     setActiveOverlay(next ?? COMPUTED_VIEW);
   }, [setClusterSourceId, setActiveOverlay]);
 
+  const openFilePicker = useCallback(() => fileInputRef.current?.click(), []);
+
   const setClusterColor = useCallback((index, color) => {
     setColorOverrides(previous => ({ ...previous, [index]: color }));
   }, []);
 
-  const toggleClusterVisible = (clusterIndex) => {
+  // Overrides are keyed by cluster index, and DBSCAN renumbers on every
+  // recompute — so a swatch set on cluster 3 would follow the index onto
+  // whatever cluster 3 became, painting an unrelated group and silently
+  // reverting the one it was chosen for.
+  const clusterCountRef = useRef(clusters.length);
+  useEffect(() => {
+    if (clusterCountRef.current === clusters.length) return;
+    clusterCountRef.current = clusters.length;
+    setColorOverrides({});
+  }, [clusters.length]);
+
+  const toggleClusterVisible = useCallback((clusterIndex) => {
     // Read through the store, not the render closure: the setter takes a value
     // rather than an updater, so two clicks landing in one tick would both start
     // from the same pre-click set and the first would be lost.
@@ -254,7 +261,7 @@ function ClusteringPane() {
     if (next.has(clusterIndex)) next.delete(clusterIndex);
     else next.add(clusterIndex);
     setHiddenClusters(next);
-  };
+  }, [setHiddenClusters]);
   
   // No UI when there is nothing to cluster, or when the panel is closed — but
   // the hooks above still run, which is the point: closing the panel hides the
@@ -283,7 +290,7 @@ function ClusteringPane() {
         clusterSourceId={clusterSourceId}
         clusterOverlays={clusterOverlays}
         onSourceChange={chooseClusterSource}
-        onLoadFile={() => fileInputRef.current?.click()}
+        onLoadFile={openFilePicker}
         fileInputRef={fileInputRef}
         onFileChosen={handleClusterFile}
         fileError={fileError}

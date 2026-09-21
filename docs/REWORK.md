@@ -277,14 +277,14 @@ is small:
 | file | lines |
 |---|---|
 | `ClusterStatistics` | 38 |
+| `ClusterParameters` | 50 |
 | `ClusterList` | 63 |
 | `useClusterPublication` | 68 |
-| `ClusterParameters` | 71 |
 | `ClusterSourceControls` | 72 |
 | `useClusterColours` | 76 |
 | `ClusterHistogram` | 89 |
-| `useClusterSource` | 91 |
-| `index.js` | **385** |
+| `useClusterSource` | 118 |
+| `index` | **392** |
 
 `index.js` is the composition root and still misses the 200-line target. What
 remains is the selection-controls markup, the statistics computation, and the
@@ -295,6 +295,26 @@ met and should not be reported as though it were.
 The split is behaviour-preserving: 224 tests and the full visual suite unchanged
 after each extraction, which is how a refactor of this size stays honest.
 
+Review of phase 3 found five, all fixed. Two were carried-over bugs the
+extraction had made easier to see:
+
+- **Changing epsilon could empty the scene and hide the way out.** Selection is a
+  set of cluster *indices*, and DBSCAN renumbers on every recompute. Selecting
+  clusters 7-9 of ten and widening epsilon to three left three indices naming
+  nothing: an empty highlighted set was published with "show only selected" still
+  on, so every particle was hidden — and `isSceneRestricted` compares
+  `selectedClusters.size < clusterCount`, which `3 < 3` fails, so the "Show all
+  particles" button was not rendered either. Stale indices are pruned when the
+  cluster set changes.
+- **Colour overrides followed an index onto a different cluster.** They are keyed
+  by cluster index and survived a recompute, so a swatch set on cluster 3 painted
+  whatever cluster 3 became. They reset when the cluster count changes.
+
+And three of quality: three `React.memo` wrappers could never skip a render
+because `index.js` handed them freshly-created function props each time; two
+comments were left describing declarations that had moved to another file; and
+the line-count table above misreported one file.
+
 ### Phase 4 — One shared renderer hook
 
 `useClusterVisuals()` returns the memoised inputs every renderer feeds to
@@ -302,6 +322,23 @@ after each extraction, which is how a refactor of this size stays honest.
 structurally impossible.
 
 *Done when:* the five renderers share one subscription path.
+
+**Status: done.** `rendering/useClusterVisuals` owns the five store fields and
+the seven arguments every layer was assembling for `getClusterAppearance`.
+No renderer calls that rule directly any more; each asks
+`appearanceOf(index, { baseColor, allowSelectionColor })`.
+
+Unifying them exposed a third drift, after the two the hook's own comment
+records: **`Springs` never passed `forceHidden`**, so hiding a cluster by its eye
+control left that cluster's springs hanging in the scene. It was the one layer
+that had never been wired to the per-cluster visibility control. Fixing it is the
+only behavioural change in this phase — 12 measurements in `srs/overlays`, the
+one fixture with springs, and `srs/load` unchanged, so springs still draw
+normally.
+
+Selection membership also moved from `selectedParticles.includes(i)` — a linear
+scan run once per particle, inside a loop over every particle — to a `Set` built
+once.
 
 ### Phase 5 — Stable frame identity
 *The one with real risk. Do it last, and only if measurement justifies it.*

@@ -5,10 +5,7 @@ import Patches from "../Patches";
 import { getParticleColors } from "../../colors";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
-import { useClusteringStore } from "../../store/clusteringStore";
-import { useOverlayStore } from "../../store/overlayStore";
-import { overlayColorFor } from "../../utils/overlays";
-import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
+import useClusterVisuals from "../../rendering/useClusterVisuals";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";
@@ -28,22 +25,10 @@ function Particles() {
   // One value at a time. A bare useUIStore() re-renders this layer on any
   // write to that store — a legend toggle, a lighting slider — and each
   // re-render re-runs the per-instance matrix and colour loops below.
-  const selectedParticles = useUIStore(state => state.selectedParticles);
+  const appearanceOf = useClusterVisuals();
   const sphereSegments = useUIStore(state => state.sphereSegments);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
-  // Subscribed field by field. A bare useClusteringStore() re-renders this
-  // layer on *any* write to that store — including the pane's own controls,
-  // which now live there — and each re-render re-runs the per-instance matrix
-  // and colour loops below.
-  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
-  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
-  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
-  const clusterColors = useClusteringStore(state => state.clusterColors);
-  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
-  // An active overlay replaces the base colour for the particles it covers.
-  const overlayColors = useOverlayStore(state =>
-    state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
   const meshRef = useRef();
 
   const count = positions?.length ?? 0;
@@ -97,18 +82,7 @@ function Particles() {
     const pos = positions[i];
     if (!data || !pos) return false;
 
-    const isInHighlightedCluster = highlightedClusters.has(i);
-    const { color, scaleFactor, dimmed } = getClusterAppearance({
-      forceHidden: hiddenParticles.has(i),
-      isSelected: Array.isArray(selectedParticles) && selectedParticles.includes(i),
-      isInHighlightedCluster,
-      shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
-      hasHighlightedClusters: highlightedClusters.size > 0,
-      showOnlyHighlightedClusters,
-      dimNonSelectedClusters,
-      baseColor: overlayColorFor(overlayColors, i, THREE) ?? data.typeColor,
-      clusterColor: clusterColorFor(clusterColors, i, THREE),
-    });
+    const { color, scaleFactor, dimmed } = appearanceOf(i, { baseColor: data.typeColor });
 
     // A raspberry particle is drawn by its beads, so its centre sphere is
     // hidden. The one exception is the dimmed marker: one small sphere at the
@@ -124,8 +98,7 @@ function Particles() {
     dummy.scale.setScalar(scale);
     setColor(color);
     return true;
-  }, [particleData, positions, boxSize, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, overlayColors, scratch]);
+  }, [particleData, positions, boxSize, appearanceOf, scratch]);
 
   // The sphere mesh is clickable except where a raspberry particle's hidden
   // centre sits — those clicks belong to the beads.

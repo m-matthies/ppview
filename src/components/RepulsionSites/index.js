@@ -2,13 +2,10 @@ import React, { useMemo, useRef, useCallback } from "react";
 import * as THREE from 'three';
 import { useUIStore } from "../../store/uiStore";
 import { useParticleStore } from "../../store/particleStore";
-import { useClusteringStore } from "../../store/clusteringStore";
-import { useOverlayStore } from "../../store/overlayStore";
-import { overlayColorFor } from "../../utils/overlays";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox, rotationMatrixOf } from "../../rendering/transforms";
-import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
+import useClusterVisuals from "../../rendering/useClusterVisuals";
 
 /**
  * Repulsion-site beads for raspberry particles.
@@ -22,21 +19,9 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   // One value at a time. A bare useUIStore() re-renders this layer on any
   // write to that store — a legend toggle, a lighting slider — and each
   // re-render re-runs the per-instance matrix and colour loops below.
-  const selectedParticles = useUIStore(state => state.selectedParticles);
+  const appearanceOf = useClusterVisuals();
   const sphereSegments = useUIStore(state => state.sphereSegments);
   const particleRadius = useParticleStore(state => state.particleRadius);
-  // Subscribed field by field. A bare useClusteringStore() re-renders this
-  // layer on *any* write to that store — including the pane's own controls,
-  // which now live there — and each re-render re-runs the per-instance matrix
-  // and colour loops below.
-  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
-  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
-  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
-  const clusterColors = useClusteringStore(state => state.clusterColors);
-  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
-  // An active overlay replaces the base colour for the particles it covers.
-  const overlayColors = useOverlayStore(state =>
-    state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
 
   // Bead sizes and offsets come from the topology. Scaling both by the same
   // factor resizes the whole raspberry particle while preserving the shape the
@@ -66,22 +51,9 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
     if (!hasValidData) return [];
     return particles.map((_, i) => {
       const globalIndex = globalIndices ? globalIndices[i] : i;
-      const isInHighlightedCluster = highlightedClusters.has(globalIndex);
-      return getClusterAppearance({
-        forceHidden: hiddenParticles.has(globalIndex),
-        isSelected: Array.isArray(selectedParticles) && selectedParticles.includes(globalIndex),
-        isInHighlightedCluster,
-        shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
-        hasHighlightedClusters: highlightedClusters.size > 0,
-        showOnlyHighlightedClusters,
-        dimNonSelectedClusters,
-        baseColor: overlayColorFor(overlayColors, globalIndex, THREE) ?? typeColor,
-        clusterColor: clusterColorFor(clusterColors, globalIndex, THREE),
-      });
+      return appearanceOf(globalIndex, { baseColor: typeColor });
     });
-  }, [particles, globalIndices, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, overlayColors,
-      typeColor, hasValidData]);
+  }, [particles, globalIndices, appearanceOf, typeColor, hasValidData]);
 
   const scratch = useMemo(() => ({
     centre: new THREE.Vector3(),

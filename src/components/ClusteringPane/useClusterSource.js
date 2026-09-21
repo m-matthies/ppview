@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
 import { useUIStore } from '../../store/uiStore';
@@ -70,6 +70,33 @@ export default function useClusterSource() {
     () => (fileClusters ? fileClusters.map(c => c.indices) : computedClusters),
     [fileClusters, computedClusters],
   );
+
+  /**
+   * Drop selection and visibility entries that no longer name a cluster.
+   *
+   * Both are cluster *indices*, and DBSCAN renumbers everything when epsilon or
+   * minPoints move. Selecting clusters 7-9 of ten and then widening epsilon to
+   * three left three indices pointing at nothing: the publication effect found
+   * no members for any of them and published an empty highlighted set with
+   * "show only selected" still on, so every particle was hidden and the viewport
+   * went blank. Worse, isSceneRestricted compares `selectedClusters.size <
+   * clusterCount` — 3 < 3 is false — so the "Show all particles" button that
+   * would undo it was not rendered either.
+   */
+  useEffect(() => {
+    const count = clusters.length;
+    const { selectedClusters, hiddenClusters } = useClusteringStore.getState();
+    const inRange = (set) => new Set([...set].filter(index => index < count));
+
+    const prunedSelection = inRange(selectedClusters);
+    if (prunedSelection.size !== selectedClusters.size) {
+      useClusteringStore.getState().setSelectedClusters(prunedSelection);
+    }
+    const prunedHidden = inRange(hiddenClusters);
+    if (prunedHidden.size !== hiddenClusters.size) {
+      useClusteringStore.getState().setHiddenClusters(prunedHidden);
+    }
+  }, [clusters]);
 
   // Past half the shortest box dimension the minimum image convention stops
   // being meaningful, so the slider does not offer it.

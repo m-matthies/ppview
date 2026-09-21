@@ -10,14 +10,11 @@ import React, { useRef, useMemo, useCallback } from "react";
 import * as THREE from "three";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
-import { useClusteringStore } from "../../store/clusteringStore";
-import { useOverlayStore } from "../../store/overlayStore";
-import { overlayColorFor } from "../../utils/overlays";
 import { getParticleColors } from "../../colors";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";
-import { getClusterAppearance, clusterColorFor } from "../../utils/clusterAppearance";
+import useClusterVisuals from "../../rendering/useClusterVisuals";
 
 // Base-type colors matching oxdna-viewer nucleosideColors
 const BASE_COLORS = {
@@ -43,20 +40,8 @@ function OxDNANucleotides() {
   // One value at a time. A bare useUIStore() re-renders this layer on any
   // write to that store — a legend toggle, a lighting slider — and each
   // re-render re-runs the per-instance matrix and colour loops below.
-  const selectedParticles = useUIStore(state => state.selectedParticles);
   const sphereSegments = useUIStore(state => state.sphereSegments);
-  // Subscribed field by field. A bare useClusteringStore() re-renders this
-  // layer on *any* write to that store — including the pane's own controls,
-  // which now live there — and each re-render re-runs the per-instance matrix
-  // and colour loops below.
-  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
-  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
-  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
-  const clusterColors = useClusteringStore(state => state.clusterColors);
-  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
-  // An active overlay replaces the base colour for the particles it covers.
-  const overlayColors = useOverlayStore(state =>
-    state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
+  const appearanceOf = useClusterVisuals();
 
   const bbRef = useRef();
   const nsRef = useRef();
@@ -133,27 +118,13 @@ function OxDNANucleotides() {
   // per renderer instead of shared.
   const appearance = useMemo(() => {
     if (!count) return [];
-    const selected = Array.isArray(selectedParticles) ? selectedParticles : [];
     const out = new Array(count);
     for (let i = 0; i < count; i++) {
-      const inCluster = highlightedClusters.has(i);
       const strandColor = strandColors[(positions?.[i]?.typeIndex ?? 0) % Math.max(strandColors.length, 1)];
-      out[i] = getClusterAppearance({
-        forceHidden: hiddenParticles.has(i),
-        isSelected: selected.includes(i),
-        isInHighlightedCluster: inCluster,
-        shouldShow: !showOnlyHighlightedClusters || inCluster,
-        hasHighlightedClusters: highlightedClusters.size > 0,
-        showOnlyHighlightedClusters,
-        dimNonSelectedClusters,
-        baseColor: overlayColorFor(overlayColors, i, THREE) ?? strandColor,
-        clusterColor: clusterColorFor(clusterColors, i, THREE),
-      });
+      out[i] = appearanceOf(i, { baseColor: strandColor });
     }
     return out;
-  }, [count, positions, selectedParticles, highlightedClusters,
-      showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles, overlayColors,
-      strandColors]);
+  }, [count, positions, appearanceOf, strandColors]);
 
   const scratch = useMemo(() => ({
     p: new THREE.Vector3(),

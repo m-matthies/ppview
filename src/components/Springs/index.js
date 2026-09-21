@@ -2,10 +2,9 @@ import React, { useMemo } from "react";
 import * as THREE from "three";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
-import { useClusteringStore } from "../../store/clusteringStore";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { centreOnBox, crossesPeriodicBoundary } from "../../rendering/transforms";
-import { getClusterAppearance } from "../../utils/clusterAppearance";
+import useClusterVisuals from "../../rendering/useClusterVisuals";
 
 // Renders spring bonds between connected particles as instanced cylinders.
 // Spring connection topology comes from topData.springConnections, which is
@@ -16,13 +15,7 @@ function Springs() {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const topData = useParticleStore(state => state.topData);
   const sphereSegments = useUIStore(state => state.sphereSegments);
-  // Subscribed field by field. A bare useClusteringStore() re-renders this
-  // layer on *any* write to that store — including the pane's own controls,
-  // which now live there — and each re-render re-runs the per-instance matrix
-  // and colour loops below.
-  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
-  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
-  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
+  const appearanceOf = useClusterVisuals();
 
   const springConnections = topData?.springConnections;
   const count = springConnections?.length ?? 0;
@@ -50,24 +43,17 @@ function Springs() {
   }), []);
 
   // A spring follows the cluster state of the particles it joins: it is drawn
-  // only when both ends are. Previously springs ignored clustering entirely and
-  // hung in space after their particles were hidden.
-  const appearanceOf = useMemo(() => (index) => getClusterAppearance({
-    isInHighlightedCluster: highlightedClusters.has(index),
-    shouldShow: !showOnlyHighlightedClusters || highlightedClusters.has(index),
-    hasHighlightedClusters: highlightedClusters.size > 0,
-    showOnlyHighlightedClusters,
-    dimNonSelectedClusters,
-    baseColor: null,
-    allowSelectionColor: false,
-  }), [highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters]);
+  // only when both ends are. Springs once ignored clustering entirely and hung
+  // in space after their particles were hidden; until this moved to the shared
+  // hook they were also the one layer that never asked about the per-cluster eye
+  // control, so hiding a cluster left its springs behind.
 
   const write = useMemo(() => (i, dummy) => {
     const { p1, p2 } = springConnections[i];
     if (p1 >= positions.length || p2 >= positions.length) return false;
 
-    const a = appearanceOf(p1);
-    const b = appearanceOf(p2);
+    const a = appearanceOf(p1, { allowSelectionColor: false });
+    const b = appearanceOf(p2, { allowSelectionColor: false });
     if (a.hidden || b.hidden) return false;
 
     const pos1 = positions[p1];

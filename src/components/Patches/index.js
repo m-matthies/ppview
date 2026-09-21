@@ -3,10 +3,9 @@ import * as THREE from 'three';
 import { getColorForPatchID } from '../../utils/colorUtils';
 import { useParticleStore } from '../../store/particleStore';
 import { useUIStore } from '../../store/uiStore';
-import { useClusteringStore } from '../../store/clusteringStore';
 import InstancedLayer from '../../rendering/InstancedLayer';
 import { centreOnBox, rotationMatrixOf } from '../../rendering/transforms';
-import { getClusterAppearance } from '../../utils/clusterAppearance';
+import useClusterVisuals from '../../rendering/useClusterVisuals';
 
 /**
  * Patch cones, one instance per (particle, patch) pair.
@@ -18,14 +17,7 @@ import { getClusterAppearance } from '../../utils/clusterAppearance';
 function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, colorScheme = null }) {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const coneSegments = useUIStore(state => state.sphereSegments);
-  // Subscribed field by field. A bare useClusteringStore() re-renders this
-  // layer on *any* write to that store — including the pane's own controls,
-  // which now live there — and each re-render re-runs the per-instance matrix
-  // and colour loops below.
-  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
-  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
-  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
-  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
+  const appearanceOf = useClusterVisuals();
 
   // Patch cone dimensions — scaled proportionally to particle radius so patches
   // stay visually consistent across formats with different particle sizes.
@@ -63,22 +55,11 @@ function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, 
   // grow with a highlighted particle and vanish with a hidden one.
   const appearance = useMemo(() => {
     if (!hasValidPatchData) return [];
-    return particles.map((_, i) => {
-      const globalIndex = globalIndices ? globalIndices[i] : i;
-      const isInHighlightedCluster = highlightedClusters.has(globalIndex);
-      return getClusterAppearance({
-        forceHidden: hiddenParticles.has(globalIndex),
-        isInHighlightedCluster,
-        shouldShow: !showOnlyHighlightedClusters || isInHighlightedCluster,
-        hasHighlightedClusters: highlightedClusters.size > 0,
-        showOnlyHighlightedClusters,
-        dimNonSelectedClusters,
-        baseColor: null, // resolved per patch below
-        allowSelectionColor: false,
-      });
-    });
-  }, [particles, globalIndices, highlightedClusters, showOnlyHighlightedClusters,
-      dimNonSelectedClusters, hiddenParticles, hasValidPatchData]);
+    // baseColor is resolved per patch below: a patch's colour encodes its ID,
+    // not its particle's type.
+    return particles.map((_, i) =>
+      appearanceOf(globalIndices ? globalIndices[i] : i, { allowSelectionColor: false }));
+  }, [particles, globalIndices, hasValidPatchData, appearanceOf]);
 
   // Patch colours are per patch ID and change only with the colour scheme.
   const patchColors = useMemo(
