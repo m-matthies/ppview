@@ -40,10 +40,11 @@ const TOPOLOGY = fileOf('system.top', [
   'iR 0.0,0.0,1.0 0.3',
   'iC 0 40 0 0',
 ].join('\n'));
-const TRAJECTORY = fileOf('run.dat', [
+const TRAJECTORY_TEXT = [
   't = 0', 'b = 60 60 60', 'E = 0 0 0',
   ...Array.from({ length: 40 }, () => '1 2 3 1 0 0 0 0 1'),
-].join('\n'));
+].join('\n');
+const TRAJECTORY = fileOf('run.dat', TRAJECTORY_TEXT);
 
 describe('loadSimulation', () => {
   it('loads a topology and indexes its trajectory', async () => {
@@ -140,6 +141,22 @@ describe('loadSimulation', () => {
     expect(outcome.superseded).toBe(true);
     expect(scene.calls.topData).toBeUndefined();
     expect(scene.calls.trajFile).toBeUndefined();
+  });
+
+  it('does not index the topology file as a trajectory', async () => {
+    // init.top ranks above an unhinted .dat in the name-based fallback, so
+    // without an exclusion the topology was chosen as the trajectory.
+    const topology = { ...fileOf('init.top', '40 2\niC 0 40 -1 -1') };
+    const data = fileOf('sim.dat', TRAJECTORY_TEXT);
+    const scene = sceneOf();
+    const outcome = await runLoad(() => loadSimulation({
+      files: [topology, data],
+      categorized: { topology: { file: topology, format: 'raspberry' } },
+      signal: createLoadTokens().begin(),
+      scene,
+    }));
+    expect(outcome.ok).toBe(true);
+    expect(scene.calls.trajFile).toBe(data);
   });
 
   it('propagates StaleLoad rather than reporting it as a failure', async () => {

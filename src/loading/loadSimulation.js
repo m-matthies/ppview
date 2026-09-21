@@ -87,8 +87,8 @@ async function loadTopology(categorized, files, inputParams, signal, scene) {
 }
 
 /** Points the scene at the trajectory and indexes its frames. */
-async function loadTrajectory(categorized, files, signal, scene) {
-  const file = pickTrajectoryFile(categorized, files);
+async function loadTrajectory(categorized, files, signal, scene, exclude) {
+  const file = pickTrajectoryFile(categorized, files, { exclude });
   if (!file) {
     throw new LoadError('No trajectory file detected. Check that the drop includes one.');
   }
@@ -117,7 +117,10 @@ export async function loadSimulation({ files, categorized, signal, scene }) {
   }
 
   await loadTopology(categorized, files, inputParams, signal, scene);
-  await loadTrajectory(categorized, files, signal, scene);
+  // The topology and input files are spoken for; the name-based trajectory
+  // fallback must not pick one of them.
+  const spokenFor = [pickTopologyFile(categorized, files)?.file, categorized.inputFile];
+  await loadTrajectory(categorized, files, signal, scene, spokenFor);
 
   if (categorized.unknown?.length) {
     console.warn('Ignored files of unrecognised type:',

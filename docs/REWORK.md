@@ -204,6 +204,33 @@ The remaining `getState()` calls are not all bad. The two in `usePlayback` are
 deliberate: subscribing to `currentConfigIndex` there would rebuild the callbacks
 every frame and leave the playback interval looping on a stale index.
 
+**Phase 1b: done.** `App.js` is **379 lines** with **8** `getState()` calls.
+Export moved to `hooks/useSceneExport`, the particle shift to
+`hooks/useParticleShift`, and the scene reset became one `resetScene` callback
+instead of ten inline store writes.
+
+Review of phase 1 found five more, all fixed:
+
+- **The frame-loading effect was the one async path still unguarded** — the very
+  failure the phase claimed to eliminate. Scrubbing quickly leaves several frame
+  reads in flight and the last to resolve wins, so the scene could show a
+  different frame from the one the controls report; worse, a read still running
+  when a new simulation is dropped painted the old frame, decorated with the old
+  topology, into the new scene. The effect now cancels on cleanup, through
+  writers that no-op once superseded.
+- **The playback interval captured `totalConfigs`.** Loading a shorter trajectory
+  mid-playback left it running past the new end, and every tick raised a modal
+  alert for a frame that does not exist. The interval lives in an effect now, so
+  it is rebuilt when anything it depends on changes — which also fixes the speed
+  control doing nothing until the next pause.
+- **A load that failed after the topology parsed left the store dirty**, so the
+  legends of a structure with no coordinates rendered over the drop zone.
+- **The trajectory fallback could claim the topology file.** `looksLikeTrajectory`
+  matches "init" anywhere in a name and ranks it above an unhinted `.dat`, so
+  `init.top` + `sim.dat` selected the *topology* as the trajectory. Unifying the
+  two resolutions in phase 1 had made this consistently wrong where it was
+  previously inconsistently wrong.
+
 ### Phase 2 — Fix state ownership
 
 Per-store `selectors.js`. A lint rule banning bare `useXStore()`. Narrow `App`'s

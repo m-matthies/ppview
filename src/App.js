@@ -10,8 +10,6 @@ import ClusteringPane from "./components/ClusteringPane";
 import ControlBar from "./components/ControlBar";
 import LightingControlsModal from "./components/LightingControlsModal";
 import { analyzeFiles, categorizeFiles } from "./formats/detection";
-import { applyPeriodicWrapping } from "./utils/geometryUtils";
-import { captureScreenshot, exportSceneAsGLTF } from "./utils/exportUtils";
 import { useParticleStore } from "./store/particleStore";
 import { useUIStore } from "./store/uiStore";
 import { useClusteringStore } from "./store/clusteringStore";
@@ -23,6 +21,8 @@ import { loadFrame } from "./loading/loadFrame";
 import { classifyDrop } from "./loading/resolveFiles";
 import { createLoadTokens, runLoad } from "./loading/staleness";
 import usePlayback from "./hooks/usePlayback";
+import useSceneExport from "./hooks/useSceneExport";
+import useParticleShift from "./hooks/useParticleShift";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
@@ -31,7 +31,6 @@ function App() {
   // Zustand stores
   const {
     positions,
-    currentBoxSize,
     topData,
     trajFile,
     configIndex,
@@ -77,7 +76,6 @@ function App() {
     sceneRef,
     isIframeMode,
     isDragDropEnabled,
-    currentColorScheme,
     isPlaying,
     playbackSpeed,
     isSpeedPopupVisible,
@@ -99,7 +97,6 @@ function App() {
     setSphereSegments,
   } = useUIStore();
 
-  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
 
   // Refs
   // Identifies the most recent load. Anything older that is still awaiting a
@@ -130,11 +127,6 @@ function App() {
     }
   }, [sceneRef]);
 
-  // Function to take a screenshot
-  const takeScreenshot = useCallback(() => {
-    captureScreenshot(sceneRef, currentConfigIndex, 1.0);
-  }, [sceneRef, currentConfigIndex]);
-
 
   // Turns cluster files into overlays. Shared by the two ways they arrive:
   // dropped with the simulation at startup, or dropped onto a loaded scene.
@@ -154,6 +146,24 @@ function App() {
       }
     }
   }, [notify]);
+
+  // Everything a previous structure left behind. Selection and cluster
+  // highlights are particle *indices*, so keeping them across a load would
+  // highlight unrelated particles or index past the end; sizes are
+  // per-structure for the same reason.
+  const resetScene = useCallback(() => {
+    useUIStore.getState().setSelectedParticles([]);
+    useClusteringStore.getState().resetClusters();
+    useOverlayStore.getState().clearOverlays();
+    resetParticleRadius();
+    setTopData(null);
+    setPositions([]);
+    setTrajFile(null);
+    setConfigIndex([]);
+    setCurrentConfigIndex(0);
+    setTotalConfigs(0);
+  }, [resetParticleRadius, setTopData, setPositions, setTrajFile, setConfigIndex,
+      setCurrentConfigIndex, setTotalConfigs]);
 
   const handleFilesReceived = useCallback(async (files) => {
     if (!files || files.length === 0) return;
@@ -181,16 +191,7 @@ function App() {
     // Selection and cluster highlights are particle *indices*, so keeping them
     // would highlight unrelated particles in the new structure — or index past
     // its end. Sizes are per-structure for the same reason.
-    useUIStore.getState().setSelectedParticles([]);
-    useClusteringStore.getState().resetClusters();
-    useOverlayStore.getState().clearOverlays();
-    resetParticleRadius();
-    setTopData(null);
-    setPositions([]);
-    setTrajFile(null);
-    setConfigIndex([]);
-    setCurrentConfigIndex(0);
-    setTotalConfigs(0);
+    resetScene();
     setIsLoading(true);
 
     const outcome = await runLoad(() => loadSimulation({
@@ -204,30 +205,45 @@ function App() {
     setIsLoading(false);
     if (!outcome.ok) {
       console.error('Could not load the dropped files:', outcome.error ?? outcome.message);
+      // Reset again. A load can fail *after* the topology has been parsed and
+      // written — a drop with a .top and no trajectory does exactly that — and
+      // leaving that behind renders the legends of a structure with no
+      // coordinates on top of the drop zone.
+      resetScene();
       notify(outcome.message);
       setFilesDropped(false);
     }
-  }, [setFilesDropped, setIsLoading, resetParticleRadius, setTopData, setPositions,
-      setConfigIndex, setCurrentConfigIndex, setTotalConfigs, setTrajFile,
-      registerClusterOverlays, sceneWriters, notify]);
+  }, [setFilesDropped, setIsLoading, resetScene, registerClusterOverlays,
+      sceneWriters, notify]);
 
   // Read the current frame whenever the trajectory or the position in it moves.
   //
-  // The dependency list is honest now: loadFrame takes everything it needs as
-  // arguments, so there is nothing to suppress. It used to call a component-scope
-  // async function behind an exhaustive-deps disable.
+  // Cancelled on cleanup, for the same reason loads carry a staleness token:
+  // scrubbing quickly, or playing a long trajectory, leaves several frame reads
+  // in flight at once and whichever resolves last would otherwise win — leaving
+  // the scene showing a different frame from the one the controls report. Worse,
+  // a read still running when a new simulation is dropped would paint the old
+  // frame, decorated with the old topology, into the new scene.
   useEffect(() => {
-    if (!topData || !trajFile || configIndex.length === 0) return;
+    if (!topData || !trajFile || configIndex.length === 0) return undefined;
+    let cancelled = false;
+    const guarded = Object.fromEntries(
+      Object.entries(sceneWriters).map(([name, write]) => [
+        name, (...args) => { if (!cancelled) write(...args); },
+      ]),
+    );
     loadFrame({
       file: trajFile,
       index: configIndex,
       frameNumber: currentConfigIndex,
       topData,
-      scene: sceneWriters,
+      scene: guarded,
     }).catch(error => {
+      if (cancelled) return;
       console.error('Could not read that frame:', error);
       notify(error.message);
     });
+    return () => { cancelled = true; };
   }, [topData, trajFile, configIndex, currentConfigIndex, sceneWriters, notify]);
 
 
@@ -260,69 +276,8 @@ function App() {
     };
   }, [isSpeedPopupVisible, setIsSpeedPopupVisible]);
 
-  // Function to shift positions along an axis
-  const shiftPositions = useCallback(
-    (axis, delta) => {
-      // Get current positions from store (Zustand doesn't support function updaters)
-      const currentPositions = useParticleStore.getState().positions;
-
-      // Safeguard: ensure currentPositions is an array
-      if (!Array.isArray(currentPositions)) {
-        console.error('shiftPositions: currentPositions is not an array:', currentPositions);
-        return;
-      }
-
-      const shiftedPositions = currentPositions.map((pos) => {
-        const newPos = { ...pos };
-        newPos[axis] = pos[axis] + delta;
-        return newPos;
-      });
-
-      // Apply only periodic wrapping without re-centering
-      const adjustedPositions = applyPeriodicWrapping(
-        shiftedPositions,
-        currentBoxSize,
-      );
-
-      setPositions(adjustedPositions);
-
-      // Trigger re-render when translation happens
-      setTimeout(invalidateScene, 0);
-    },
-    [currentBoxSize, invalidateScene, setPositions],
-  );
-
-  // Function to export the scene as GLTF
-  const exportGLTF = useCallback(() => {
-    const particleRadius = useParticleStore.getState().particleRadius;
-    exportSceneAsGLTF({
-      positions,
-      currentBoxSize,
-      currentConfigIndex,
-      showSimulationBox,
-      showBackdropPlanes,
-      currentColorScheme,
-      topData,
-      highlightedClusters,
-      sceneRef,
-      particleRadius
-    });
-  }, [positions, currentBoxSize, currentConfigIndex, showSimulationBox, showBackdropPlanes, currentColorScheme, topData, highlightedClusters, sceneRef]);
-
-  // Function to create output files for download
-  const makeOutputFiles = useCallback(() => {
-    try {
-      // Export GLTF
-      exportGLTF();
-
-      // Take screenshot
-      takeScreenshot();
-
-      console.log('Output files generated successfully');
-    } catch (error) {
-      console.error('Error generating output files:', error);
-    }
-  }, [exportGLTF, takeScreenshot]);
+  const shiftPositions = useParticleShift({ invalidateScene });
+  const { takeScreenshot, exportGLTF, makeOutputFiles } = useSceneExport({ sceneRef });
 
   useIframeBridge({ handleFilesReceived, makeOutputFiles, notify });
 

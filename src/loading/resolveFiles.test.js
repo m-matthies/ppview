@@ -72,6 +72,23 @@ describe('pickTrajectoryFile', () => {
     expect(pickTrajectoryFile({}, files).name).toBe('d_traj.dat');
   });
 
+  it('will not claim a file already spoken for', () => {
+    // looksLikeTrajectory matches "init" anywhere in a name and the ranking puts
+    // it above an unhinted .dat, so `init.top` + `sim.dat` used to select the
+    // *topology* as the trajectory and index frames out of it.
+    const topology = named('init.top');
+    const data = named('sim.dat');
+    expect(pickTrajectoryFile({}, [topology, data]).name).toBe('init.top');
+    expect(pickTrajectoryFile({}, [topology, data], { exclude: [topology] }).name)
+      .toBe('sim.dat');
+  });
+
+  it('ignores undefined entries in the exclusion list', () => {
+    // categorized.inputFile is often absent; that must not exclude everything.
+    const data = named('run.dat');
+    expect(pickTrajectoryFile({}, [data], { exclude: [undefined, null] })).toBe(data);
+  });
+
   it('returns null when nothing looks like a trajectory', () => {
     expect(pickTrajectoryFile({}, [named('system.top'), named('readme.md')])).toBeNull();
   });

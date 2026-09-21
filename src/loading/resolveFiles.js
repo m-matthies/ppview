@@ -52,8 +52,14 @@ export function pickTopologyFile(categorized, files) {
  * One answer, used both to set the trajectory and to build its index — those
  * were separate expressions before, and could pick different files.
  */
-export function pickTrajectoryFile(categorized, files) {
+export function pickTrajectoryFile(categorized, files, { exclude = [] } = {}) {
   if (categorized.trajectory) return categorized.trajectory;
-  const candidates = files.filter(looksLikeTrajectory);
+
+  // A name-based fallback will happily claim a file already spoken for:
+  // `looksLikeTrajectory` matches "init" anywhere in the name, and the ranking
+  // puts "init" above an unhinted .dat — so a drop of `init.top` + `sim.dat`
+  // chose the *topology* as its trajectory and indexed frames out of it.
+  const taken = new Set(exclude.filter(Boolean));
+  const candidates = files.filter(file => !taken.has(file) && looksLikeTrajectory(file));
   return candidates.length ? selectFallbackTrajectoryFile(candidates) : null;
 }
