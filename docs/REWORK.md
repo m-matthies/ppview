@@ -175,6 +175,35 @@ and playback.
 
 *Done when:* `App.js` is under 250 lines and contains no `getState()`.
 
+**Status: partly done.** `App.js` is **424 lines** (was 732) with **10**
+`getState()` calls (was 14). The pipeline is out: `src/loading/` holds
+`staleness`, `resolveFiles`, `loadSimulation` and `loadFrame`, and playback moved
+to `hooks/usePlayback`. 47 new tests cover them, all without a browser.
+
+The target is not met. What remains in `App.js` is export (`exportGLTF`,
+`makeOutputFiles`, `takeScreenshot`), the particle-shift keyboard handler, the
+iframe wiring and the JSX — another two hooks' worth. Splitting those is
+Phase 1b rather than something to pretend is done.
+
+Three things the extraction turned up:
+
+- **The trajectory file was resolved twice with different criteria.** The list
+  used to *set* the trajectory included `init`; the list used to *build its
+  index* did not. The two could pick different files, so the indexed frames and
+  the file being read need not have matched. `pickTrajectoryFile` is now the only
+  answer, used for both.
+- **Staleness is no longer something to remember.** It was an `isStale()` closure
+  with six hand-placed checks, where adding an `await` without one silently
+  reintroduced "a slow load overwrites the newer scene". `step()` performs the
+  await *and* the check, so nothing going through it can forget.
+- **`loadFrame` no longer calls `alert()`.** It throws `LoadError`, and the
+  caller decides how to show it. `alert()` was called from four places inside
+  what is now a pure function.
+
+The remaining `getState()` calls are not all bad. The two in `usePlayback` are
+deliberate: subscribing to `currentConfigIndex` there would rebuild the callbacks
+every frame and leave the playback interval looping on a stale index.
+
 ### Phase 2 — Fix state ownership
 
 Per-store `selectors.js`. A lint rule banning bare `useXStore()`. Narrow `App`'s

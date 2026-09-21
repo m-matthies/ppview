@@ -1,5 +1,4 @@
-import React, { useEffect, useCallback, useRef, useState } from "react";
-import * as THREE from "three";
+import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import FileDropZone from "./components/FileDropZone";
 import FileDropOverlay from "./components/FileDropOverlay";
 import ParticleScene from "./components/ParticleScene";
@@ -10,13 +9,8 @@ import SceneBackgroundToggle from "./components/SceneBackgroundToggle";
 import ClusteringPane from "./components/ClusteringPane";
 import ControlBar from "./components/ControlBar";
 import LightingControlsModal from "./components/LightingControlsModal";
-import { analyzeFiles, categorizeFiles, parseInputFile } from "./formats/detection";
-import { readMGL, readMGLTrajectory, convertMGLToPPViewFormat } from "./utils/mglParser";
-import { getParticleType } from "./formats/parsers/particleType";
-import { parseTopology } from "./formats/registry";
-import { buildTrajIndex, parseConfiguration } from "./utils/trajectoryLoader";
-import { applyPeriodicBoundary, applyPeriodicWrapping, computeRotationMatrix } from "./utils/geometryUtils";
-import { selectFallbackTrajectoryFile, createFileMap } from "./utils/fileLoader";
+import { analyzeFiles, categorizeFiles } from "./formats/detection";
+import { applyPeriodicWrapping } from "./utils/geometryUtils";
 import { captureScreenshot, exportSceneAsGLTF } from "./utils/exportUtils";
 import { useParticleStore } from "./store/particleStore";
 import { useUIStore } from "./store/uiStore";
@@ -24,6 +18,11 @@ import { useClusteringStore } from "./store/clusteringStore";
 import { parseClusterFile } from "./utils/clusterFile";
 import { useOverlayStore } from "./store/overlayStore";
 import { clusterOverlayFromFile } from "./utils/overlays";
+import { loadSimulation } from "./loading/loadSimulation";
+import { loadFrame } from "./loading/loadFrame";
+import { classifyDrop } from "./loading/resolveFiles";
+import { createLoadTokens, runLoad } from "./loading/staleness";
+import usePlayback from "./hooks/usePlayback";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
@@ -55,6 +54,15 @@ function App() {
     particleRadius,
   } = useParticleStore();
 
+  // The store writers the load pipeline needs, bundled once. Store setters are
+  // stable, so this object is too — it can sit in a dependency array without
+  // re-creating the callback that holds it.
+  const sceneWriters = useMemo(() => ({
+    setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
+    setConfigIndex, setTotalConfigs, setTrajFile, setFormatParticleRadius,
+  }), [setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
+       setConfigIndex, setTotalConfigs, setTrajFile, setFormatParticleRadius]);
+
   const {
     showPatchLegend,
     showParticleLegend,
@@ -84,7 +92,6 @@ function App() {
     setShowClusteringPane,
     setFilesDropped,
     setIsLoading,
-    setIsPlaying,
     setPlaybackSpeed,
     setIsSpeedPopupVisible,
     setIsLightingControlsModalOpen,
@@ -98,12 +105,13 @@ function App() {
   // Identifies the most recent load. Anything older that is still awaiting a
   // file read checks this before writing to the store, so dropping a second
   // simulation mid-load cannot be clobbered by the first one finishing late.
-  const loadTokenRef = useRef(0);
+  // One source of load tokens for the whole component: beginning a load
+  // invalidates any earlier one, and the pipeline stops at its next await.
+  const loadTokens = useRef(createLoadTokens());
   // Clusters dropped alongside the simulation. They cannot be applied until the
   // trajectory has produced positions, because parsing validates every index
   // against the particle count, so the text waits here until then.
   const [pendingClusterFiles, setPendingClusterFiles] = useState(null);
-  const playbackIntervalRef = useRef(null);
   const speedPopupRef = useRef(null);
 
   // Function to show notification (for iframe mode)
@@ -148,44 +156,34 @@ function App() {
   }, [notify]);
 
   const handleFilesReceived = useCallback(async (files) => {
-    if (!files || files.length === 0) {
-      // No files selected or operation cancelled
-      return;
-    }
+    if (!files || files.length === 0) return;
 
     // Classify before touching anything: a drop of nothing but overlay files
     // onto a loaded scene adds to it rather than replacing it.
-    const filesWithTypes = await analyzeFiles(files);
-    const categorizedFiles = categorizeFiles(filesWithTypes);
+    const categorized = categorizeFiles(await analyzeFiles(files));
+    const positionCount = useParticleStore.getState().positions.length;
 
-    const bringsSimulation = !!(categorizedFiles.topology || categorizedFiles.trajectory
-      || categorizedFiles.mglFile || categorizedFiles.mglTrajectory);
-    const sceneIsLoaded = useParticleStore.getState().positions.length > 0;
-
-    if (!bringsSimulation && categorizedFiles.clusterFiles.length > 0 && sceneIsLoaded) {
-      await registerClusterOverlays(
-        categorizedFiles.clusterFiles,
-        useParticleStore.getState().positions.length,
-      );
+    if (classifyDrop(categorized, { sceneIsLoaded: positionCount > 0 }) === 'overlays-only') {
+      await registerClusterOverlays(categorized.clusterFiles, positionCount);
       useUIStore.getState().setShowClusteringPane(true);
       return;
     }
 
-    const loadToken = ++loadTokenRef.current;
-    const isStale = () => loadToken !== loadTokenRef.current;
-
-    // Set filesDropped to true to hide the drop zone immediately
+    const signal = loadTokens.current.begin();
     setFilesDropped(true);
+
+    // Cluster files dropped with the simulation cannot be parsed yet: their
+    // indices are validated against a particle count that does not exist until
+    // the first frame loads. Hold the files until then.
+    setPendingClusterFiles(categorized.clusterFiles.length ? categorized.clusterFiles : null);
 
     // Loading a second simulation must not inherit the first one's state.
     // Selection and cluster highlights are particle *indices*, so keeping them
     // would highlight unrelated particles in the new structure — or index past
-    // its end.
+    // its end. Sizes are per-structure for the same reason.
     useUIStore.getState().setSelectedParticles([]);
     useClusteringStore.getState().resetClusters();
     useOverlayStore.getState().clearOverlays();
-    // Sizes are per-structure: a radius read from the last input file must not
-    // survive into one whose files say something else, or say nothing at all.
     resetParticleRadius();
     setTopData(null);
     setPositions([]);
@@ -193,295 +191,44 @@ function App() {
     setConfigIndex([]);
     setCurrentConfigIndex(0);
     setTotalConfigs(0);
-
-    // Set loading state to true before indexing
     setIsLoading(true);
 
-    try {
-      console.log("File analysis results:", categorizedFiles);
+    const outcome = await runLoad(() => loadSimulation({
+      files, categorized, signal, scene: sceneWriters,
+    }));
 
-      // Cluster files dropped with the simulation cannot be parsed yet: their
-      // indices are validated against a particle count that does not exist
-      // until the first frame loads. Hold the files until then.
-      setPendingClusterFiles(categorizedFiles.clusterFiles.length ? categorizedFiles.clusterFiles : null);
+    // A superseded load is not a failure: a newer drop owns the scene now, and
+    // clearing the spinner or the drop zone here would fight it.
+    if (outcome.superseded) return;
 
-      // Process input file if present
-      let inputFileParams = {};
-      if (categorizedFiles.inputFile) {
-        try {
-          const inputContent = await categorizedFiles.inputFile.text();
-          inputFileParams = parseInputFile(inputContent);
-          console.log('Parsed input file parameters:', inputFileParams);
-
-          // Check for PATCHY_radius parameter
-          if (inputFileParams.PATCHY_radius !== undefined) {
-            const radius = inputFileParams.PATCHY_radius;
-            console.log(`Found PATCHY_radius in input file: ${radius}`);
-            setFormatParticleRadius(radius);
-          }
-        } catch (error) {
-          console.warn('Error parsing input file:', error);
-          // Non-fatal error, continue processing other files
-        }
-      }
-
-      // Process MGL files first (they don't need topology)
-      if (categorizedFiles.mglFile || categorizedFiles.mglTrajectory) {
-        try {
-          let mglData, ppviewData;
-
-          if (categorizedFiles.mglFile) {
-            const mglContent = await categorizedFiles.mglFile.text();
-            if (isStale()) return;
-            console.log(`Processing MGL file: ${categorizedFiles.mglFile.name}`);
-
-            mglData = readMGL(mglContent);
-            ppviewData = convertMGLToPPViewFormat(mglData);
-
-            // Set up data for ppview
-            setTopData(ppviewData.topData);
-            setPositions(ppviewData.positions);
-            setCurrentBoxSize(ppviewData.boxSize);
-            setCurrentTime(0);
-            setCurrentEnergy([0]);
-            setConfigIndex([0]); // Single frame
-            setTotalConfigs(1);
-
-            console.log(`Loaded MGL file with ${ppviewData.positions.length} particles`);
-          } else {
-            const mglTrajectoryContent = await categorizedFiles.mglTrajectory.text();
-            if (isStale()) return;
-            console.log(`Processing MGL Trajectory file: ${categorizedFiles.mglTrajectory.name}`);
-
-            mglData = readMGLTrajectory(mglTrajectoryContent);
-            ppviewData = convertMGLToPPViewFormat(mglData);
-
-            // Set up data for ppview
-            setTopData(ppviewData.topData);
-            setPositions(ppviewData.positions);
-            setCurrentBoxSize(ppviewData.boxSize);
-            setCurrentTime(0);
-            setCurrentEnergy([0]);
-
-            // Create trajectory index for frame navigation if multiple frames
-            if (mglData.frameCount > 1) {
-              const fakeIndex = Array.from({ length: mglData.frameCount }, (_, i) => i);
-              setConfigIndex(fakeIndex);
-              setTotalConfigs(mglData.frameCount);
-
-              // Store trajectory data for frame switching
-              setTrajFile({
-                ...categorizedFiles.mglTrajectory,
-                mglTrajectoryData: mglData
-              });
-            } else {
-              setConfigIndex([0]);
-              setTotalConfigs(1);
-            }
-
-            console.log(`Loaded MGL trajectory with ${mglData.frameCount} frames and ${mglData.totalParticles} total particles`);
-          }
-
-          setIsLoading(false);
-          return; // Exit early since MGL is self-contained
-        } catch (error) {
-          console.error('Error processing MGL file:', error);
-          alert('Error processing MGL file. Please check the console for details.');
-          setFilesDropped(false);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Create file map for compatibility with existing code
-      const fileMap = createFileMap(files);
-
-      // Process topology file (only for non-MGL files)
-      if (categorizedFiles.topology) {
-        const topFile = categorizedFiles.topology.file;
-        const topContent = await topFile.text();
-        const { data: parsedTopData, format } = await parseTopology(
-          topContent,
-          fileMap,
-          categorizedFiles.topology.format,
-          {
-            particleFile: inputFileParams.particle_file,
-            patchFile: inputFileParams.patchy_file,
-          },
-        );
-        if (isStale()) return;
-        setTopData(parsedTopData);
-        // Any format-specific store setup lives with the format, not here.
-        format?.onLoad?.(parsedTopData, { setParticleRadius: setFormatParticleRadius });
-        console.log(`Loaded ${categorizedFiles.topology.format} topology from ${topFile.name}`);
-      } else {
-        // Fallback: look for .top extension
-        const topFile = files.find((file) => file.name.endsWith(".top"));
-        if (topFile) {
-          const topContent = await topFile.text();
-          const { data: parsedTopData, format } = await parseTopology(topContent, fileMap, null, {
-            particleFile: inputFileParams.particle_file,
-            patchFile: inputFileParams.patchy_file,
-          });
-          if (isStale()) return;
-          setTopData(parsedTopData);
-          format?.onLoad?.(parsedTopData, { setParticleRadius: setFormatParticleRadius });
-          console.log(`Loaded topology from ${topFile.name} (fallback detection)`);
-        } else {
-          alert("No topology file detected! Please ensure you have a valid topology file.");
-          setFilesDropped(false);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Process trajectory file
-      if (categorizedFiles.trajectory) {
-        setTrajFile(categorizedFiles.trajectory);
-        console.log(`Detected trajectory file: ${categorizedFiles.trajectory.name}`);
-      } else {
-        // Fallback: look for common trajectory file patterns with prioritization
-        const fallbackTrajectoryFiles = files.filter(
-          (file) =>
-            file.name.includes("traj") ||
-            file.name.includes("conf") ||
-            file.name.includes("last") ||
-            file.name.includes("init") ||
-            file.name.endsWith(".dat")
-        );
-
-        if (fallbackTrajectoryFiles.length > 0) {
-          // Apply same prioritization logic for fallback files
-          const selectedFile = selectFallbackTrajectoryFile(fallbackTrajectoryFiles);
-          setTrajFile(selectedFile);
-          console.log(`Using trajectory file: ${selectedFile.name} (fallback detection with prioritization)`);
-        } else {
-          alert("No trajectory file detected! Please ensure you have a valid trajectory file.");
-          setFilesDropped(false);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Build the trajectory index
-      const trajectoryFileToUse = categorizedFiles.trajectory || files.find(
-        (file) =>
-          file.name.includes("traj") ||
-          file.name.includes("conf") ||
-          file.name.includes("last") ||
-          file.name.endsWith(".dat")
-      );
-
-      if (trajectoryFileToUse) {
-        const index = await buildTrajIndex(trajectoryFileToUse);
-        if (isStale()) return;
-        setConfigIndex(index);
-        setTotalConfigs(index.length);
-      }
-
-
-      // Report unknown files
-      if (categorizedFiles.unknown.length > 0) {
-        console.warn("Unknown file types detected:", categorizedFiles.unknown.map(f => f.name));
-      }
-
-      // Set loading state to false after indexing
-      setIsLoading(false);
-    } catch (error) {
-      console.error("Error processing files:", error);
-      if (isStale()) return;
-      alert("Error processing files. Please check the console for details.");
+    setIsLoading(false);
+    if (!outcome.ok) {
+      console.error('Could not load the dropped files:', outcome.error ?? outcome.message);
+      notify(outcome.message);
       setFilesDropped(false);
-      setIsLoading(false);
     }
-  }, [setFilesDropped, setIsLoading, setFormatParticleRadius,
-      resetParticleRadius, setTopData, setPositions,
-      setCurrentBoxSize, setCurrentTime, setCurrentEnergy, setConfigIndex,
-      setCurrentConfigIndex, setTotalConfigs, setTrajFile, registerClusterOverlays]);
+  }, [setFilesDropped, setIsLoading, resetParticleRadius, setTopData, setPositions,
+      setConfigIndex, setCurrentConfigIndex, setTotalConfigs, setTrajFile,
+      registerClusterOverlays, sceneWriters, notify]);
 
-  // Load configuration when topData, trajFile, and configIndex are available
+  // Read the current frame whenever the trajectory or the position in it moves.
+  //
+  // The dependency list is honest now: loadFrame takes everything it needs as
+  // arguments, so there is nothing to suppress. It used to call a component-scope
+  // async function behind an exhaustive-deps disable.
   useEffect(() => {
-    if (topData && trajFile && configIndex.length > 0) {
-      loadConfiguration(trajFile, configIndex, currentConfigIndex);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [topData, trajFile, configIndex, currentConfigIndex]);
-
-
-  const loadConfiguration = async (file, index, configNumber) => {
-    if (configNumber < 0 || configNumber >= index.length) {
-      alert("Configuration number out of range");
-      return false;
-    }
-
-    // Ensure topData is available
-    if (!topData) {
-      alert("Topology data not available.");
-      return false;
-    }
-
-    // Handle MGL trajectory data
-    if (file.mglTrajectoryData) {
-      const mglData = file.mglTrajectoryData;
-      if (configNumber >= mglData.frameCount) {
-        alert("MGL frame number out of range");
-        return false;
-      }
-
-      const frame = mglData.frames[configNumber];
-      const ppviewData = convertMGLToPPViewFormat({ frames: [frame] });
-
-      setPositions(ppviewData.positions);
-      setCurrentBoxSize(ppviewData.boxSize);
-      setCurrentTime(configNumber); // Use frame index as time
-      setCurrentEnergy([0]); // Default energy for MGL
-      return true;
-    }
-
-    const start = index[configNumber];
-    const end =
-      configNumber + 1 < index.length ? index[configNumber + 1] : file.size;
-    const slice = file.slice(start, end);
-
-    const content = await slice.text();
-    const lines = content.split(/\r?\n/);
-
-    const config = parseConfiguration(lines);
-    if (config) {
-      // Apply periodic boundaries
-      const adjustedPositions = applyPeriodicBoundary(
-        config.positions,
-        config.boxSize,
-      );
-
-      // Associate particle types and compute rotation matrices
-      const positionsWithTypes = adjustedPositions.map((pos, index) => {
-        const { typeIndex, particleType } = getParticleType(
-          index,
-          topData,
-        );
-
-        // Compute rotation matrix from orientation vectors
-        const rotationMatrix = computeRotationMatrix(pos, THREE);
-
-        return {
-          ...pos,
-          typeIndex,
-          particleType,
-          rotationMatrix,
-        };
-      });
-
-      setPositions(positionsWithTypes);
-      setCurrentBoxSize(config.boxSize);
-      setCurrentTime(config.time);
-      setCurrentEnergy(config.energy);
-      return true;
-    } else {
-      alert("Failed to parse configuration");
-      return false;
-    }
-  };
+    if (!topData || !trajFile || configIndex.length === 0) return;
+    loadFrame({
+      file: trajFile,
+      index: configIndex,
+      frameNumber: currentConfigIndex,
+      topData,
+      scene: sceneWriters,
+    }).catch(error => {
+      console.error('Could not read that frame:', error);
+      notify(error.message);
+    });
+  }, [topData, trajFile, configIndex, currentConfigIndex, sceneWriters, notify]);
 
 
 
@@ -490,66 +237,11 @@ function App() {
   // Single entry point for every way of changing frame — slider, step buttons,
   // arrow keys — so the clamp and the redraw can never be forgotten by one of
   // them.
-  const goToFrame = useCallback((index) => {
-    const clamped = Math.min(Math.max(index, 0), Math.max(totalConfigs - 1, 0));
-    if (clamped === useParticleStore.getState().currentConfigIndex) return;
-    setCurrentConfigIndex(clamped);
-    setTimeout(invalidateScene, 0);
-  }, [totalConfigs, invalidateScene, setCurrentConfigIndex]);
+  const { goToFrame, stepFrame, togglePlayback, resetTrajectory } = usePlayback({
+    totalConfigs, invalidateScene,
+  });
 
   const handleSliderChange = (e) => goToFrame(parseInt(e.target.value, 10));
-
-  const stepFrame = useCallback((delta) => {
-    goToFrame(useParticleStore.getState().currentConfigIndex + delta);
-  }, [goToFrame]);
-
-  // Function to toggle trajectory playback
-  const togglePlayback = useCallback(() => {
-    if (isPlaying) {
-      // Stop playback
-      if (playbackIntervalRef.current) {
-        clearInterval(playbackIntervalRef.current);
-        playbackIntervalRef.current = null;
-      }
-      setIsPlaying(false);
-    } else {
-      // Start playback
-      setIsPlaying(true);
-      playbackIntervalRef.current = setInterval(() => {
-        const currentIndex = useParticleStore.getState().currentConfigIndex;
-        const nextIndex = currentIndex + 1;
-        if (nextIndex >= totalConfigs) {
-          // Reached the end, stop playback
-          if (playbackIntervalRef.current) {
-            clearInterval(playbackIntervalRef.current);
-            playbackIntervalRef.current = null;
-          }
-          setIsPlaying(false);
-        } else {
-          setCurrentConfigIndex(nextIndex);
-        }
-      }, playbackSpeed);
-    }
-  }, [isPlaying, playbackSpeed, totalConfigs, setIsPlaying, setCurrentConfigIndex]);
-
-  // Function to reset trajectory to beginning
-  const resetTrajectory = useCallback(() => {
-    if (playbackIntervalRef.current) {
-      clearInterval(playbackIntervalRef.current);
-      playbackIntervalRef.current = null;
-    }
-    setIsPlaying(false);
-    setCurrentConfigIndex(0);
-  }, [setIsPlaying, setCurrentConfigIndex]);
-
-  // Cleanup playback interval on unmount
-  useEffect(() => {
-    return () => {
-      if (playbackIntervalRef.current) {
-        clearInterval(playbackIntervalRef.current);
-      }
-    };
-  }, []);
 
   // Handle click outside speed popup
   useEffect(() => {
