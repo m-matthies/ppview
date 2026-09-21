@@ -18,7 +18,14 @@ import { getClusterAppearance } from '../../utils/clusterAppearance';
 function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, colorScheme = null }) {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const coneSegments = useUIStore(state => state.sphereSegments);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, hiddenParticles } = useClusteringStore();
+  // Subscribed field by field. A bare useClusteringStore() re-renders this
+  // layer on *any* write to that store — including the pane's own controls,
+  // which now live there — and each re-render re-runs the per-instance matrix
+  // and colour loops below.
+  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
+  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
+  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
+  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
 
   // Patch cone dimensions — scaled proportionally to particle radius so patches
   // stay visually consistent across formats with different particle sizes.

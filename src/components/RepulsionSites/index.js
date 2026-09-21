@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useCallback } from "react";
 import * as THREE from 'three';
 import { useUIStore } from "../../store/uiStore";
-import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../../store/particleStore";
+import { useParticleStore } from "../../store/particleStore";
 import { useClusteringStore } from "../../store/clusteringStore";
 import { useOverlayStore } from "../../store/overlayStore";
 import { overlayColorFor } from "../../utils/overlays";
@@ -21,7 +21,15 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const meshRef = useRef();
   const { selectedParticles, sphereSegments } = useUIStore();
   const particleRadius = useParticleStore(state => state.particleRadius);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
+  // Subscribed field by field. A bare useClusteringStore() re-renders this
+  // layer on *any* write to that store — including the pane's own controls,
+  // which now live there — and each re-render re-runs the per-instance matrix
+  // and colour loops below.
+  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
+  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
+  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
+  const clusterColors = useClusteringStore(state => state.clusterColors);
+  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
   // An active overlay replaces the base colour for the particles it covers.
   const overlayColors = useOverlayStore(state =>
     state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
@@ -29,7 +37,10 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   // Bead sizes and offsets come from the topology. Scaling both by the same
   // factor resizes the whole raspberry particle while preserving the shape the
   // file describes.
-  const radiusScale = particleRadius / DEFAULT_PARTICLE_RADIUS;
+  // Relative to the radius the files established, so this is 1 at load and
+  // the geometry is the size the topology describes.
+  const baseParticleRadius = useParticleStore(state => state.baseParticleRadius);
+  const radiusScale = particleRadius / (baseParticleRadius || 1);
 
   const geometry = useMemo(
     () => new THREE.SphereGeometry(1, sphereSegments, sphereSegments),

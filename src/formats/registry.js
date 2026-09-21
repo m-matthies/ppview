@@ -45,7 +45,9 @@ export const FORMATS = [
     matches: () => false,
     renderer: Particles,
     onLoad: (topData, { setParticleRadius }) => {
-      // SRS encodes a per-particle radius in the topology itself.
+      // SRS encodes a per-particle radius in the topology itself. This arrives
+      // as the format setter, so it also becomes the baseline that intrinsic
+      // geometry is measured against rather than being applied on top of it.
       if (topData?.srsParticleRadius !== undefined) setParticleRadius(topData.srsParticleRadius);
     },
   },

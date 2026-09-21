@@ -3,7 +3,7 @@
     "loaded": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1402,
+      "edges": 1406,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94.1,
@@ -12,34 +12,34 @@
     "boxOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 2502,
+      "edges": 2499,
       "mean": 241.7,
-      "tintR": 94.9,
+      "tintR": 95,
       "tintG": 94.2,
       "tintB": 105.2
     },
     "planesOff": {
       "coloured": 418,
       "neutral": 0,
-      "edges": 516,
+      "edges": 514,
       "mean": 244.06,
       "tintR": 94.1,
       "tintG": 93.3,
-      "tintB": 104.8
+      "tintB": 104.9
     },
     "axesOff": {
       "coloured": 396,
       "neutral": 0,
-      "edges": 1360,
+      "edges": 1357,
       "mean": 241.78,
-      "tintR": 96.3,
-      "tintG": 94.8,
-      "tintB": 106.7
+      "tintR": 96.4,
+      "tintG": 94.9,
+      "tintB": 106.8
     },
     "restored": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1405,
       "mean": 241.77,
       "tintR": 94.7,
       "tintG": 94,
@@ -53,25 +53,25 @@
       "edges": 1396,
       "mean": 241.77,
       "tintR": 94.9,
-      "tintG": 93.7,
-      "tintB": 106.2
+      "tintG": 93.8,
+      "tintB": 106.3
     },
     "detailUltra": {
       "coloured": 416,
       "neutral": 0,
-      "edges": 1408,
+      "edges": 1406,
       "mean": 241.77,
-      "tintR": 95.5,
-      "tintG": 94.9,
-      "tintB": 105.2
+      "tintR": 95.6,
+      "tintG": 95,
+      "tintB": 105.3
     },
     "detailMedium": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1408,
+      "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.7,
-      "tintG": 94,
+      "tintR": 94.8,
+      "tintG": 94.1,
       "tintB": 104.8
     },
     "radiusLarge": {
@@ -86,10 +86,10 @@
     "radiusDefault": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1408,
+      "edges": 1406,
       "mean": 241.77,
-      "tintR": 94.7,
-      "tintG": 94,
+      "tintR": 94.8,
+      "tintG": 94.1,
       "tintB": 104.8
     }
   },
@@ -98,10 +98,10 @@
     "open": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1405,
+      "edges": 1403,
       "mean": 241.77,
-      "tintR": 94.8,
-      "tintG": 94.1,
+      "tintR": 94.7,
+      "tintG": 94,
       "tintB": 104.8
     },
     "hiddenAll": {
@@ -144,10 +144,10 @@
     "afterReset": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1405,
+      "edges": 1403,
       "mean": 241.77,
-      "tintR": 94.8,
-      "tintG": 94.1,
+      "tintR": 94.7,
+      "tintG": 94,
       "tintB": 104.8
     },
     "clusterColoursWhileClosed": {
@@ -171,19 +171,19 @@
     "afterClear": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1405,
+      "edges": 1403,
       "mean": 241.77,
-      "tintR": 94.8,
-      "tintG": 94.1,
+      "tintR": 94.7,
+      "tintG": 94,
       "tintB": 104.8
     },
     "restored": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1405,
+      "edges": 1403,
       "mean": 241.77,
-      "tintR": 94.8,
-      "tintG": 94.1,
+      "tintR": 94.7,
+      "tintG": 94,
       "tintB": 104.8
     }
   },
@@ -191,47 +191,47 @@
     "patchesOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1404,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
     },
     "legendsOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1404,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
     },
     "light_Depth": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1406,
+      "edges": 1404,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8
     },
     "light_Publication": {
       "coloured": 411,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1406,
       "mean": 242.6,
       "tintR": 99.7,
       "tintG": 99.1,
-      "tintB": 110.1
+      "tintB": 110.2
     },
     "light_Relief": {
       "coloured": 399,
-      "neutral": 4,
-      "edges": 1043,
+      "neutral": 3,
+      "edges": 1042,
       "mean": 240.17,
       "tintR": 86.4,
       "tintG": 84.9,
-      "tintB": 98
+      "tintB": 97.9
     },
     "light_Flat": {
       "coloured": 425,
@@ -265,7 +265,7 @@
     "loaded": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1408,
+      "edges": 1409,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -274,7 +274,7 @@
     "boxOn": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 2493,
+      "edges": 2497,
       "mean": 241.75,
       "tintR": 133.9,
       "tintG": 154.2,
@@ -285,23 +285,23 @@
       "neutral": 1,
       "edges": 523,
       "mean": 244.12,
-      "tintR": 131.6,
+      "tintR": 131.5,
       "tintG": 151.6,
       "tintB": 124
     },
     "axesOff": {
       "coloured": 394,
       "neutral": 1,
-      "edges": 1358,
+      "edges": 1357,
       "mean": 241.84,
       "tintR": 137,
       "tintG": 157.3,
-      "tintB": 128
+      "tintB": 127.9
     },
     "restored": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -312,16 +312,16 @@
     "detailLow": {
       "coloured": 395,
       "neutral": 4,
-      "edges": 1408,
+      "edges": 1410,
       "mean": 241.83,
       "tintR": 134.1,
       "tintG": 154.8,
-      "tintB": 125.4
+      "tintB": 125.5
     },
     "detailUltra": {
       "coloured": 409,
       "neutral": 2,
-      "edges": 1407,
+      "edges": 1405,
       "mean": 241.82,
       "tintR": 133.9,
       "tintG": 154.3,
@@ -330,7 +330,7 @@
     "detailMedium": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1407,
+      "edges": 1406,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -339,7 +339,7 @@
     "radiusLarge": {
       "coloured": 1224,
       "neutral": 3,
-      "edges": 1929,
+      "edges": 1925,
       "mean": 241.52,
       "tintR": 135.2,
       "tintG": 156.8,
@@ -348,7 +348,7 @@
     "radiusDefault": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1407,
+      "edges": 1406,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -360,7 +360,7 @@
     "open": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -406,7 +406,7 @@
     "afterReset": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -433,7 +433,7 @@
     "afterClear": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -442,7 +442,7 @@
     "restored": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -453,47 +453,47 @@
     "patchesOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1434,
+      "edges": 1433,
       "mean": 241.82,
-      "tintR": 133.7,
+      "tintR": 133.8,
       "tintG": 154.2,
       "tintB": 125.1
     },
     "legendsOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1434,
+      "edges": 1433,
       "mean": 241.82,
-      "tintR": 133.7,
+      "tintR": 133.8,
       "tintG": 154.2,
       "tintB": 125.1
     },
     "light_Depth": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1434,
+      "edges": 1433,
       "mean": 241.82,
-      "tintR": 133.7,
+      "tintR": 133.8,
       "tintG": 154.2,
       "tintB": 125.1
     },
     "light_Publication": {
       "coloured": 424,
       "neutral": 6,
-      "edges": 1446,
+      "edges": 1447,
       "mean": 242.66,
-      "tintR": 139.8,
+      "tintR": 139.7,
       "tintG": 162,
       "tintB": 132.7
     },
     "light_Relief": {
-      "coloured": 355,
-      "neutral": 83,
+      "coloured": 354,
+      "neutral": 84,
       "edges": 1105,
       "mean": 240.2,
-      "tintR": 128.8,
-      "tintG": 147.5,
-      "tintB": 119.8
+      "tintR": 129,
+      "tintG": 147.6,
+      "tintB": 119.9
     },
     "light_Flat": {
       "coloured": 449,
@@ -529,14 +529,14 @@
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.7,
+      "tintR": 161,
+      "tintG": 158.6,
       "tintB": 133
     },
     "boxOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 2359,
+      "edges": 2358,
       "mean": 241.85,
       "tintR": 160.8,
       "tintG": 158.4,
@@ -545,11 +545,11 @@
     "planesOff": {
       "coloured": 184,
       "neutral": 0,
-      "edges": 378,
+      "edges": 377,
       "mean": 244.24,
       "tintR": 155.4,
       "tintG": 152.4,
-      "tintB": 130.4
+      "tintB": 130.3
     },
     "axesOff": {
       "coloured": 162,
@@ -558,27 +558,27 @@
       "mean": 241.94,
       "tintR": 170.8,
       "tintG": 166.1,
-      "tintB": 140.3
+      "tintB": 140.2
     },
     "restored": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1266,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
-      "tintB": 133.1
+      "tintG": 158.6,
+      "tintB": 133
     }
   },
   "oxdna/detail": {
     "detailLow": {
       "coloured": 172,
       "neutral": 1,
-      "edges": 1262,
+      "edges": 1261,
       "mean": 241.93,
-      "tintR": 161.7,
-      "tintG": 158.7,
-      "tintB": 133.4
+      "tintR": 161.8,
+      "tintG": 158.8,
+      "tintB": 133.5
     },
     "detailUltra": {
       "coloured": 176,
@@ -586,7 +586,7 @@
       "edges": 1266,
       "mean": 241.92,
       "tintR": 160.6,
-      "tintG": 158.5,
+      "tintG": 158.6,
       "tintB": 132.9
     },
     "detailMedium": {
@@ -595,17 +595,17 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.6,
+      "tintG": 158.7,
       "tintB": 133
     },
     "radiusLarge": {
       "coloured": 445,
       "neutral": 5,
-      "edges": 1496,
+      "edges": 1495,
       "mean": 241.84,
-      "tintR": 163.8,
-      "tintG": 156.7,
-      "tintB": 131.6
+      "tintR": 163.7,
+      "tintG": 156.6,
+      "tintB": 131.5
     },
     "radiusDefault": {
       "coloured": 176,
@@ -613,7 +613,7 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.6,
+      "tintG": 158.7,
       "tintB": 133
     }
   },
@@ -625,7 +625,7 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "hiddenAll": {
@@ -661,9 +661,9 @@
       "neutral": 0,
       "edges": 1004,
       "mean": 241.97,
-      "tintR": 144.2,
-      "tintG": 121.7,
-      "tintB": 104.4
+      "tintR": 144.1,
+      "tintG": 121.6,
+      "tintB": 104.3
     },
     "afterReset": {
       "coloured": 176,
@@ -671,7 +671,7 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "clusterColoursWhileClosed": {
@@ -688,9 +688,9 @@
       "neutral": 0,
       "edges": 1004,
       "mean": 241.97,
-      "tintR": 144.2,
-      "tintG": 121.7,
-      "tintB": 104.4
+      "tintR": 144.1,
+      "tintG": 121.6,
+      "tintB": 104.3
     },
     "afterClear": {
       "coloured": 176,
@@ -698,7 +698,7 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     },
     "restored": {
@@ -707,7 +707,7 @@
       "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.7,
+      "tintG": 158.6,
       "tintB": 133
     }
   },
@@ -715,38 +715,38 @@
     "patchesOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1266,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.7,
-      "tintB": 133.1
+      "tintR": 161,
+      "tintG": 158.5,
+      "tintB": 132.9
     },
     "legendsOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1266,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.7,
-      "tintB": 133.1
+      "tintR": 161,
+      "tintG": 158.5,
+      "tintB": 132.9
     },
     "light_Depth": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1266,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.7,
-      "tintB": 133.1
+      "tintR": 161,
+      "tintG": 158.5,
+      "tintB": 132.9
     },
     "light_Publication": {
       "coloured": 175,
       "neutral": 0,
-      "edges": 1263,
+      "edges": 1262,
       "mean": 242.76,
       "tintR": 168.9,
-      "tintG": 167.3,
-      "tintB": 142.7
+      "tintG": 167.4,
+      "tintB": 142.8
     },
     "light_Relief": {
       "coloured": 163,
@@ -754,7 +754,7 @@
       "edges": 903,
       "mean": 240.33,
       "tintR": 147.6,
-      "tintG": 147.1,
+      "tintG": 147.2,
       "tintB": 123
     },
     "light_Flat": {
@@ -796,18 +796,18 @@
       "tintB": 147.1
     },
     "boxOn": {
-      "coloured": 413,
+      "coloured": 412,
       "neutral": 12,
-      "edges": 2507,
+      "edges": 2506,
       "mean": 241.77,
-      "tintR": 142,
-      "tintG": 161.5,
-      "tintB": 147.1
+      "tintR": 141.9,
+      "tintG": 161.3,
+      "tintB": 146.8
     },
     "planesOff": {
       "coloured": 420,
       "neutral": 12,
-      "edges": 524,
+      "edges": 525,
       "mean": 244.14,
       "tintR": 140,
       "tintG": 158.8,
@@ -816,16 +816,16 @@
     "axesOff": {
       "coloured": 398,
       "neutral": 12,
-      "edges": 1363,
+      "edges": 1366,
       "mean": 241.86,
       "tintR": 145.4,
-      "tintG": 164.6,
-      "tintB": 150.5
+      "tintG": 164.7,
+      "tintB": 150.6
     },
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -839,7 +839,7 @@
       "edges": 1412,
       "mean": 241.85,
       "tintR": 142.9,
-      "tintG": 161.9,
+      "tintG": 161.8,
       "tintB": 147.2
     },
     "detailUltra": {
@@ -854,25 +854,25 @@
     "detailMedium": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
       "tintB": 147
     },
     "radiusLarge": {
-      "coloured": 1232,
+      "coloured": 1233,
       "neutral": 0,
-      "edges": 1857,
+      "edges": 1854,
       "mean": 241.59,
       "tintR": 142.6,
-      "tintG": 165.6,
-      "tintB": 151.1
+      "tintG": 165.7,
+      "tintB": 151.2
     },
     "radiusDefault": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1414,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -884,7 +884,7 @@
     "open": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -930,7 +930,7 @@
     "afterReset": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -957,7 +957,7 @@
     "afterClear": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -966,7 +966,7 @@
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.84,
       "tintR": 142.1,
       "tintG": 161.5,
@@ -977,34 +977,34 @@
     "patchesOn": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1457,
+      "edges": 1458,
       "mean": 241.83,
-      "tintR": 142.8,
-      "tintG": 158,
-      "tintB": 144.4
+      "tintR": 142.9,
+      "tintG": 158.1,
+      "tintB": 144.5
     },
     "legendsOn": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1457,
+      "edges": 1458,
       "mean": 241.83,
-      "tintR": 142.8,
-      "tintG": 158,
-      "tintB": 144.4
+      "tintR": 142.9,
+      "tintG": 158.1,
+      "tintB": 144.5
     },
     "light_Depth": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1457,
+      "edges": 1458,
       "mean": 241.83,
-      "tintR": 142.8,
-      "tintG": 158,
-      "tintB": 144.4
+      "tintR": 142.9,
+      "tintG": 158.1,
+      "tintB": 144.5
     },
     "light_Publication": {
       "coloured": 424,
       "neutral": 17,
-      "edges": 1475,
+      "edges": 1477,
       "mean": 242.67,
       "tintR": 149.6,
       "tintG": 165.5,
@@ -1051,46 +1051,46 @@
     "loaded": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1412,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
       "tintB": 126.6
     },
     "boxOn": {
-      "coloured": 420,
+      "coloured": 419,
       "neutral": 0,
-      "edges": 2507,
+      "edges": 2505,
       "mean": 241.76,
-      "tintR": 141.3,
-      "tintG": 152.7,
-      "tintB": 126.7
+      "tintR": 141.2,
+      "tintG": 152.5,
+      "tintB": 126.5
     },
     "planesOff": {
       "coloured": 428,
       "neutral": 0,
-      "edges": 525,
+      "edges": 523,
       "mean": 244.13,
       "tintR": 139.3,
-      "tintG": 150.3,
+      "tintG": 150.4,
       "tintB": 125.8
     },
     "axesOff": {
       "coloured": 405,
       "neutral": 0,
-      "edges": 1365,
+      "edges": 1364,
       "mean": 241.84,
-      "tintR": 144.6,
+      "tintR": 144.5,
       "tintG": 155.5,
-      "tintB": 129.4
+      "tintB": 129.3
     },
     "restored": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.3,
-      "tintG": 152.6,
+      "tintG": 152.7,
       "tintB": 126.6
     }
   },
@@ -1098,11 +1098,11 @@
     "detailLow": {
       "coloured": 406,
       "neutral": 1,
-      "edges": 1412,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.9,
       "tintG": 153,
-      "tintB": 127.2
+      "tintB": 127.1
     },
     "detailUltra": {
       "coloured": 419,
@@ -1110,35 +1110,35 @@
       "edges": 1413,
       "mean": 241.83,
       "tintR": 141,
-      "tintG": 152.3,
+      "tintG": 152.2,
       "tintB": 126.2
     },
     "detailMedium": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.7
+      "tintB": 126.6
     },
     "radiusLarge": {
       "coloured": 1217,
       "neutral": 8,
-      "edges": 1858,
+      "edges": 1859,
       "mean": 241.54,
       "tintR": 142.9,
       "tintG": 155.8,
-      "tintB": 129.2
+      "tintB": 129.1
     },
     "radiusDefault": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.7
+      "tintB": 126.6
     }
   },
   "lorenzo/clustering": {
@@ -1146,10 +1146,10 @@
     "open": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.7,
+      "tintG": 152.8,
       "tintB": 126.7
     },
     "hiddenAll": {
@@ -1192,10 +1192,10 @@
     "afterReset": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.7,
+      "tintG": 152.8,
       "tintB": 126.7
     },
     "clusterColoursWhileClosed": {
@@ -1219,19 +1219,19 @@
     "afterClear": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.7,
+      "tintG": 152.8,
       "tintB": 126.7
     },
     "restored": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141.4,
-      "tintG": 152.7,
+      "tintG": 152.8,
       "tintB": 126.7
     }
   },
@@ -1239,7 +1239,7 @@
     "patchesOn": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1443,
+      "edges": 1447,
       "mean": 241.82,
       "tintR": 145,
       "tintG": 146.4,
@@ -1248,7 +1248,7 @@
     "legendsOn": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1443,
+      "edges": 1447,
       "mean": 241.82,
       "tintR": 145,
       "tintG": 146.4,
@@ -1257,7 +1257,7 @@
     "light_Depth": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1443,
+      "edges": 1447,
       "mean": 241.82,
       "tintR": 145,
       "tintG": 146.4,
@@ -1266,20 +1266,20 @@
     "light_Publication": {
       "coloured": 418,
       "neutral": 15,
-      "edges": 1459,
+      "edges": 1458,
       "mean": 242.66,
-      "tintR": 151.4,
+      "tintR": 151.5,
       "tintG": 153.2,
       "tintB": 131.6
     },
     "light_Relief": {
-      "coloured": 344,
-      "neutral": 99,
-      "edges": 1103,
+      "coloured": 346,
+      "neutral": 97,
+      "edges": 1101,
       "mean": 240.2,
-      "tintR": 142.3,
-      "tintG": 140.4,
-      "tintB": 120.1
+      "tintR": 142.1,
+      "tintG": 139.9,
+      "tintB": 119.7
     },
     "light_Flat": {
       "coloured": 442,
@@ -1313,16 +1313,16 @@
     "loaded": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1421,
       "mean": 241.83,
-      "tintR": 149.2,
+      "tintR": 149.1,
       "tintG": 144.9,
       "tintB": 124.4
     },
     "boxOn": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 2510,
+      "edges": 2509,
       "mean": 241.76,
       "tintR": 149.1,
       "tintG": 144.7,
@@ -1331,16 +1331,16 @@
     "planesOff": {
       "coloured": 421,
       "neutral": 5,
-      "edges": 533,
+      "edges": 530,
       "mean": 244.12,
-      "tintR": 146.9,
-      "tintG": 142.6,
-      "tintB": 123.5
+      "tintR": 147,
+      "tintG": 142.7,
+      "tintB": 123.6
     },
     "axesOff": {
       "coloured": 398,
       "neutral": 5,
-      "edges": 1371,
+      "edges": 1373,
       "mean": 241.84,
       "tintR": 152.7,
       "tintG": 147.5,
@@ -1349,30 +1349,30 @@
     "restored": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1420,
+      "edges": 1419,
       "mean": 241.83,
-      "tintR": 149.2,
+      "tintR": 149.1,
       "tintG": 144.9,
-      "tintB": 124.4
+      "tintB": 124.3
     }
   },
   "flavio/detail": {
     "detailLow": {
       "coloured": 399,
       "neutral": 7,
-      "edges": 1421,
+      "edges": 1420,
       "mean": 241.83,
-      "tintR": 149.5,
+      "tintR": 149.4,
       "tintG": 145.4,
       "tintB": 124.9
     },
     "detailUltra": {
       "coloured": 412,
       "neutral": 6,
-      "edges": 1420,
+      "edges": 1421,
       "mean": 241.83,
       "tintR": 148.9,
-      "tintG": 144.4,
+      "tintG": 144.5,
       "tintB": 124
     },
     "detailMedium": {
@@ -1381,13 +1381,13 @@
       "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 144.9,
+      "tintG": 145,
       "tintB": 124.4
     },
     "radiusLarge": {
       "coloured": 1196,
       "neutral": 18,
-      "edges": 1885,
+      "edges": 1887,
       "mean": 241.53,
       "tintR": 157.1,
       "tintG": 141.4,
@@ -1399,7 +1399,7 @@
       "edges": 1421,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 144.9,
+      "tintG": 145,
       "tintB": 124.4
     }
   },
@@ -1501,43 +1501,43 @@
     "patchesOn": {
       "coloured": 427,
       "neutral": 19,
-      "edges": 1458,
+      "edges": 1457,
       "mean": 241.81,
       "tintR": 149.4,
-      "tintG": 140.6,
+      "tintG": 140.7,
       "tintB": 126.5
     },
     "legendsOn": {
       "coloured": 427,
       "neutral": 19,
-      "edges": 1458,
+      "edges": 1457,
       "mean": 241.81,
       "tintR": 149.4,
-      "tintG": 140.6,
+      "tintG": 140.7,
       "tintB": 126.5
     },
     "light_Depth": {
       "coloured": 427,
       "neutral": 19,
-      "edges": 1458,
+      "edges": 1457,
       "mean": 241.81,
       "tintR": 149.4,
-      "tintG": 140.6,
+      "tintG": 140.7,
       "tintB": 126.5
     },
     "light_Publication": {
       "coloured": 426,
       "neutral": 18,
-      "edges": 1466,
+      "edges": 1467,
       "mean": 242.66,
-      "tintR": 156.6,
+      "tintR": 156.5,
       "tintG": 148,
-      "tintB": 134.9
+      "tintB": 134.8
     },
     "light_Relief": {
       "coloured": 348,
       "neutral": 102,
-      "edges": 1110,
+      "edges": 1111,
       "mean": 240.2,
       "tintR": 146,
       "tintG": 136.9,
@@ -1571,42 +1571,30 @@
       "tintB": 139.2
     }
   },
-  "mgl/selection": {
-    "hits": 0
-  },
-  "raspberry/selection": {
-    "hits": 0
-  },
-  "oxdna/selection": {
-    "hits": 0
-  },
-  "srs/selection": {
-    "hits": 0
-  },
-  "lorenzo/selection": {
-    "hits": 0
-  },
-  "flavio/selection": {
-    "hits": 0
-  },
+  "mgl/selection": {},
+  "raspberry/selection": {},
+  "oxdna/selection": {},
+  "srs/selection": {},
+  "lorenzo/selection": {},
+  "flavio/selection": {},
   "mgl/overlays": {
     "before": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94.1,
+      "tintG": 94,
       "tintB": 104.8
     },
     "viewControlAppeared": 1,
     "overlayActive": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1277,
       "mean": 241.83,
       "tintR": 114.6,
-      "tintG": 117.6,
+      "tintG": 117.5,
       "tintB": 116.7
     },
     "viewOptions": 3,
@@ -1616,49 +1604,49 @@
     "fileClusters": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1277,
       "mean": 241.83,
       "tintR": 114.6,
-      "tintG": 117.6,
+      "tintG": 117.5,
       "tintB": 116.7
     },
     "typeColours": {
       "coloured": 347,
       "neutral": 0,
-      "edges": 1277,
+      "edges": 1275,
       "mean": 241.8,
       "tintR": 100.4,
       "tintG": 90.3,
-      "tintB": 103.3
+      "tintB": 103.4
     },
     "schemePickerShown": 1,
     "schemePickerHidden": 0,
     "oneClusterHidden": {
       "coloured": 277,
       "neutral": 1,
-      "edges": 1221,
+      "edges": 1219,
       "mean": 241.85,
       "tintR": 94.4,
       "tintG": 130.4,
-      "tintB": 112.3
+      "tintB": 112.2
     },
     "clusterRestored": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1279,
+      "edges": 1277,
       "mean": 241.83,
       "tintR": 114.6,
-      "tintG": 117.6,
+      "tintG": 117.5,
       "tintB": 116.7
     },
     "recoloured": {
       "coloured": 337,
       "neutral": 1,
-      "edges": 1277,
+      "edges": 1275,
       "mean": 241.82,
       "tintR": 84.3,
-      "tintG": 147.7,
-      "tintB": 99.6
+      "tintG": 147.6,
+      "tintB": 99.5
     },
     "viewOptionsAfterSecond": 4,
     "secondOverlay": {
@@ -1673,10 +1661,10 @@
     "computedClusters": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1403,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94.1,
+      "tintG": 94,
       "tintB": 104.8
     }
   },
@@ -1684,7 +1672,7 @@
     "before": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -1694,10 +1682,10 @@
     "overlayActive": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1276,
+      "edges": 1277,
       "mean": 241.84,
-      "tintR": 119.5,
-      "tintG": 115.5,
+      "tintR": 119.6,
+      "tintG": 115.6,
       "tintB": 115
     },
     "viewOptions": 3,
@@ -1707,19 +1695,19 @@
     "fileClusters": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1276,
+      "edges": 1277,
       "mean": 241.84,
-      "tintR": 119.5,
-      "tintG": 115.5,
+      "tintR": 119.6,
+      "tintG": 115.6,
       "tintB": 115
     },
     "typeColours": {
       "coloured": 320,
       "neutral": 1,
-      "edges": 1280,
+      "edges": 1282,
       "mean": 241.87,
       "tintR": 150,
-      "tintG": 139.3,
+      "tintG": 139.4,
       "tintB": 121.2
     },
     "schemePickerShown": 1,
@@ -1727,44 +1715,44 @@
     "oneClusterHidden": {
       "coloured": 272,
       "neutral": 2,
-      "edges": 1221,
+      "edges": 1222,
       "mean": 241.86,
-      "tintR": 103.7,
-      "tintG": 126.6,
+      "tintR": 103.8,
+      "tintG": 126.7,
       "tintB": 111.2
     },
     "clusterRestored": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1276,
+      "edges": 1277,
       "mean": 241.84,
-      "tintR": 119.5,
-      "tintG": 115.5,
+      "tintR": 119.6,
+      "tintG": 115.6,
       "tintB": 115
     },
     "recoloured": {
       "coloured": 322,
       "neutral": 2,
-      "edges": 1276,
+      "edges": 1277,
       "mean": 241.83,
-      "tintR": 92.9,
+      "tintR": 93,
       "tintG": 142,
-      "tintB": 99.7
+      "tintB": 99.8
     },
     "viewOptionsAfterSecond": 4,
     "secondOverlay": {
       "coloured": 585,
       "neutral": 1,
-      "edges": 1526,
+      "edges": 1528,
       "mean": 241.71,
-      "tintR": 120.2,
+      "tintR": 120.3,
       "tintG": 116.7,
       "tintB": 114.6
     },
     "computedClusters": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -1777,7 +1765,7 @@
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161.1,
+      "tintR": 161,
       "tintG": 158.6,
       "tintB": 133
     },
@@ -1788,8 +1776,8 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 124.8,
-      "tintG": 132.7,
-      "tintB": 118.8
+      "tintG": 132.6,
+      "tintB": 118.7
     },
     "viewOptions": 3,
     "paneOpen": 1,
@@ -1801,17 +1789,17 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 124.8,
-      "tintG": 132.7,
-      "tintB": 118.8
+      "tintG": 132.6,
+      "tintB": 118.7
     },
     "typeColours": {
       "coloured": 139,
       "neutral": 1,
       "edges": 1159,
       "mean": 241.94,
-      "tintR": 146.7,
+      "tintR": 146.6,
       "tintG": 165.7,
-      "tintB": 125.6
+      "tintB": 125.5
     },
     "schemePickerShown": 1,
     "schemePickerHidden": 0,
@@ -1820,9 +1808,9 @@
       "neutral": 1,
       "edges": 1130,
       "mean": 241.93,
-      "tintR": 107,
-      "tintG": 138.4,
-      "tintB": 113.1
+      "tintR": 106.9,
+      "tintG": 138.3,
+      "tintB": 113
     },
     "clusterRestored": {
       "coloured": 141,
@@ -1830,8 +1818,8 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 124.8,
-      "tintG": 132.7,
-      "tintB": 118.8
+      "tintG": 132.6,
+      "tintB": 118.7
     },
     "recoloured": {
       "coloured": 141,
@@ -1839,8 +1827,8 @@
       "edges": 1163,
       "mean": 241.92,
       "tintR": 104.2,
-      "tintG": 153.4,
-      "tintB": 106.6
+      "tintG": 153.3,
+      "tintB": 106.5
     },
     "viewOptionsAfterSecond": 4,
     "secondOverlay": {
@@ -1848,7 +1836,7 @@
       "neutral": 5,
       "edges": 1306,
       "mean": 241.89,
-      "tintR": 153,
+      "tintR": 152.9,
       "tintG": 136.3,
       "tintB": 112.3
     },
@@ -1857,28 +1845,28 @@
       "neutral": 0,
       "edges": 1266,
       "mean": 241.92,
-      "tintR": 161.1,
+      "tintR": 161,
       "tintG": 158.6,
       "tintB": 133
     }
   },
   "srs/overlays": {
     "before": {
-      "coloured": 411,
+      "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
-      "mean": 241.84,
+      "edges": 1414,
+      "mean": 241.85,
       "tintR": 142.1,
-      "tintG": 161.4,
-      "tintB": 147
+      "tintG": 161.5,
+      "tintB": 147.1
     },
     "viewControlAppeared": 1,
     "overlayActive": {
       "coloured": 331,
       "neutral": 23,
-      "edges": 1304,
+      "edges": 1300,
       "mean": 241.82,
-      "tintR": 114,
+      "tintR": 113.9,
       "tintG": 116,
       "tintB": 114.8
     },
@@ -1889,16 +1877,16 @@
     "fileClusters": {
       "coloured": 331,
       "neutral": 23,
-      "edges": 1304,
+      "edges": 1300,
       "mean": 241.82,
-      "tintR": 114,
+      "tintR": 113.9,
       "tintG": 116,
       "tintB": 114.8
     },
     "typeColours": {
       "coloured": 329,
       "neutral": 25,
-      "edges": 1313,
+      "edges": 1311,
       "mean": 241.87,
       "tintR": 143.8,
       "tintG": 168.5,
@@ -1909,25 +1897,25 @@
     "oneClusterHidden": {
       "coloured": 276,
       "neutral": 30,
-      "edges": 1266,
+      "edges": 1262,
       "mean": 241.84,
-      "tintR": 96.4,
+      "tintR": 96.3,
       "tintG": 128.7,
       "tintB": 111.4
     },
     "clusterRestored": {
       "coloured": 331,
       "neutral": 23,
-      "edges": 1304,
+      "edges": 1300,
       "mean": 241.82,
-      "tintR": 114,
+      "tintR": 113.9,
       "tintG": 116,
       "tintB": 114.8
     },
     "recoloured": {
       "coloured": 331,
       "neutral": 23,
-      "edges": 1302,
+      "edges": 1298,
       "mean": 241.82,
       "tintR": 85.6,
       "tintG": 144.3,
@@ -1937,20 +1925,20 @@
     "secondOverlay": {
       "coloured": 583,
       "neutral": 3,
-      "edges": 1496,
+      "edges": 1493,
       "mean": 241.72,
       "tintR": 129.2,
-      "tintG": 118.6,
+      "tintG": 118.7,
       "tintB": 110.8
     },
     "computedClusters": {
-      "coloured": 411,
+      "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
-      "mean": 241.84,
+      "edges": 1414,
+      "mean": 241.85,
       "tintR": 142.1,
-      "tintG": 161.4,
-      "tintB": 147
+      "tintG": 161.5,
+      "tintB": 147.1
     }
   },
   "lorenzo/overlays": {
@@ -1959,9 +1947,9 @@
       "neutral": 0,
       "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.3,
-      "tintG": 152.7,
-      "tintB": 126.6
+      "tintR": 141.4,
+      "tintG": 152.8,
+      "tintB": 126.7
     },
     "viewControlAppeared": 1,
     "overlayActive": {
@@ -1970,8 +1958,8 @@
       "edges": 1271,
       "mean": 241.83,
       "tintR": 113.2,
-      "tintG": 116.2,
-      "tintB": 114.7
+      "tintG": 116.3,
+      "tintB": 114.8
     },
     "viewOptions": 3,
     "paneOpen": 1,
@@ -1983,17 +1971,17 @@
       "edges": 1271,
       "mean": 241.83,
       "tintR": 113.2,
-      "tintG": 116.2,
-      "tintB": 114.7
+      "tintG": 116.3,
+      "tintB": 114.8
     },
     "typeColours": {
       "coloured": 336,
       "neutral": 0,
       "edges": 1280,
       "mean": 241.86,
-      "tintR": 154.6,
+      "tintR": 154.7,
       "tintG": 136.2,
-      "tintB": 120.5
+      "tintB": 120.6
     },
     "schemePickerShown": 1,
     "schemePickerHidden": 0,
@@ -2002,97 +1990,6 @@
       "neutral": 1,
       "edges": 1218,
       "mean": 241.85,
-      "tintR": 95.6,
-      "tintG": 128.9,
-      "tintB": 111.3
-    },
-    "clusterRestored": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1271,
-      "mean": 241.83,
-      "tintR": 113.2,
-      "tintG": 116.2,
-      "tintB": 114.7
-    },
-    "recoloured": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1269,
-      "mean": 241.82,
-      "tintR": 85.1,
-      "tintG": 144.3,
-      "tintB": 98.7
-    },
-    "viewOptionsAfterSecond": 4,
-    "secondOverlay": {
-      "coloured": 586,
-      "neutral": 0,
-      "edges": 1489,
-      "mean": 241.72,
-      "tintR": 129.7,
-      "tintG": 118.6,
-      "tintB": 110.3
-    },
-    "computedClusters": {
-      "coloured": 419,
-      "neutral": 0,
-      "edges": 1413,
-      "mean": 241.83,
-      "tintR": 141.3,
-      "tintG": 152.7,
-      "tintB": 126.6
-    }
-  },
-  "flavio/overlays": {
-    "before": {
-      "coloured": 412,
-      "neutral": 5,
-      "edges": 1419,
-      "mean": 241.83,
-      "tintR": 149.1,
-      "tintG": 144.9,
-      "tintB": 124.4
-    },
-    "viewControlAppeared": 1,
-    "overlayActive": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1272,
-      "mean": 241.83,
-      "tintR": 113.2,
-      "tintG": 116.4,
-      "tintB": 114.8
-    },
-    "viewOptions": 3,
-    "paneOpen": 1,
-    "groupOptions": 2,
-    "clusterRows": 4,
-    "fileClusters": {
-      "coloured": 334,
-      "neutral": 1,
-      "edges": 1272,
-      "mean": 241.83,
-      "tintR": 113.2,
-      "tintG": 116.4,
-      "tintB": 114.8
-    },
-    "typeColours": {
-      "coloured": 329,
-      "neutral": 6,
-      "edges": 1289,
-      "mean": 241.86,
-      "tintR": 154.6,
-      "tintG": 136.7,
-      "tintB": 120.9
-    },
-    "schemePickerShown": 1,
-    "schemePickerHidden": 0,
-    "oneClusterHidden": {
-      "coloured": 279,
-      "neutral": 1,
-      "edges": 1219,
-      "mean": 241.85,
       "tintR": 95.7,
       "tintG": 129,
       "tintB": 111.4
@@ -2100,16 +1997,16 @@
     "clusterRestored": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1272,
+      "edges": 1271,
       "mean": 241.83,
       "tintR": 113.2,
-      "tintG": 116.4,
+      "tintG": 116.3,
       "tintB": 114.8
     },
     "recoloured": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1270,
+      "edges": 1269,
       "mean": 241.82,
       "tintR": 85.1,
       "tintG": 144.4,
@@ -2122,16 +2019,107 @@
       "edges": 1491,
       "mean": 241.72,
       "tintR": 129.7,
-      "tintG": 118.7,
+      "tintG": 118.6,
       "tintB": 110.3
+    },
+    "computedClusters": {
+      "coloured": 419,
+      "neutral": 0,
+      "edges": 1413,
+      "mean": 241.83,
+      "tintR": 141.4,
+      "tintG": 152.8,
+      "tintB": 126.7
+    }
+  },
+  "flavio/overlays": {
+    "before": {
+      "coloured": 412,
+      "neutral": 5,
+      "edges": 1419,
+      "mean": 241.83,
+      "tintR": 149.2,
+      "tintG": 145,
+      "tintB": 124.4
+    },
+    "viewControlAppeared": 1,
+    "overlayActive": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1268,
+      "mean": 241.83,
+      "tintR": 113.2,
+      "tintG": 116.4,
+      "tintB": 114.8
+    },
+    "viewOptions": 3,
+    "paneOpen": 1,
+    "groupOptions": 2,
+    "clusterRows": 4,
+    "fileClusters": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1268,
+      "mean": 241.83,
+      "tintR": 113.2,
+      "tintG": 116.4,
+      "tintB": 114.8
+    },
+    "typeColours": {
+      "coloured": 329,
+      "neutral": 6,
+      "edges": 1291,
+      "mean": 241.86,
+      "tintR": 154.6,
+      "tintG": 136.8,
+      "tintB": 120.9
+    },
+    "schemePickerShown": 1,
+    "schemePickerHidden": 0,
+    "oneClusterHidden": {
+      "coloured": 279,
+      "neutral": 1,
+      "edges": 1215,
+      "mean": 241.85,
+      "tintR": 95.7,
+      "tintG": 129,
+      "tintB": 111.5
+    },
+    "clusterRestored": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1268,
+      "mean": 241.83,
+      "tintR": 113.2,
+      "tintG": 116.4,
+      "tintB": 114.8
+    },
+    "recoloured": {
+      "coloured": 334,
+      "neutral": 1,
+      "edges": 1266,
+      "mean": 241.82,
+      "tintR": 85.1,
+      "tintG": 144.4,
+      "tintB": 98.8
+    },
+    "viewOptionsAfterSecond": 4,
+    "secondOverlay": {
+      "coloured": 586,
+      "neutral": 0,
+      "edges": 1488,
+      "mean": 241.72,
+      "tintR": 129.8,
+      "tintG": 118.7,
+      "tintB": 110.4
     },
     "computedClusters": {
       "coloured": 412,
       "neutral": 5,
       "edges": 1419,
       "mean": 241.83,
-      "tintR": 149.1,
-      "tintG": 144.9,
+      "tintR": 149.2,
+      "tintG": 145,
       "tintB": 124.4
     }
   }

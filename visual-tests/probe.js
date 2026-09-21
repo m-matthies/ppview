@@ -158,6 +158,38 @@ const setNative = (el, value) => {
 const clusterBoxes = () => [...document.querySelectorAll('.highlight-checkbox input')];
 
 /**
+ * Points that sit solidly inside drawn geometry, in client coordinates.
+ *
+ * A ray through an antialiased silhouette pixel misses the sphere behind it, so
+ * "this pixel is lit" is not enough — the point and a ring around it must all be
+ * lit. Sampling a downscaled copy keeps this cheap; the real canvas is 4.6M
+ * pixels and reading it back per candidate dominated the scenario.
+ */
+const pickTargets = (max = 12) => {
+  const canvas = document.querySelector('canvas');
+  const rect = canvas.getBoundingClientRect();
+  const w = 480, h = Math.max(1, Math.round(canvas.height * (w / canvas.width)));
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const ctx = c.getContext('2d', { willReadFrequently: true });
+  ctx.drawImage(canvas, 0, 0, w, h);
+  const d = ctx.getImageData(0, 0, w, h).data;
+  const lit = (x, y) => {
+    if (x < 0 || y < 0 || x >= w || y >= h) return false;
+    const i = (y * w + x) * 4;
+    return Math.max(d[i], d[i+1], d[i+2]) - Math.min(d[i], d[i+1], d[i+2]) > 45;
+  };
+  const out = [];
+  for (let y = 2; y < h - 2 && out.length < max; y++) {
+    for (let x = 2; x < w - 2 && out.length < max; x++) {
+      if (!lit(x, y) || !lit(x-2, y) || !lit(x+2, y) || !lit(x, y-2) || !lit(x, y+2)) continue;
+      out.push([x * rect.width / w, y * rect.height / h]);
+    }
+  }
+  return out;
+};
+
+/**
  * Assert an invariant by throwing, rather than recording it as a 0/1.
  *
  * The runner only reports a numeric diff when it moves by more than

@@ -49,6 +49,8 @@ function App() {
     setCurrentEnergy,
     setTotalConfigs,
     setParticleRadius,
+    setFormatParticleRadius,
+    resetParticleRadius,
     currentEnergy,
     particleRadius,
   } = useParticleStore();
@@ -182,6 +184,9 @@ function App() {
     useUIStore.getState().setSelectedParticles([]);
     useClusteringStore.getState().resetClusters();
     useOverlayStore.getState().clearOverlays();
+    // Sizes are per-structure: a radius read from the last input file must not
+    // survive into one whose files say something else, or say nothing at all.
+    resetParticleRadius();
     setTopData(null);
     setPositions([]);
     setTrajFile(null);
@@ -212,7 +217,7 @@ function App() {
           if (inputFileParams.PATCHY_radius !== undefined) {
             const radius = inputFileParams.PATCHY_radius;
             console.log(`Found PATCHY_radius in input file: ${radius}`);
-            setParticleRadius(radius);
+            setFormatParticleRadius(radius);
           }
         } catch (error) {
           console.warn('Error parsing input file:', error);
@@ -307,7 +312,7 @@ function App() {
         if (isStale()) return;
         setTopData(parsedTopData);
         // Any format-specific store setup lives with the format, not here.
-        format?.onLoad?.(parsedTopData, { setParticleRadius });
+        format?.onLoad?.(parsedTopData, { setParticleRadius: setFormatParticleRadius });
         console.log(`Loaded ${categorizedFiles.topology.format} topology from ${topFile.name}`);
       } else {
         // Fallback: look for .top extension
@@ -320,7 +325,7 @@ function App() {
           });
           if (isStale()) return;
           setTopData(parsedTopData);
-          format?.onLoad?.(parsedTopData, { setParticleRadius });
+          format?.onLoad?.(parsedTopData, { setParticleRadius: setFormatParticleRadius });
           console.log(`Loaded topology from ${topFile.name} (fallback detection)`);
         } else {
           alert("No topology file detected! Please ensure you have a valid topology file.");
@@ -389,7 +394,8 @@ function App() {
       setFilesDropped(false);
       setIsLoading(false);
     }
-  }, [setFilesDropped, setIsLoading, setParticleRadius, setTopData, setPositions,
+  }, [setFilesDropped, setIsLoading, setFormatParticleRadius,
+      resetParticleRadius, setTopData, setPositions,
       setCurrentBoxSize, setCurrentTime, setCurrentEnergy, setConfigIndex,
       setCurrentConfigIndex, setTotalConfigs, setTrajFile, registerClusterOverlays]);
 

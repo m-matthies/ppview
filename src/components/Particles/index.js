@@ -28,7 +28,15 @@ function Particles() {
   const { selectedParticles, sphereSegments } = useUIStore();
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const showPatches = useUIStore(state => state.showPatchLegend);
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
+  // Subscribed field by field. A bare useClusteringStore() re-renders this
+  // layer on *any* write to that store — including the pane's own controls,
+  // which now live there — and each re-render re-runs the per-instance matrix
+  // and colour loops below.
+  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
+  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
+  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
+  const clusterColors = useClusteringStore(state => state.clusterColors);
+  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
   // An active overlay replaces the base colour for the particles it covers.
   const overlayColors = useOverlayStore(state =>
     state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);

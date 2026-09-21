@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { useOverlayStore } from './overlayStore';
+import { useOverlayStore, COMPUTED_VIEW } from './overlayStore';
 
 /**
  * True when the clustering is currently holding something back from the scene.
@@ -10,7 +10,13 @@ import { useOverlayStore } from './overlayStore';
  * nothing on screen, and offering to undo an invisible state is noise.
  */
 export const isSceneRestricted = (state) =>
-  state.showOnlySelected || state.hiddenClusters.size > 0;
+  state.hiddenClusters.size > 0
+  // "Show only selected" with everything selected hides nothing, which is
+  // exactly the state a dropped cluster file leaves behind — offering to undo
+  // it put two reset buttons on screen with nothing to reset.
+  || (state.showOnlySelected
+      && state.clusterCount > 0
+      && state.selectedClusters.size < state.clusterCount);
 
 export const useClusteringStore = create((set) => ({
   // Particle indices belonging to a highlighted cluster.
@@ -68,10 +74,20 @@ export const useClusteringStore = create((set) => ({
   // the control bar as well as the pane, because the effect it undoes is visible
   // whether or not the pane is open.
   clearClustering: () => {
-    // Also point the View away from any cluster set. A cluster file supplies the
-    // particles' *base* colour, so clearing the selection alone left every
+    // Also point the View away from a cluster overlay. A cluster file supplies
+    // the particles' *base* colour, so clearing the selection alone left every
     // particle still painted by its cluster after a button that says otherwise.
-    useOverlayStore.getState().setActiveOverlay(null);
+    //
+    // COMPUTED_VIEW, not null: that is what a fresh load and every other reset in
+    // overlayStore use, and landing on null instead left the next selection
+    // rendering in particle-type colours for no visible reason. And only for a
+    // *cluster* overlay — a scalar-property overlay is a colour view the user
+    // chose, not something this button is undoing.
+    const overlays = useOverlayStore.getState();
+    const active = overlays.overlays.find(o => o.id === overlays.activeOverlayId);
+    if (!active || active.kind === 'clusters') {
+      overlays.setActiveOverlay(COMPUTED_VIEW);
+    }
     set({
     selectedClusters: new Set(),
     showOnlySelected: false,

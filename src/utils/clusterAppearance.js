@@ -60,7 +60,15 @@ export function getClusterAppearance({
     return { color: baseColor, scaleFactor: CLUSTER_HIDDEN_SCALE, hidden: true };
   }
   if (isSelected) {
-    return { color: allowSelectionColor ? SELECTED_COLOR : baseColor, scaleFactor: 1 };
+    // Keep the highlight scale. Selecting a particle inside a highlighted
+    // cluster used to shrink it from 1.3 to 1.0, which moved the geometry out
+    // from under the cursor — a second modifier-click on the same pixel then hit
+    // whatever was behind it and added *that* to the selection instead of
+    // deselecting the particle that was clicked.
+    const scaleFactor = isInHighlightedCluster && hasHighlightedClusters
+      ? CLUSTER_HIGHLIGHT_SCALE
+      : 1;
+    return { color: allowSelectionColor ? SELECTED_COLOR : baseColor, scaleFactor };
   }
   if (isInHighlightedCluster && hasHighlightedClusters) {
     return { color: clusterColor ?? baseColor, scaleFactor: CLUSTER_HIGHLIGHT_SCALE };

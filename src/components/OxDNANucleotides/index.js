@@ -8,7 +8,7 @@
 
 import React, { useRef, useMemo, useCallback } from "react";
 import * as THREE from "three";
-import { useParticleStore, DEFAULT_PARTICLE_RADIUS } from "../../store/particleStore";
+import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import { useClusteringStore } from "../../store/clusteringStore";
 import { useOverlayStore } from "../../store/overlayStore";
@@ -41,7 +41,15 @@ function OxDNANucleotides() {
   const particleRadius = useParticleStore(state => state.particleRadius);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
   const { selectedParticles, sphereSegments } = useUIStore();
-  const { highlightedClusters, showOnlyHighlightedClusters, dimNonSelectedClusters, clusterColors, hiddenParticles } = useClusteringStore();
+  // Subscribed field by field. A bare useClusteringStore() re-renders this
+  // layer on *any* write to that store — including the pane's own controls,
+  // which now live there — and each re-render re-runs the per-instance matrix
+  // and colour loops below.
+  const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
+  const showOnlyHighlightedClusters = useClusteringStore(state => state.showOnlyHighlightedClusters);
+  const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
+  const clusterColors = useClusteringStore(state => state.clusterColors);
+  const hiddenParticles = useClusteringStore(state => state.hiddenParticles);
   // An active overlay replaces the base colour for the particles it covers.
   const overlayColors = useOverlayStore(state =>
     state.overlays.find(o => o.id === state.activeOverlayId)?.colors ?? null);
@@ -58,7 +66,10 @@ function OxDNANucleotides() {
   // with every other sphere in the app. Only thicknesses scale — the 0.34 /
   // 0.3408 offsets that place backbone and nucleoside are the oxDNA geometry
   // itself, so scaling those would misreport where the nucleotide sits.
-  const radiusScale = particleRadius / DEFAULT_PARTICLE_RADIUS;
+  // Relative to the radius the files established, so this is 1 at load and
+  // the geometry is the size the topology describes.
+  const baseParticleRadius = useParticleStore(state => state.baseParticleRadius);
+  const radiusScale = particleRadius / (baseParticleRadius || 1);
 
   const bbGeo = useMemo(
     () => new THREE.SphereGeometry(0.2 * radiusScale, sphereSegments, sphereSegments),

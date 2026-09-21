@@ -128,7 +128,10 @@ const SCENARIOS = {
     setNative(viewSelect(), '');
     await settle();
     out.typeColoursWhileClosed = measure();
-    assert(out.clusterColoursWhileClosed.tintG !== out.typeColoursWhileClosed.tintG,
+    // A magnitude, not mere inequality: antialiasing jitters these counts by a
+    // point or two between reads, so "different" alone would pass even if the
+    // control had stopped working entirely.
+    assert(Math.abs(out.clusterColoursWhileClosed.tintG - out.typeColoursWhileClosed.tintG) > 6,
       'the View control must still recolour the scene while the panel is closed');
     setNative(viewSelect(), 'computed');
     await settle();
@@ -152,20 +155,24 @@ const SCENARIOS = {
   // counts, so this drives real clicks: sweep a grid over the canvas, count the
   // points that select something, then check modifier-click accumulates and a
   // click on empty space clears.
+  // Picking, asserted rather than counted.
+  //
+  // This scenario used to sweep a grid and record how many clicks selected
+  // something. It waited 10ms after each click for React to commit a selection,
+  // which is not enough, so it recorded hits: 0 — and because the baseline also
+  // held 0, the suite reported "no visual change" for eight commits while the
+  // only picking coverage in the suite was dead. Counting is what allowed that;
+  // these are assertions now.
   selection: `
     // Enlarge particles first. Only some elements are clickable — an oxDNA
     // backbone sphere is r=0.2 in a 60-unit box, roughly 4px on screen — so at
     // default size this would measure marksmanship rather than whether picking
-    // works.
-    const radiusInput = document.querySelector('.settings-cluster input[type=number]');
-    const setNativeValue = (el, v) => {
-      const proto = Object.getPrototypeOf(el);
-      Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, v);
-      el.dispatchEvent(new Event('input', { bubbles: true }));
-      el.dispatchEvent(new Event('change', { bubbles: true }));
-    };
-    setNativeValue(radiusInput, '2');
+    // works. Hide the scene furniture too: the coordinate axes are saturated and
+    // several pixels thick, so they read as solid geometry but are not pickable.
+    setNative(document.querySelector('.settings-cluster input[type=number]'), '2');
     await settle();
+    byLabel('Coordinate axes').click(); await settle();
+    byLabel('Backdrop planes').click(); await settle();
 
     const canvas = document.querySelector('canvas');
     const rect = canvas.getBoundingClientRect();
@@ -175,49 +182,60 @@ const SCENARIOS = {
     const selectedCount = () => {
       const h = document.querySelector('.selected-particles-display h3');
       if (!h) return 0;
-      const m = h.textContent.match(/\((\d+)\)/);
+      const m = h.textContent.match(/[(]([0-9]+)[)]/);
       return m ? Number(m[1]) : 0;
     };
-
-    // React commits selection asynchronously, so each click needs a settle
-    // before the panel can be read — checking synchronously reports zero hits
-    // even when picking is working perfectly.
-    // Stop at the third hit: the point is that picking resolves, not how many
-    // pixels happen to sit over geometry. Sweeping the whole canvas was by far
-    // the slowest thing in the suite.
-    const out = { hits: 0 };
-    let firstHit = null;
-    outer:
-    for (let y = 40; y < rect.height - 40; y += 56) {
-      for (let x = 40; x < rect.width - 40; x += 56) {
+    const clear = async () => {
+      click(4, rect.height - 4);
+      await waitFor(() => selectedCount() === 0, 2000);
+    };
+    // Try candidates in turn: a single point can sit on geometry that is drawn
+    // but deliberately not pickable (a patch cone, a spring). A real picking
+    // regression fails every one of them.
+    const pickSomething = async () => {
+      for (const [x, y] of pickTargets()) {
         click(x, y);
-        await sleep(10);
-        if (selectedCount() > 0) {
-          out.hits++;
-          if (!firstHit) firstHit = [x, y];
-          if (out.hits >= 3) break outer;
-        }
+        if (await waitFor(() => selectedCount() === 1, 700)) return [x, y];
+        await clear();
       }
-    }
+      return null;
+    };
 
-    if (firstHit) {
-      // Wait for the expected state rather than a fixed interval; React commits
-      // selection asynchronously but takes nowhere near 250ms to do it.
-      click(firstHit[0], firstHit[1]);
-      await waitFor(() => selectedCount() === 1);
-      out.afterSingle = selectedCount();
+    const out = {};
+    const hit = await pickSomething();
+    assert(hit, 'clicking a particle must select it');
 
-      // A modifier click on the same particle toggles it back off.
-      click(firstHit[0], firstHit[1], { ctrlKey: true });
-      await waitFor(() => selectedCount() === 0);
-      out.afterToggleOff = selectedCount();
+    click(hit[0], hit[1], { ctrlKey: true });
+    assert(await waitFor(() => selectedCount() === 0, 2000),
+      'a modifier click on a selected particle must deselect it');
 
-      click(firstHit[0], firstHit[1]);
-      await waitFor(() => selectedCount() === 1);
-      click(4, rect.height - 4);                     // empty space clears
-      await waitFor(() => selectedCount() === 0);
-      out.afterMiss = selectedCount();
-    }
+    click(hit[0], hit[1]);
+    assert(await waitFor(() => selectedCount() === 1, 2000), 'reselect');
+    click(4, rect.height - 4);
+    assert(await waitFor(() => selectedCount() === 0, 2000),
+      'a click on empty space must clear the selection');
+
+    // And all of it again once the scene is clustered, which is where selecting
+    // a highlighted particle used to shrink it from 1.3x to 1.0x — moving it out
+    // from under the cursor, so the next modifier click hit whatever was behind
+    // it and added that instead of deselecting.
+    byLabel('Clustering').click();
+    await waitFor(() => document.querySelector('.cluster-item'), 15000);
+    await settle();
+    clusterBoxes()[0].click(); await settle();
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    await settle();
+    await clear();
+
+    const clusteredHit = await pickSomething();
+    assert(clusteredHit, 'clicking a particle must still select it once clustered');
+    click(clusteredHit[0], clusteredHit[1], { ctrlKey: true });
+    assert(await waitFor(() => selectedCount() === 0, 2000),
+      'a modifier click on a selected particle must deselect it, not add another');
+
+    // Deliberately records no pixel signature: which particle a sweep lands on
+    // varies between runs, and a selected particle is yellow, so any measurement
+    // here drifts. The assertions above are this scenario's output.
     return out;
   `,
 

@@ -225,6 +225,20 @@ Add a parser, then one entry in `FORMATS`, then detection in
 
 ## UI architecture
 
+### Particle size comes from the files (`particleStore.js`)
+`particleRadius` is the current size; `baseParticleRadius` is the size the loaded
+files established — `PATCHY_radius` from an oxDNA input file, or the radius an SRS
+topology carries. `setFormatParticleRadius` sets both, `setParticleRadius` only
+the first (that is the control), and `resetParticleRadius` returns both to the
+default so a new structure cannot inherit the last one's baseline.
+
+Renderers with intrinsic geometry (oxDNA nucleotides, raspberry beads) scale by
+`particleRadius / baseParticleRadius`, so the ratio is exactly **1** at load and
+every size is the one the files specify, while the radius control still moves
+them together with the plain spheres. Scaling by `DEFAULT_PARTICLE_RADIUS`
+instead double-counted the file's own radius: a `PATCHY_radius` of 2.5 blew beads
+and nucleotides up five-fold before anyone touched a control.
+
 ### Defaults (`uiStore.js`)
 The scene background starts **light** (`LIGHT_BACKGROUND`), and the entry screen and loading
 cover follow it via the `--light-*` tokens (the floating panels stay dark glass). `showBackdropPlanes` and
@@ -378,10 +392,24 @@ geometry appears, vanishes, resizes or loses its colour.
 - `dropFiles` waits for actual geometry, not just `.controls-panel`: the canvas
   can be mounted and still showing bare background, and settle() calls that
   stable.
-- The `selection` scenario enlarges particles first. Only some elements are
-  clickable — an oxDNA backbone sphere is r=0.2 in a 60-unit box, roughly 4px —
-  so at default size it would measure marksmanship, not correctness. It also
-  settles after each click, because React commits selection asynchronously.
+- The `selection` scenario enlarges particles and hides the coordinate axes and
+  backdrop planes first. Only some elements are clickable — an oxDNA backbone
+  sphere is r=0.2 in a 60-unit box, roughly 4px — and the axes are saturated and
+  thick enough to look like solid geometry to a pixel scan while not being
+  pickable at all.
+- **It asserts; it does not count.** It used to sweep a grid and record how many
+  clicks selected something, waiting 10ms after each for React to commit — which
+  is not enough, so it recorded `hits: 0`. The baseline held 0 too, so the suite
+  reported "no visual change" for eight commits while the only picking coverage
+  in it was dead. Counting is what allowed that.
+- `pickTargets()` (in the prelude) returns points that sit solidly inside drawn
+  geometry: a ray through an antialiased silhouette pixel misses the sphere
+  behind it, which makes working picking look broken. Callers try candidates in
+  turn, because a lit pixel may belong to something drawn but deliberately not
+  pickable (a patch cone, a spring); a real regression fails every candidate.
+- That scenario records no pixel signature. Which particle a sweep lands on
+  varies between runs and a selected particle is yellow, so any measurement there
+  drifts — its assertions are its output.
 - Stop any dev server on the port first; the runner refuses to run against one it
   did not start, since that may be a different build.
 - **It runs serially, and should stay that way.** Parallel tabs look like an easy
@@ -809,6 +837,11 @@ restoring it, because showing only the selected clusters when nothing is selecte
 shows nothing. It is now *Clear selection*, which is what it does. Colours need no
 undoing: with nothing highlighted the pane publishes no colours and particles fall
 back to their type colour on their own.
+
+A selected particle keeps its cluster's highlight scale. Dropping it from 1.3x to
+1.0x moved the geometry out from under the cursor, so a second modifier click on
+the same pixel hit whatever was behind it and **added** that instead of
+deselecting.
 
 Note: `ClusteringPane` only populates `highlightedClusters` while *Show only selected clusters*
 is on, so the 1.3× highlight state never appears on its own — selecting a cluster with that box

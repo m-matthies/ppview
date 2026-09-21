@@ -77,8 +77,10 @@ function ClusteringPane() {
   // O(n^2) — once per frame for every user, including the ones who never open
   // the panel. A file's clusters replace the computed ones outright, so they
   // make it unnecessary too.
-  const clusteringIsInUse = !fileClusters
-    && (showClusteringPane || sceneIsRestricted || selectedClusters.size > 0);
+  // Selection on its own changes nothing on screen unless something is being
+  // hidden, so it is not a reason to keep an O(n^2) clustering running once the
+  // panel is shut.
+  const clusteringIsInUse = !fileClusters && (showClusteringPane || sceneIsRestricted);
 
   const computedClusters = useMemo(() => {
     if (!clusteringIsInUse) return NO_CLUSTERS;
@@ -268,8 +270,14 @@ function ClusteringPane() {
   );
 
   // Handle cluster selection
+  // Every handler that derives a new selection from the old one reads through
+  // the store rather than the render closure. The setter takes a value, not an
+  // updater, so two clicks landing in the same tick would both start from the
+  // same pre-click set and the first would be lost.
+  const currentSelection = () => useClusteringStore.getState().selectedClusters;
+
   const handleClusterToggle = (clusterIndex) => {
-    const newSelected = new Set(selectedClusters);
+    const newSelected = new Set(currentSelection());
     if (newSelected.has(clusterIndex)) {
       newSelected.delete(clusterIndex);
     } else {
@@ -299,7 +307,7 @@ function ClusteringPane() {
     
     if (event.ctrlKey || event.metaKey) {
       // Ctrl/Cmd+click: Add to existing selection
-      const newSelected = new Set(selectedClusters);
+      const newSelected = new Set(currentSelection());
       clustersOfSize.forEach(idx => newSelected.add(idx));
       setSelectedClusters(newSelected);
     } else {

@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 
-// The radius every other size in the scene is expressed relative to. Renderers
-// with their own intrinsic geometry (oxDNA nucleotides, raspberry beads) scale
-// by particleRadius / this, so the control moves them together with the plain
-// particle spheres instead of leaving them fixed.
+// The radius used when nothing in the loaded files says otherwise.
 export const DEFAULT_PARTICLE_RADIUS = 0.5;
 
 export const useParticleStore = create((set, get) => ({
@@ -18,6 +15,16 @@ export const useParticleStore = create((set, get) => ({
   currentEnergy: [],
   totalConfigs: 0,
   particleRadius: DEFAULT_PARTICLE_RADIUS,
+  // The radius the loaded files themselves established — PATCHY_radius from an
+  // oxDNA input file, or the radius an SRS topology carries.
+  //
+  // Renderers with intrinsic geometry (oxDNA nucleotides, raspberry beads) scale
+  // by particleRadius / this, so at load the ratio is exactly 1 and every size
+  // is the one the files specify, while dragging the radius control still moves
+  // them together with the plain spheres. Scaling by DEFAULT_PARTICLE_RADIUS
+  // instead double-counted the file's own radius: a PATCHY_radius of 2.5 blew
+  // beads and nucleotides up five-fold before anyone touched a control.
+  baseParticleRadius: DEFAULT_PARTICLE_RADIUS,
   
   // Actions
   setPositions: (positions) => {
@@ -46,6 +53,19 @@ export const useParticleStore = create((set, get) => ({
   setCurrentEnergy: (energy) => set({ currentEnergy: energy }),
   setTotalConfigs: (total) => set({ totalConfigs: total }),
   setParticleRadius: (radius) => set({ particleRadius: radius }),
+
+  // A radius that came from the files, not from the control: it becomes both the
+  // current radius and the baseline intrinsic geometry is measured against.
+  setFormatParticleRadius: (radius) => set({
+    particleRadius: radius,
+    baseParticleRadius: radius,
+  }),
+
+  // A new simulation must not inherit the last one's baseline.
+  resetParticleRadius: () => set({
+    particleRadius: DEFAULT_PARTICLE_RADIUS,
+    baseParticleRadius: DEFAULT_PARTICLE_RADIUS,
+  }),
   
   // Computed values
   getUniqueParticleTypes: () => {
