@@ -656,11 +656,22 @@ and look uniform again. The steps are centred on however many shades the group
 actually uses, so a lone cluster gets the base colour exactly — otherwise it
 rendered a step darker than the histogram bar that is meant to be its legend.
 
-`shiftLightness` in `colors.js` does the work. It reads both palette spellings —
+`lightnessLadder` in `colors.js` does the work. It reads both palette spellings —
 `#rrggbb` from the static schemes and `hsl(h,s%,l%)` from the golden-angle
 generator — and always returns hex, because an `<input type="color">` accepts
-nothing else. Lightness is clamped to 30-84 so a shade never loses the hue that
-carries the size.
+nothing else.
+
+**It slides the ladder to fit, and never clamps a rung onto the edge.** Clamping
+each shade into a fixed band instead collapses them: a pastel base at lightness
+86.5 sent three of five shades to the same value, and a black palette entry sent
+all five to one grey — switching the feature off for precisely the schemes that
+needed it. The bounds also stretch to include the colour's own lightness, so a
+group of one returns the palette entry untouched; anything else made a lone
+cluster disagree with the histogram bar that is meant to be its legend.
+
+The visual suite cannot see any of this — it only ever exercises the default
+golden-angle palette, whose lightness of 65 sits clear of both ends. `colors.test.js`
+sweeps every scheme and every entry instead, which is the test that catches it.
 
 One consequence remains inherent: colours are relative to the sizes present, so
 changing epsilon can reshuffle them.

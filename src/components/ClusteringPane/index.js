@@ -7,7 +7,7 @@ import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
 import { dbscan, generateHistogram, maxMinimumImageRadius } from '../../utils/clustering';
 import { parseClusterFile } from '../../utils/clusterFile';
-import { getParticleColors, shiftLightness } from '../../colors';
+import { getParticleColors, lightnessLadder } from '../../colors';
 import { CloseIcon, EyeIcon, EyeOffIcon } from '../Icons';
 import './ClusteringPane.css';
 
@@ -130,24 +130,22 @@ function ClusteringPane() {
     });
   }, [clusters]);
 
-  // Fixed steps that cycle, rather than a fixed range spread across the group:
-  // a hundred clusters of one size would put a fraction of a point between
-  // neighbours and look uniform again. Repeating every five keeps every step
-  // visible, and five shades is already more than anyone reads off a scene.
+  // A ladder of shades per size, cycling every five: a hundred clusters of one
+  // size would put a fraction of a point between neighbours and look uniform
+  // again, and five shades is already more than anyone reads off a scene.
   //
-  // Centred on however many shades the group actually uses, so a lone cluster
-  // gets the base colour exactly — otherwise it rendered a step darker than the
-  // histogram bar that is supposed to be its legend.
+  // lightnessLadder centres the ladder on the palette colour where there is
+  // room and slides it to fit where there is not, so a group of one gets the
+  // base colour exactly — matching the histogram bar that is meant to be its
+  // legend — and a base near black or white still yields five distinct shades.
   const LIGHTNESS_STEPS = 5;
-  const LIGHTNESS_STEP = 7.5;
   const clusterColorAt = useCallback((index) => {
     const explicit = colorOverrides[index] ?? fileClusters?.[index]?.color;
     if (explicit) return explicit;
-    const base = colorForSize(clusters[index]?.length);
     const { ordinal, count } = sizeGroups[index] ?? { ordinal: 0, count: 1 };
-    const used = Math.min(count, LIGHTNESS_STEPS);
-    const step = (ordinal % LIGHTNESS_STEPS) - (used - 1) / 2;
-    return shiftLightness(base, step * LIGHTNESS_STEP);
+    const rungs = Math.min(count, LIGHTNESS_STEPS);
+    const ladder = lightnessLadder(colorForSize(clusters[index]?.length), rungs);
+    return ladder[ordinal % rungs];
   }, [colorOverrides, fileClusters, colorForSize, clusters, sizeGroups]);
 
 

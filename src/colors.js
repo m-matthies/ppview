@@ -227,14 +227,34 @@ export const hslToHex = (h, s, l) => {
 };
 
 /**
- * The same colour, lighter or darker by `delta` points of HSL lightness.
+ * `count` evenly spaced shades of `color`, for telling apart things that share
+ * whatever the hue encodes.
  *
- * Lightness is clamped well inside the ends of the range: a colour pushed to
- * pure black or pure white loses its hue, and hue is what carries the meaning
- * wherever this is used. Returns the input unchanged if it cannot be parsed.
+ * The window is centred on the colour where there is room, and **slid** to fit
+ * where there is not. Clamping each shade individually instead collapses them:
+ * a pastel base at lightness 86.5 sent three of five shades to the same 84, and
+ * a black palette entry sent all five to the same grey — turning the feature
+ * off precisely for the schemes that needed it, while the default golden-angle
+ * palette at lightness 65 stayed clear of the edge and looked fine.
+ *
+ * The bounds stretch to include the colour's own lightness, so a shade is never
+ * moved away from a colour that already sits outside them. With count 1 that
+ * makes this exact: the single shade is the input colour, which matters because
+ * the histogram bar beside it is painted with the raw palette entry.
  */
-export const shiftLightness = (color, delta) => {
+export const lightnessLadder = (color, count, step = 7.5, low = 30, high = 84) => {
   const hsl = parseColorToHsl(color);
-  if (!hsl) return color;
-  return hslToHex(hsl.h, hsl.s, clamp(hsl.l + delta, 30, 84));
+  if (!hsl) return Array.from({ length: Math.max(1, count) }, () => color);
+
+  const rungs = Math.max(1, count);
+  const toHex = (l) => hslToHex(hsl.h, hsl.s, l);
+  if (rungs === 1) return [toHex(hsl.l)];
+
+  const floor = Math.min(low, hsl.l);
+  const ceiling = Math.max(high, hsl.l);
+  const span = (rungs - 1) * step;
+  let start = hsl.l - span / 2;
+  if (span <= ceiling - floor) start = clamp(start, floor, ceiling - span);
+
+  return Array.from({ length: rungs }, (_, i) => toHex(clamp(start + i * step, floor, ceiling)));
 };
