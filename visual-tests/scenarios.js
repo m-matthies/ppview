@@ -103,7 +103,31 @@ const SCENARIOS = {
     out.afterReset = measure();
     out.resetWithdrawn = resetButton() ? 1 : 0;
 
-    clusterBoxes()[0].click(); await settle();  // back off
+    // Closing the panel must not switch the clustering off — and while it is
+    // shut, both the View control and the way out have to keep working. They
+    // did not: the panel owned the state and the effect that published it, so
+    // unmounting it left the scene clustered with nothing listening.
+    clusterBoxes()[0].click(); await settle();
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    await settle();
+    const restrictedNow = measure();
+    byLabel('Clustering').click(); await settle();
+    out.paneClosed = document.querySelector('.clustering-pane') ? 0 : 1;
+    out.clusteringSurvivesClose = measure().coloured === restrictedNow.coloured ? 1 : 0;
+    out.viewPresentWhileClosed = viewSelect() ? 1 : 0;
+    setNative(viewSelect(), '');
+    await settle();
+    out.typeColoursWhileClosed = measure();
+    setNative(viewSelect(), 'computed');
+    await settle();
+
+    out.clearOfferedWhileClosed = document.querySelector('.clear-clustering') ? 1 : 0;
+    const beforeClear = measure().coloured;
+    document.querySelector('.clear-clustering').click();
+    await waitFor(() => measure().coloured > beforeClear + 10, 8000); await settle();
+    out.afterClear = measure();
+    out.clearWithdrawn = document.querySelector('.clear-clustering') ? 1 : 0;
+
     out.restored = measure();
     return out;
   `,

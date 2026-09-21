@@ -1,7 +1,7 @@
 import React from 'react';
 import ColorSchemeSelector from '../ColorSchemeSelector';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
-import { useClusteringStore } from '../../store/clusteringStore';
+import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
@@ -78,6 +78,8 @@ function ControlBar(props) {
 
   const overlays = useOverlayStore(state => state.overlays);
   const clusterCount = useClusteringStore(state => state.clusterCount);
+  const sceneIsRestricted = useClusteringStore(isSceneRestricted);
+  const clearClustering = useClusteringStore(state => state.clearClustering);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const setActiveOverlay = useOverlayStore(state => state.setActiveOverlay);
 
@@ -265,6 +267,21 @@ function ControlBar(props) {
                     ))}
                   </select>
                 </label>
+              )}
+
+              {/* The way back to an unclustered scene, next to the control that
+                  explains what the colours mean. It lives here and not only in
+                  the clustering panel because the effect it undoes stays on
+                  screen after that panel is closed — which left no reachable
+                  way to switch it off at all. */}
+              {sceneIsRestricted && (
+                <button
+                  className="clear-clustering"
+                  onClick={clearClustering}
+                  title="Show every particle again: clear the cluster selection and un-hide all clusters"
+                >
+                  Clear clustering
+                </button>
               )}
 
               {/* The scheme only describes the default view; under an overlay it

@@ -751,10 +751,30 @@ a sphere radius, a bead offset and a cone share one rule.
   particles by comparing floating-point coordinates with `positions.findIndex`, once per
   particle.
 
+### The pane's state lives in the store, and the pane outlives its panel
+`selectedClusters`, `showOnlySelected` and `hiddenClusters` are in
+`clusteringStore`, not in `ClusteringPane`'s `useState`, and `App` mounts the
+component whenever there is a structure rather than only while the panel is open
+(it renders `null` when closed).
+
+Both halves matter. Closing the panel used to unmount the component, which
+destroyed that state **and** the effect that publishes it — so a scene left
+clustered had nothing listening: switching the View did nothing at all, and the
+only control that could undo the clustering vanished with the panel. Closing the
+panel hides the controls; it does not switch the clustering off, so the thing
+that owns the clustering has to stay alive.
+
 ### Getting back out
-**"Show all particles"** appears in the pane whenever the scene is restricted
-(`showOnlySelected`, or any cluster hidden by its eye) and clears all of it in one
-click. Before it, leaving a clustered view meant finding four controls across two
+`isSceneRestricted(state)` — exported from `clusteringStore`, one definition
+shared by both buttons so they cannot disagree — is true when `showOnlySelected`
+is on or any cluster is hidden. Selection alone does not count: with
+*show only selected* off it changes nothing on screen, and offering to undo an
+invisible state is noise.
+
+**`clearClustering()`** is offered in two places while that holds: **"Clear
+clustering"** beside the View control, and **"Show all particles"** in the pane.
+The control-bar one is the important one — the clustering stays on screen after
+the panel is closed, so the way out has to be reachable from there too. Before it, leaving a clustered view meant finding four controls across two
 panels — and the button then named *Clear All* **emptied** the scene rather than
 restoring it, because showing only the selected clusters when nothing is selected
 shows nothing. It is now *Clear selection*, which is what it does. Colours need no

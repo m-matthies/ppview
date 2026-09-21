@@ -1,5 +1,16 @@
 import { create } from 'zustand';
 
+/**
+ * True when the clustering is currently holding something back from the scene.
+ *
+ * One definition shared by the pane's own reset button and the control bar's,
+ * so the two can never disagree about whether there is anything to undo.
+ * Selection alone does not count: without "show only selected" it changes
+ * nothing on screen, and offering to undo an invisible state is noise.
+ */
+export const isSceneRestricted = (state) =>
+  state.showOnlySelected || state.hiddenClusters.size > 0;
+
 export const useClusteringStore = create((set) => ({
   // Particle indices belonging to a highlighted cluster.
   highlightedClusters: new Set(),
@@ -30,12 +41,40 @@ export const useClusteringStore = create((set) => ({
   // applied to the scene, so the control that explains it has to stay too.
   clusterCount: 0,
 
+  // The pane's own controls, held here rather than in the component.
+  //
+  // They used to be `useState` inside ClusteringPane, which is unmounted when
+  // the pane is closed — so closing it destroyed the state *and* the effect that
+  // publishes it, leaving the scene clustered with nothing listening. Switching
+  // the View then did nothing, and the one control that could undo it went with
+  // the pane. Cluster indices, meaningful only against the current cluster list,
+  // so they reset whenever that list is replaced.
+  selectedClusters: new Set(),
+  showOnlySelected: false,
+  hiddenClusters: new Set(),
+
   // Actions
   setHighlightedClusters: (clusters) => set({ highlightedClusters: clusters }),
   setShowOnlyHighlightedClusters: (show) => set({ showOnlyHighlightedClusters: show }),
   setDimNonSelectedClusters: (dim) => set({ dimNonSelectedClusters: dim }),
   setHiddenParticles: (particles) => set({ hiddenParticles: particles }),
   setClusterCount: (count) => set({ clusterCount: count }),
+  setSelectedClusters: (clusters) => set({ selectedClusters: clusters }),
+  setShowOnlySelected: (show) => set({ showOnlySelected: show }),
+  setHiddenClusters: (clusters) => set({ hiddenClusters: clusters }),
+
+  // Everything the clustering does to the scene, undone at once. Reachable from
+  // the control bar as well as the pane, because the effect it undoes is visible
+  // whether or not the pane is open.
+  clearClustering: () => set({
+    selectedClusters: new Set(),
+    showOnlySelected: false,
+    hiddenClusters: new Set(),
+    highlightedClusters: new Set(),
+    showOnlyHighlightedClusters: false,
+    clusterColors: new Map(),
+    hiddenParticles: new Set(),
+  }),
 
   // Combined action for cluster highlighting
   highlightClusters: (clusterIndices, showOnlySelected, clusterColors = new Map()) => set({
@@ -50,6 +89,9 @@ export const useClusteringStore = create((set) => ({
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),
     hiddenParticles: new Set(),
+    selectedClusters: new Set(),
+    showOnlySelected: false,
+    hiddenClusters: new Set(),
   }),
 
   // Dropping a new simulation must also drop clusters computed for the old one.
@@ -59,5 +101,8 @@ export const useClusteringStore = create((set) => ({
     clusterColors: new Map(),
     hiddenParticles: new Set(),
     clusterCount: 0,
+    selectedClusters: new Set(),
+    showOnlySelected: false,
+    hiddenClusters: new Set(),
   }),
 }));

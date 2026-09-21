@@ -703,7 +703,10 @@ function App() {
 
       {topData && showPatchLegend && !isLoading && <PatchLegend />}
       {topData && showParticleLegend && !isLoading && <ParticleLegend />}
-      {positions.length > 0 && showClusteringPane && !isLoading && <ClusteringPane />}
+      {/* Mounted whenever there is a structure, not only while the panel is
+          open: it owns the clustering applied to the scene, which outlives the
+          panel. It renders nothing when closed. */}
+      {positions.length > 0 && !isLoading && <ClusteringPane />}
 
       {isLoading && (
         <div className="loading-overlay">

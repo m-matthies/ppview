@@ -442,3 +442,25 @@
     background: var(--surface-hover);
     color: var(--ink);
 }
+
+/* Returns the scene to its unclustered state. Only rendered while the
+   clustering is actually holding something back, so it is never a control that
+   does nothing — and it is accented because at that moment it is the thing
+   being looked for. */
+.clear-clustering {
+    padding: 6px 10px;
+    border: 1px solid var(--accent);
+    border-radius: var(--radius-chip);
+    background: transparent;
+    color: var(--accent-bright);
+    font-family: inherit;
+    font-size: var(--text-sm);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.clear-clustering:hover {
+    background: var(--accent);
+    color: #fff;
+}

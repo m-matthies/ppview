@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParticleStore } from '../../store/particleStore';
-import { useClusteringStore } from '../../store/clusteringStore';
+import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { clusterOverlayFromFile } from '../../utils/overlays';
 import { useUIStore } from '../../store/uiStore';
@@ -24,6 +24,7 @@ function ClusteringPane() {
   // reads. A second local flag here let the two disagree about whether the
   // pane was open.
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
+  const showClusteringPane = useUIStore(state => state.showClusteringPane);
   const overlays = useOverlayStore(state => state.overlays);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
   const addOverlay = useOverlayStore(state => state.addOverlay);
@@ -48,11 +49,20 @@ function ClusteringPane() {
   const [colorOverrides, setColorOverrides] = useState({});
   // Cluster indices switched off by the eye control. Separate from selection:
   // hiding a cluster works whether or not "show only selected" is on.
-  const [hiddenClusters, setHiddenClusters] = useState(new Set());
+  //
+  // These three live in the store, not here: the pane unmounts when it is
+  // closed, and with the state went the effect that publishes it — so a scene
+  // left clustered had nothing listening to the View control, and the only
+  // control that could undo it disappeared along with the pane.
+  const hiddenClusters = useClusteringStore(state => state.hiddenClusters);
+  const setHiddenClusters = useClusteringStore(state => state.setHiddenClusters);
+  const selectedClusters = useClusteringStore(state => state.selectedClusters);
+  const setSelectedClusters = useClusteringStore(state => state.setSelectedClusters);
+  const showOnlySelected = useClusteringStore(state => state.showOnlySelected);
+  const setShowOnlySelected = useClusteringStore(state => state.setShowOnlySelected);
+  const clearClustering = useClusteringStore(state => state.clearClustering);
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
-  const [selectedClusters, setSelectedClusters] = useState(new Set());
-  const [showOnlySelected, setShowOnlySelected] = useState(false);
 
   // Compute clusters when parameters change
   const computedClusters = useMemo(() => {
@@ -183,7 +193,9 @@ function ClusteringPane() {
       setHiddenClusters(new Set());
       setShowOnlySelected(false);
     }
-  }, [clusterSourceId, fileClusters]);
+    // Store setters are stable references, so listing them costs nothing; the
+    // ref guard above is what actually keeps this from fighting manual changes.
+  }, [clusterSourceId, fileClusters, setSelectedClusters, setHiddenClusters, setShowOnlySelected]);
 
   const handleClusterFile = useCallback(async (event) => {
     const file = event.target.files?.[0];
@@ -331,24 +343,20 @@ function ClusteringPane() {
   // nothing is selected shows nothing — the opposite of what the name promises.
   // Colours need no undoing: with nothing highlighted the pane publishes no
   // colours, so particles fall back to their type colour by themselves.
-  const sceneIsRestricted = showOnlySelected || hiddenClusters.size > 0;
-  const showEverything = () => {
-    setSelectedClusters(new Set());
-    setShowOnlySelected(false);
-    setHiddenClusters(new Set());
-  };
+  const sceneIsRestricted = useClusteringStore(isSceneRestricted);
+  const showEverything = clearClustering;
 
   const toggleClusterVisible = (clusterIndex) => {
-    setHiddenClusters(previous => {
-      const next = new Set(previous);
-      if (next.has(clusterIndex)) next.delete(clusterIndex);
-      else next.add(clusterIndex);
-      return next;
-    });
+    const next = new Set(hiddenClusters);
+    if (next.has(clusterIndex)) next.delete(clusterIndex);
+    else next.add(clusterIndex);
+    setHiddenClusters(next);
   };
   
-  // Early return if no positions loaded
-  if (!positions || positions.length === 0) {
+  // No UI when there is nothing to cluster, or when the panel is closed — but
+  // the hooks above still run, which is the point: closing the panel hides the
+  // controls, it does not switch the clustering off.
+  if (!positions || positions.length === 0 || !showClusteringPane) {
     return null;
   }
 
