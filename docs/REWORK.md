@@ -349,6 +349,41 @@ array identity. Optionally move positions to a `Float32Array` behind an accessor
 *Done when:* a profile shows the win. **If no profile shows a win, skip this
 phase** — it is speculative until measured.
 
+**Status: measured, and skipped.** The premise is false.
+
+`bench/` builds a trajectory large enough for per-frame cost to be visible
+(8,000 particles x 60 frames, parameterised by `BENCH_PARTICLES`/`BENCH_FRAMES`)
+and takes a CDP CPU profile of playback, aggregated by self time. Over 17.3s of
+playback at 8,000 particles:
+
+| share | time | what |
+|---|---|---|
+| 93.4% | 16,152 ms | `(program)` — the rasteriser, drawing |
+| 5.5% | 953 ms | idle |
+| 0.2% | 27 ms | garbage collector |
+| 0.1% | 26 ms | `parseConfiguration` |
+| 0% | **1 ms** | **`decorate`** — the per-frame allocation this phase proposes to remove |
+
+All application JavaScript together is under 1%. The allocation the phase exists
+to eliminate costs **1 ms across eight frames**; GC costs 0.2%. Repeating at
+1,000 particles scales JS down proportionally — `decorate` disappears from the
+profile entirely — so the shape holds rather than being an artefact of one size.
+
+Two honest caveats. This runs on a software rasteriser, so `(program)` is far
+larger than it would be on a GPU; on real hardware JavaScript would be a bigger
+*share*. But the absolute numbers are what decide it: ~0.1 ms per frame of
+allocation against a 16 ms budget is not worth a data-structure rewrite, however
+the rest of the frame is spent.
+
+And the profile points somewhere else: the JS that does cost something is
+`parseConfiguration` — **parsing trajectory text**, 26 ms per eight frames and
+growing with particle count. If the JS path is ever worth optimising, that is the
+target, not the object shape. Phase 5 as written would have optimised the wrong
+thing.
+
+The harness is committed so the decision can be re-checked rather than taken on
+trust: `./bench/run.sh`, or `BENCH_SCRIPT=bench/cpu-profile.js ./bench/run.sh`.
+
 ### Phase 6 — Rebalance verification
 
 Move UI-wiring checks into jsdom tests, which are fast and deterministic. Keep
