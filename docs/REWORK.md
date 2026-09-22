@@ -378,7 +378,27 @@ Four full passes over every particle, each allocating a complete copy of the
 frame. The single largest stage is `applyPeriodicBoundary`, which the original
 phase did not mention at all.
 
-**The work, in order of value:**
+**The renderer is a second, independent wall.** Measured at one million
+particles:
+
+| per frame | cost |
+|---|---|
+| compose + `setMatrixAt` for every instance | 12 ms |
+| `setColorAt` for every instance | 3 ms |
+| triangles submitted, sphere at 16 segments | **512 million** |
+
+The per-instance JavaScript loop is not the problem — 15 ms at a million
+particles is affordable. The triangle count is: a high-end GPU sustains tens of
+millions of triangles per frame, so 512 million is one to two orders of magnitude
+over budget, on whatever hardware the viewer happens to run on.
+
+This matters because the two walls block different things. **Orbiting a static
+frame never touches the load path** — it is pure redraw, so movability at a
+million particles depends only on the triangle count. Playback needs both fixed.
+
+**Target: one million particles, playable and movable.** That needs two tracks.
+
+**Track A — the data path** (this phase), in order of value:
 
 1. **Parse into typed arrays.** One `Float32Array(3n)` for positions and one for
    each orientation vector, filled in a single pass, instead of `n` objects with
@@ -402,8 +422,25 @@ underlying array is unchanged, and only then swap the storage. That keeps each
 step verifiable by the existing suite instead of producing one large change that
 either works or does not.
 
-**Done when:** a frame at one million particles costs a fraction of what it does
-now, measured by the same benchmark, with the visual suite unchanged.
+**Track B — the geometry.** A sphere at 16 segments is 512 triangles; a
+camera-facing quad with the sphere solved analytically in the fragment shader is
+two. That is the 256x reduction the triangle budget needs, and it also removes
+the matrix entirely — an impostor needs a position and a radius, three floats and
+one, not sixteen. Instance data drops from 64 MB of matrices to 12 MB of
+positions, which is also 64 MB less uploaded whenever a frame changes.
+
+Picking has to follow: the ray currently intersects real sphere geometry, and
+against impostors it must intersect the analytic sphere instead. The picking
+service already owns that in one place, which is why it can change without
+touching five renderers.
+
+Springs, patches and nucleotides are unaffected: they do not occur at these
+counts.
+
+**Done when:** one million particles both plays and orbits — the load path a
+fraction of its current 1.5 s, and the frame drawing in single-digit millions of
+triangles rather than 512 million — measured by the same benchmark, with the
+visual suite unchanged at the sizes it covers.
 
 ### Phase 6 — Rebalance verification
 

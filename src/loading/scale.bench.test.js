@@ -78,6 +78,41 @@ bench('per-frame JS cost by particle count', () => {
     expect(results.length).toBe(SIZES.length);
   });
 
+  it('measures the per-instance write loop the renderers run every frame', () => {
+    // InstancedLayer composes a Matrix4 per particle per frame and writes 16
+    // floats into instanceMatrix. That is JavaScript we control, and it runs
+    // after the load path — so it adds to the per-frame budget rather than
+    // overlapping with it.
+    const n = 1_000_000;
+    const mesh = new THREE.InstancedMesh(
+      new THREE.SphereGeometry(0.5, 16, 16), new THREE.MeshStandardMaterial(), n);
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color('#ff0000');
+
+    const time = (fn) => { fn(); const t0 = process.hrtime.bigint(); fn();
+                           return Number(process.hrtime.bigint() - t0) / 1e6; };
+
+    const matrixMs = time(() => {
+      for (let i = 0; i < n; i++) {
+        dummy.position.set(i % 100, (i / 100) % 100, i % 37);
+        dummy.scale.setScalar(1);
+        dummy.updateMatrix();
+        mesh.setMatrixAt(i, dummy.matrix);
+      }
+    });
+    const colorMs = time(() => {
+      for (let i = 0; i < n; i++) mesh.setColorAt(i, color);
+    });
+
+    // What the GPU is asked to draw, at the default detail.
+    const trisPerSphere = 16 * 16 * 2;
+    console.log(`\n  at ${n.toLocaleString()} particles, per frame:`);
+    console.log(`  ${matrixMs.toFixed(0).padStart(6)} ms  compose + setMatrixAt`);
+    console.log(`  ${colorMs.toFixed(0).padStart(6)} ms  setColorAt`);
+    console.log(`  ${((trisPerSphere * n) / 1e6).toFixed(0).padStart(6)} M   triangles submitted (sphere, 16 segments)`);
+    expect(matrixMs).toBeGreaterThan(0);
+  });
+
   it('splits that cost between parsing and decorating', () => {
     // Which half dominates decides what to change: parsing straight into a
     // typed array, or not building one object per particle per frame.
