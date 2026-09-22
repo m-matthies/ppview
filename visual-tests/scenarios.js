@@ -56,6 +56,44 @@ const SCENARIOS = {
     return out;
   `,
 
+  // Stepping through a trajectory, and coming back.
+  //
+  // Frames are cached once decoded, because re-scanning the text is where
+  // loading a large frame spends its time. That makes "a cached frame renders
+  // exactly like a freshly parsed one" a thing worth checking — and it was
+  // uncheckable until the fixtures grew past a single configuration.
+  playback: `
+    await settle();
+    const out = { first: measure() };
+    const step = async (key) => {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
+      await settle();
+      return measure();
+    };
+
+    // Distance, not a sum of bucket differences: the fixtures drift one blob of
+    // five, so a frame step moves geometry without necessarily changing how much
+    // of it there is. Counts alone called that "no change" for the one format
+    // whose frames are not re-centred on the box.
+    const apart = (a, b) => Math.abs(a.coloured - b.coloured) + Math.abs(a.edges - b.edges)
+                          + Math.abs(a.cx - b.cx) + Math.abs(a.cy - b.cy);
+
+    out.second = await step('ArrowRight');
+    assert(apart(out.second, out.first) > 6,
+      'stepping forward must change what is on screen');
+
+    out.third = await step('ArrowRight');
+    const backToSecond = await step('ArrowLeft');
+    // The revisit comes from the cache; it has to be the same frame.
+    assert(apart(backToSecond, out.second) <= 6,
+      'a cached frame must render exactly like the parsed one');
+
+    const backToFirst = await step('ArrowLeft');
+    assert(apart(backToFirst, out.first) <= 6,
+      'stepping back to the first frame must restore it');
+    return out;
+  `,
+
   // Geometry resolution and particle size must reach every renderer.
   detail: `
     const sel = document.querySelector('.settings-cluster select');

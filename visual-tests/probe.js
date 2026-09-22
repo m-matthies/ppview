@@ -43,10 +43,25 @@ const MEASURE = `
   // rounding error against a light background. Averaging over just the coloured
   // pixels makes a recolour of one cluster a decisive shift.
   let tintR = 0, tintG = 0, tintB = 0;
+  // Where the geometry is, as opposed to how much of it there is. Every other
+  // measurement here is a bucket count, and a count is blind to a rigid
+  // translation: a blob that slides across the frame keeps its pixel count, its
+  // edge count and its colour exactly. So a trajectory that advanced its frame
+  // counter while drawing the same coordinates read as no change at all — which
+  // is how the MGL playback path looked when it was in fact working.
+  //
+  // Thousandths of the frame, so it is comparable against the runner's slack of
+  // 6: a shift of 0.6% of the width is the noise floor, and antialiasing on a
+  // few silhouette pixels moves it by far less than that.
+  let sumX = 0, sumY = 0;
   for (let i = 0; i < d.length; i += 4) {
     const r = d[i], g = d[i + 1], b = d[i + 2];
     const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
-    if (mx - mn > 45) { coloured++; tintR += r; tintG += g; tintB += b; }
+    if (mx - mn > 45) {
+      coloured++; tintR += r; tintG += g; tintB += b;
+      const px = (i >> 2);
+      sumX += px % W; sumY += (px / W) | 0;
+    }
     else if (mx > 40 && mx < 170) neutral++;
     sumR += r; sumG += g; sumB += b;
 
@@ -69,6 +84,8 @@ const MEASURE = `
     tintR: +(tintR / litPixels).toFixed(1),
     tintG: +(tintG / litPixels).toFixed(1),
     tintB: +(tintB / litPixels).toFixed(1),
+    cx: +((1000 * sumX) / (litPixels * w)).toFixed(1),
+    cy: +((1000 * sumY) / (litPixels * h)).toFixed(1),
   };
 })()
 `;

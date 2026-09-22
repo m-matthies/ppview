@@ -41,9 +41,29 @@ function blobPositions() {
 const confLine = ([x, y, z]) =>
   `${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)} 1 0 0 0 0 1 0 0 0 0 0 0`;
 
+/**
+ * Three frames, not one.
+ *
+ * Every trajectory fixture used to hold a single configuration, so no frame was
+ * ever revisited and the suite could not see the frame cache at all — a cached
+ * frame that rendered differently from a parsed one would have gone unnoticed.
+ * The later frames are the same blobs nudged along one axis, so stepping is
+ * visible in the pixels while DBSCAN still finds the same five clusters.
+ */
+const FRAMES = 3;
+
 function writeConf(name, positions) {
-  const lines = [`t = 0`, `b = ${BOX} ${BOX} ${BOX}`, `E = -1 -1 0`];
-  positions.forEach(p => lines.push(confLine(p)));
+  const lines = [];
+  for (let frame = 0; frame < FRAMES; frame++) {
+    lines.push(`t = ${frame * 1000}`, `b = ${BOX} ${BOX} ${BOX}`, `E = -1 -1 0`);
+    // Only the first blob moves. Displacing every particle by the same amount
+    // moves the centre of mass by the same amount, and the loader centres on
+    // it — so a uniform drift is subtracted out and every frame renders
+    // identically, which is exactly what the first attempt at this produced.
+    const drift = frame * 4;
+    positions.forEach(([x, y, z], i) =>
+      lines.push(confLine(i < PER_CLUSTER ? [x + drift, y, z] : [x, y, z])));
+  }
   fs.writeFileSync(path.join(OUT, name), lines.join('\n') + '\n');
 }
 
@@ -52,11 +72,26 @@ const N = pos.length;
 
 // ---------------------------------------------------------------- MGL
 {
-  const lines = [`.Box:${BOX.toFixed(6)},${BOX.toFixed(6)},${BOX.toFixed(6)}`];
-  pos.forEach(([x, y, z], i) => {
-    const colour = ['blue', 'red', 'green'][i % 3];
-    lines.push(`${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)} @ 0.500000 C[${colour}]`);
-  });
+  // Three frames, like the oxDNA fixtures: an MGL file with more than one
+  // `.Box:` header is a trajectory, and that path — frames held in memory
+  // rather than sliced out of a file — had no multi-frame coverage at all.
+  const lines = [];
+  for (let frame = 0; frame < FRAMES; frame++) {
+    lines.push(`.Box:${BOX.toFixed(6)},${BOX.toFixed(6)},${BOX.toFixed(6)}`);
+    // Every particle drifts here, which is the opposite of what the oxDNA
+    // fixtures above do — and for the same reason. Those frames are re-centred
+    // on the box, so a uniform drift is subtracted straight back out; these are
+    // not, so a uniform drift is the one thing that moves the whole structure
+    // across the screen. Drifting a single blob instead moved eight particles
+    // of forty a couple of pixels in a view zoomed out to a 60-unit box, which
+    // is below what any pixel measurement can honestly call a change.
+    const drift = frame * 10;
+    pos.forEach(([x, y, z], i) => {
+      const colour = ['blue', 'red', 'green'][i % 3];
+      // Two axes, so the movement shows in both screen directions.
+      lines.push(`${(x + drift).toFixed(6)} ${(y + drift).toFixed(6)} ${z.toFixed(6)} @ 0.500000 C[${colour}]`);
+    });
+  }
   fs.writeFileSync(path.join(OUT, 'mgl.mgl'), lines.join('\n') + '\n');
 }
 
