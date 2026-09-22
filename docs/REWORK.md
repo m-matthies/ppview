@@ -422,7 +422,42 @@ underlying array is unchanged, and only then swap the storage. That keeps each
 step verifiable by the existing suite instead of producing one large change that
 either works or does not.
 
-**Track B — the geometry.** A sphere at 16 segments is 512 triangles; a
+**Track B is built and measured.** `rendering/impostorSpheres.js` patches a
+`MeshStandardMaterial` into a camera-facing quad with the sphere solved in the
+fragment shader — a normal from the quad coordinates, a depth from the sphere's
+surface. Patched rather than written from scratch so the lighting rig, tone
+mapping and shadows keep working; a bespoke material would quietly opt out of all
+of it.
+
+Measured on a software rasteriser, which has no GPU at all:
+
+| | spheres | impostors |
+|---|---|---|
+| redraw at 30,000 particles | 5,309 ms | **852 ms** |
+| redraw at 120,000 particles | never drew within 15 s | **2,926 ms** |
+
+Three things the build turned up that the design had not:
+
+- **The radius never reached the shader.** The sphere path takes its size from
+  `SphereGeometry(particleRadius)`; the quad is a unit carrier, so an impostor
+  was always `scale/2` across and silently ignored the radius control. It was
+  invisible only because the default radius is 0.5, which made the two agree by
+  coincidence. It is a uniform now, updated without recompiling the shader.
+- **Picking did not follow.** The ray met a flat plane that only *looks*
+  camera-facing, because the billboarding happens in the shader. `applyImpostorRaycast`
+  intersects the same analytic sphere the fragment shader carves out, so what is
+  clicked is what is seen. The visual suite caught this, which is the whole
+  reason the impostor path was given a fixture.
+- **Three's shader chunks are a contract.** The first version failed to compile
+  on three counts: `nonPerturbedNormal` must be declared, `geometryNormal` must
+  *not* be, and `projectionMatrix` is a vertex-stage uniform, so depth is
+  reconstructed from two terms carried across as varyings.
+
+Coverage: the fixtures are 40 particles and the threshold is 50,000, so
+`?impostors=1` forces the path on and the suite runs a seventh format through it.
+The two paths agree to within two pixels and half a tint unit on identical input.
+
+**Track B — the original sketch, for the record.** A sphere at 16 segments is 512 triangles; a
 camera-facing quad with the sphere solved analytically in the fragment shader is
 two. That is the 256x reduction the triangle budget needs, and it also removes
 the matrix entirely — an impostor needs a position and a radius, three floats and

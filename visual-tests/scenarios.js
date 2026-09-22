@@ -23,6 +23,15 @@ const FORMATS = [
   { name: 'srs', files: F('srs.psp', 'srs.dat') },
   { name: 'lorenzo', files: F('lorenzo.top', 'lorenzo.dat', 'patchesA.dat', 'patchesB.dat') },
   { name: 'flavio', files: F('flavio.top', 'flavio.dat', 'particles.txt', 'patches.txt') },
+  // The same structure drawn as impostors. Forced on by a query parameter,
+  // because the threshold that selects them is 50,000 particles and every
+  // fixture here is 40 — without this the impostor shader would have no
+  // coverage at all, and a shader that fails to compile renders nothing.
+  {
+    name: 'impostor',
+    files: F('lorenzo.top', 'lorenzo.dat', 'patchesA.dat', 'patchesB.dat'),
+    url: (process.env.PPVIEW_URL || 'http://localhost:3111/ppview') + '?impostors=1',
+  },
 ];
 
 const SCENARIOS = {

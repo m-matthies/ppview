@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback } from "react";
+import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import * as THREE from "three";
 import RepulsionSites from "../RepulsionSites";
 import Patches from "../Patches";
@@ -6,6 +6,7 @@ import { getParticleColors } from "../../colors";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import useClusterVisuals from "../../rendering/useClusterVisuals";
+import { impostorGeometry, makeImpostorMaterial, shouldUseImpostors, impostorOverride, applyImpostorRaycast } from "../../rendering/impostorSpheres";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";
@@ -33,18 +34,54 @@ function Particles() {
 
   const count = positions?.length ?? 0;
 
+  // Past a certain size the triangle count, not the data path, is what stops a
+  // structure being orbited: a sphere at 16 segments is 512 triangles, so a
+  // million particles asks for 512 million per frame. An impostor is two.
+  const useImpostors = useMemo(() => shouldUseImpostors(count, impostorOverride()), [count]);
+
   const geometry = useMemo(
-    () => new THREE.SphereGeometry(particleRadius, sphereSegments, sphereSegments),
-    [particleRadius, sphereSegments],
+    () => (useImpostors
+      ? impostorGeometry()
+      : new THREE.SphereGeometry(particleRadius, sphereSegments, sphereSegments)),
+    [useImpostors, particleRadius, sphereSegments],
   );
 
-  const material = useMemo(() => new THREE.MeshStandardMaterial({
+  const materialParameters = useMemo(() => ({
     metalness: 0.1,
     roughness: 0.7,
     envMapIntensity: 1.0,
     emissive: 0x000000,
     emissiveIntensity: 0.05,
   }), []);
+
+  const material = useMemo(
+    () => (useImpostors
+      ? makeImpostorMaterial({ ...materialParameters, particleRadius })
+      : new THREE.MeshStandardMaterial(materialParameters)),
+    // particleRadius is deliberately absent: it feeds a uniform, updated below,
+    // so changing the radius control must not rebuild the material and force a
+    // shader recompile.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [useImpostors, materialParameters],
+  );
+
+  useEffect(() => {
+    if (material.userData.particleRadius) material.userData.particleRadius.value = particleRadius;
+  }, [material, particleRadius]);
+
+  // The ray has to meet the sphere the shader draws, not the quad it is drawn
+  // on — otherwise clicks miss, or land on whichever billboard faces the camera.
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh || !useImpostors) return undefined;
+    const previous = mesh.raycast;
+    applyImpostorRaycast(mesh, () => particleRadiusRef.current);
+    return () => { mesh.raycast = previous; };
+  }, [useImpostors, geometry, count]);
+
+  // Read through a ref so changing the radius does not re-register the raycast.
+  const particleRadiusRef = useRef(particleRadius);
+  particleRadiusRef.current = particleRadius;
 
   const particleTypeCount = useMemo(() => {
     if (!positions?.length) return 0;

@@ -72,7 +72,7 @@ async function run() {
           // lighting and panel positions, so scenarios would otherwise
           // contaminate each other.
           await cdp.clearStorage(APP_ORIGIN);
-          await cdp.goto(APP_URL);
+          await cdp.goto(format.url ?? APP_URL);
           await cdp.dropFiles(format.files);
 
           results[key] = await cdp.evaluate(wrap(body));
