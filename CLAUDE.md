@@ -638,12 +638,75 @@ This means a trajectory frame update only re-renders `Particles.js` (or `OxDNANu
 | `Space` | Play / pause |
 | `←` / `→` | Step one frame (`Shift` for 10) |
 | `Home` / `End` | First / last frame |
+| `Ctrl`/`Cmd`+`O` | Open files (works before *and* after a scene is loaded) |
 | `P` | Screenshot |
 | `Q/A` | Shift particles on X-axis |
 | `W/S` | Shift particles on Y-axis |
 | `E/D` | Shift particles on Z-axis |
 
 Ignored while a form field has focus.
+
+`Ctrl`/`Cmd`+`O` lives in `FilePicker`, not `useKeyboardShortcuts` — that hook
+returns early on any modifier, and rightly so. `FileDropZone` has a chooser
+behind its click target but unmounts as soon as the first files land, so once a
+simulation was open the only way to load another was to drag it in. Worse, the
+browser's own `Ctrl`+`O` would then open a file *over the page* and discard the
+session, which is why the handler calls `preventDefault` even when it does
+nothing else. `FilePicker` is always mounted, so the shortcut behaves the same
+before and after a load, and is disabled in iframe mode with the rest of
+drag-and-drop.
+
+## Long operations say what they are doing (`uiStore.busyMessage`)
+
+Several things here block the main thread long enough to look like a crash.
+DBSCAN is the worst: **2.4s at 4,000 particles, 15s at 10,000, 60s at 20,000**.
+
+**Announcing it means yielding first.** Nothing is painted between a state change
+and the work it triggers, so a message set immediately before a blocking call can
+never appear. Clustering therefore moved out of a `useMemo` and into an effect
+that sets the caption, waits `PAINT_DELAY_MS` (32), and only then computes. The
+delay is a timeout rather than `requestAnimationFrame`, which never fires in a
+background tab — clustering that silently stopped happening when the tab was
+hidden would be a far worse bug than the one this fixes. `exportGLTF` does the
+same.
+
+Because clustering is now asynchronous, anything asserting on cluster output has
+to wait for it; `ClusteringPane.test.js` uses `waitFor`.
+
+Who writes it:
+- the load pipeline, through `loadSimulation`'s `status` callback — reading the
+  input file, parsing the topology, indexing the trajectory. The full-screen
+  loading cover shows this as its caption instead of the one fixed line
+  ("Reading trajectory") that was wrong for most of the time it was up.
+- `useClusterSource`, above `ANNOUNCE_CLUSTERING_ABOVE` (2,000) particles. Below
+  that DBSCAN finishes inside a frame or two and a flashing message is noise.
+- `useSceneExport.exportGLTF`.
+
+`BusyIndicator` renders it as a small panel while a scene is up, rather than the
+full-screen cover: hiding the structure someone is working on to tell them it is
+being worked on is worse than saying nothing. It sits above the floating panels
+(z-index 1500) because it reports on work those panels started, and it carries **no
+spinner** — the main thread is blocked, so anything animated would freeze
+mid-turn and look more broken than a static mark does.
+
+## The corner reports viewing state (`.scene-corner`)
+
+The top-right corner holds what the scene *is*, not what to do with it: the
+background toggle, and `ImpostorIndicator` when spheres are being drawn as
+impostors. It is a flex row so adding an item does not mean hardcoding the width
+of its neighbour.
+
+**The renderers report; the indicator does not guess.** Each layer decides on its
+own count — `Particles` on the particle count, `RepulsionSites` on the *bead*
+count, several per particle — so a system under the threshold by particles can be
+over it by spheres. Deriving the badge from the particle count alone would be
+wrong for exactly the format that draws the most geometry. Layers write into
+`uiStore.impostorLayers` from an effect and clear it on unmount;
+`usesImpostors(state)` is the one shared derivation.
+
+Shown only while impostors are on. An indicator always present but usually
+meaningless is decoration, and the tooltip carries what a badge cannot —
+including `?impostors=0` to force real geometry.
 
 ## Overlays (`store/overlayStore.js`, `utils/overlays.js`)
 

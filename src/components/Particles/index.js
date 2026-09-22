@@ -39,6 +39,14 @@ function Particles() {
   // million particles asks for 512 million per frame. An impostor is two.
   const useImpostors = useMemo(() => shouldUseImpostors(count, impostorOverride()), [count]);
 
+  // Tell the corner indicator which representation is on screen. Reported here
+  // because each layer decides for itself, on its own count.
+  const setImpostorLayer = useUIStore(state => state.setImpostorLayer);
+  useEffect(() => {
+    setImpostorLayer('particles', useImpostors);
+    return () => setImpostorLayer('particles', false);
+  }, [setImpostorLayer, useImpostors]);
+
   const geometry = useMemo(
     // The radius goes into the geometry in both paths: the occlusion pass draws
     // the impostor proxy with its own shader and never sees the uniform, so a

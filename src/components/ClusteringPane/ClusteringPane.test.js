@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import ClusteringPane from '.';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore } from '../../store/clusteringStore';
@@ -49,10 +49,14 @@ describe('ClusteringPane', () => {
     expect(screen.getByText('Clustered Particles:')).toBeInTheDocument();
   });
 
-  test('finds the two seeded clusters', () => {
+  // Awaited, because clustering now happens after a paint rather than during
+  // render: DBSCAN blocks for a minute at twenty thousand particles, and a
+  // message about it can only appear if something is painted first.
+  test('finds the two seeded clusters', async () => {
     render(<ClusteringPane />);
-    const totalClusters = screen.getByText('Total Clusters:').nextSibling;
-    expect(totalClusters).toHaveTextContent('2');
+    await waitFor(() => {
+      expect(screen.getByText('Total Clusters:').nextSibling).toHaveTextContent('2');
+    });
   });
 
   test('displays histogram section', () => {

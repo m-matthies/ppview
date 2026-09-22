@@ -12,6 +12,10 @@ import { captureScreenshot, exportSceneAsGLTF } from '../utils/exportUtils';
  * through selectors, so the hook re-renders its caller only when something it
  * actually exports changes.
  */
+// Long enough for the browser to commit a message and paint it before the work
+// that blocks it starts.
+const PAINT_DELAY_MS = 32;
+
 export default function useSceneExport({ sceneRef }) {
   const positions = useParticleStore(state => state.positions);
   const currentBoxSize = useParticleStore(state => state.currentBoxSize);
@@ -22,20 +26,34 @@ export default function useSceneExport({ sceneRef }) {
   const showBackdropPlanes = useUIStore(state => state.showBackdropPlanes);
   const currentColorScheme = useUIStore(state => state.currentColorScheme);
   const highlightedClusters = useClusteringStore(state => state.highlightedClusters);
+  const setBusyMessage = useUIStore(state => state.setBusyMessage);
 
   const takeScreenshot = useCallback(() => {
     captureScreenshot(sceneRef, currentConfigIndex, 1.0);
   }, [sceneRef, currentConfigIndex]);
 
+  /**
+   * Building a GLTF walks every particle and serialises the result, which at a
+   * large structure takes long enough to look like the click did nothing. It
+   * says so first — and the same way clustering does, by yielding, since the
+   * work blocks the thread that would otherwise paint the message.
+   */
   const exportGLTF = useCallback(() => {
-    exportSceneAsGLTF({
-      positions, currentBoxSize, currentConfigIndex, showSimulationBox,
-      showBackdropPlanes, currentColorScheme, topData, highlightedClusters,
-      sceneRef, particleRadius,
-    });
+    setBusyMessage('Building the GLTF export');
+    setTimeout(() => {
+      try {
+        exportSceneAsGLTF({
+          positions, currentBoxSize, currentConfigIndex, showSimulationBox,
+          showBackdropPlanes, currentColorScheme, topData, highlightedClusters,
+          sceneRef, particleRadius,
+        });
+      } finally {
+        setBusyMessage(null);
+      }
+    }, PAINT_DELAY_MS);
   }, [positions, currentBoxSize, currentConfigIndex, showSimulationBox,
       showBackdropPlanes, currentColorScheme, topData, highlightedClusters,
-      sceneRef, particleRadius]);
+      sceneRef, particleRadius, setBusyMessage]);
 
   /** Both at once, for the iframe host's "download" message. */
   const makeOutputFiles = useCallback(() => {

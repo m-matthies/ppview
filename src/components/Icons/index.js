@@ -179,3 +179,13 @@ export const EyeOffIcon = ({ size = 24, color = "currentColor" }) => (
     <line x1="1" y1="1" x2="23" y2="23"></line>
   </svg>
 );
+
+// A sphere with its silhouette marked: an impostor is a circle the shader
+// carves a sphere out of, so the outline is the part that is real.
+export const ImpostorIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9"></circle>
+    <path d="M12 3a9 9 0 0 0 0 18"></path>
+    <path d="M7 8.5a6 6 0 0 1 3-2"></path>
+  </svg>
+);

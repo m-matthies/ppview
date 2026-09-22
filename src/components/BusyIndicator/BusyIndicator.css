@@ -1,0 +1,38 @@
+/* ==========================================================================
+   Busy indicator — what the app is doing while it cannot redraw
+   ========================================================================== */
+
+.busy-indicator {
+    position: absolute;
+    top: var(--space-4);
+    left: 50%;
+    transform: translateX(-50%);
+    /* Above the floating panels (900) and the selection list (1000): it reports
+       on work those panels started, so being tucked behind one is exactly when
+       it is needed. Below the drop overlay (2000), which is modal by nature. */
+    z-index: 1500;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    font-size: var(--text-sm);
+    /* Never in the way of the scene it is describing. */
+    pointer-events: none;
+    max-width: min(90vw, 460px);
+}
+
+.busy-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Not a spinner: the main thread is blocked, so anything animated would freeze
+   mid-turn and look more broken than a static mark. */
+.busy-dot {
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+}

@@ -47,6 +47,14 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
     () => shouldUseImpostors(totalBeads, impostorOverride()), [totalBeads],
   );
 
+  // Tell the corner indicator which representation is on screen. Reported here
+  // because each layer decides for itself, on its own count.
+  const setImpostorLayer = useUIStore(state => state.setImpostorLayer);
+  useEffect(() => {
+    setImpostorLayer(`beads-${typeIndex}`, useImpostors);
+    return () => setImpostorLayer(`beads-${typeIndex}`, false);
+  }, [setImpostorLayer, useImpostors, typeIndex]);
+
   const geometry = useMemo(
     // A unit proxy: the bead radius is already in the instance scale, so both
     // the main pass and the occlusion pass get the right size from it.

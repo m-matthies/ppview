@@ -1,6 +1,9 @@
 import React, { useEffect, useCallback, useMemo, useRef, useState } from "react";
 import FileDropZone from "./components/FileDropZone";
 import FileDropOverlay from "./components/FileDropOverlay";
+import BusyIndicator from "./components/BusyIndicator";
+import FilePicker from "./components/FilePicker";
+import ImpostorIndicator from "./components/ImpostorIndicator";
 import ParticleScene from "./components/ParticleScene";
 import PatchLegend from "./components/PatchLegend";
 import ParticleLegend from "./components/ParticleLegend";
@@ -83,7 +86,7 @@ function App() {
   const {
     showPatchLegend, showParticleLegend, showSimulationBox, showBackdropPlanes,
     showCoordinateAxis, showStats, isControlsVisible, showClusteringPane,
-    filesDropped, isLoading, sceneRef, isIframeMode,
+    filesDropped, isLoading, busyMessage, sceneRef, isIframeMode,
     isDragDropEnabled, isPlaying, playbackSpeed, isSpeedPopupVisible,
     isLightingControlsModalOpen, setShowPatchLegend, setShowParticleLegend, setShowSimulationBox,
     setShowBackdropPlanes, setShowCoordinateAxis, setShowStats, setIsControlsVisible,
@@ -100,6 +103,7 @@ function App() {
     showClusteringPane: state.showClusteringPane,
     filesDropped: state.filesDropped,
     isLoading: state.isLoading,
+    busyMessage: state.busyMessage,
     sceneRef: state.sceneRef,
     isIframeMode: state.isIframeMode,
     isDragDropEnabled: state.isDragDropEnabled,
@@ -223,13 +227,16 @@ function App() {
 
     const outcome = await runLoad(() => loadSimulation({
       files, categorized, signal, scene: sceneWriters,
+      status: useUIStore.getState().setBusyMessage,
     }));
 
     // A superseded load is not a failure: a newer drop owns the scene now, and
-    // clearing the spinner or the drop zone here would fight it.
+    // clearing the spinner or the drop zone here would fight it. The caption
+    // belongs to whichever load is still running, so it is left alone too.
     if (outcome.superseded) return;
 
     setIsLoading(false);
+    useUIStore.getState().setBusyMessage(null);
     if (!outcome.ok) {
       console.error('Could not load the dropped files:', outcome.error ?? outcome.message);
       // Reset again. A load can fail *after* the topology has been parsed and
@@ -345,6 +352,10 @@ function App() {
 
       {particleCount > 0 && <ParticleScene />}
 
+      {/* Ctrl/Cmd+O, which the initial drop zone's chooser stopped answering the
+          moment it unmounted. */}
+      <FilePicker onFilesReceived={handleFilesReceived} enabled={isDragDropEnabled} />
+
       {/* Once a scene is up the initial drop zone is gone, so dragging more
           files anywhere over the window reveals a target for them. */}
       <FileDropOverlay
@@ -352,7 +363,13 @@ function App() {
         enabled={filesDropped && isDragDropEnabled}
       />
 
-      {particleCount > 0 && !isLoading && !isIframeMode && <SceneBackgroundToggle />}
+      {particleCount > 0 && !isLoading && !isIframeMode && (
+        <div className="scene-corner">
+          {/* Only appears when the scene is drawn as impostors. */}
+          <ImpostorIndicator />
+          <SceneBackgroundToggle />
+        </div>
+      )}
 
       {particleCount > 0 && !isLoading && (
         <ControlBar
@@ -391,9 +408,13 @@ function App() {
       {isLoading && (
         <div className="loading-overlay">
           <div className="loading-spinner" />
-          <p>Reading trajectory</p>
+          {/* Whatever stage the load is at, rather than one fixed line that was
+              wrong for most of the time it was showing. */}
+          <p>{busyMessage ?? 'Reading the simulation'}</p>
         </div>
       )}
+
+      <BusyIndicator />
 
       <LightingControlsModal
         isOpen={isLightingControlsModalOpen}

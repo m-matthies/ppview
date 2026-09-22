@@ -1,0 +1,21 @@
+/* ==========================================================================
+   Impostor indicator — which representation is on screen
+   ========================================================================== */
+
+.impostor-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    /* Dimmer than a control, because it is not one: it reports, it does not act.
+       --accent is reserved in this UI for "a control is on". */
+    color: var(--ink-dim);
+    box-shadow: var(--shadow-pop);
+    cursor: help;
+}

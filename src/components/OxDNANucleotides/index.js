@@ -74,6 +74,14 @@ function OxDNANucleotides() {
     () => shouldUseImpostors(count, impostorOverride()), [count],
   );
 
+  // Tell the corner indicator which representation is on screen. Reported here
+  // because each layer decides for itself, on its own count.
+  const setImpostorLayer = useUIStore(state => state.setImpostorLayer);
+  useEffect(() => {
+    setImpostorLayer('nucleotides', useImpostors);
+    return () => setImpostorLayer('nucleotides', false);
+  }, [setImpostorLayer, useImpostors]);
+
   const bbGeo = useMemo(
     () => (useImpostors
       ? impostorGeometry(0.2 * radiusScale)

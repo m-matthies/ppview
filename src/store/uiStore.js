@@ -33,6 +33,27 @@ export const useUIStore = create((set) => ({
   // File loading state
   filesDropped: false,
   isLoading: false,
+  /**
+   * What the app is busy doing, or null.
+   *
+   * Anything that blocks for long enough to look like a hang says so here. The
+   * full-screen loading cover uses it as its caption while a scene is coming up,
+   * and `BusyIndicator` shows it as a small panel the rest of the time — work on
+   * an already-loaded scene should not hide the scene it is working on.
+   */
+  busyMessage: null,
+
+  /**
+   * Which layers are currently drawing impostors, by layer id.
+   *
+   * Reported by the renderers rather than worked out by the indicator, because
+   * each one decides for itself and on a different count: `Particles` on the
+   * particle count, `RepulsionSites` on the *bead* count — several per particle,
+   * so a system under the threshold by particles can be over it by spheres.
+   * Guessing from the particle count alone would be wrong for exactly the format
+   * that draws the most.
+   */
+  impostorLayers: {},
   
   // Selection state
   selectedParticles: [],
@@ -75,6 +96,21 @@ export const useUIStore = create((set) => ({
   setShowClusteringPane: (show) => set({ showClusteringPane: show }),
   setFilesDropped: (dropped) => set({ filesDropped: dropped }),
   setIsLoading: (loading) => set({ isLoading: loading }),
+  // A no-op when the message is unchanged: this is written from effects and
+  // from loops that report progress, and every renderer subscribing to the
+  // store would otherwise re-render on a repeated write.
+  // Written from renderer effects, so a repeated report must not re-render.
+  setImpostorLayer: (id, active) => set((state) => {
+    const current = !!state.impostorLayers[id];
+    if (current === active) return state;
+    const next = { ...state.impostorLayers };
+    if (active) next[id] = true; else delete next[id];
+    return { impostorLayers: next };
+  }),
+
+  setBusyMessage: (message) => set((state) => (
+    state.busyMessage === message ? state : { busyMessage: message }
+  )),
   setSelectedParticles: (particles) => set({ selectedParticles: particles }),
   setSceneRef: (ref) => set({ sceneRef: ref }),
   setIsIframeMode: (isIframe) => set({ isIframeMode: isIframe }),
@@ -114,3 +150,11 @@ export const useUIStore = create((set) => ({
   setIsSpeedPopupVisible: (visible) => set({ isSpeedPopupVisible: visible }),
   setSphereSegments: (segments) => set({ sphereSegments: segments }),
 }));
+
+/**
+ * True when any layer is drawing impostors.
+ *
+ * One definition, exported, for the same reason `isSceneRestricted` is: two
+ * copies of "is the scene impostored" would eventually disagree.
+ */
+export const usesImpostors = (state) => Object.keys(state.impostorLayers).length > 0;

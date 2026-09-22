@@ -21,7 +21,8 @@ import { step, checkpoint, LoadError } from './staleness';
  */
 
 /** Reads an oxDNA input file, if the drop has one. Never fatal. */
-async function readInputFile(categorized, signal, scene) {
+async function readInputFile(categorized, signal, scene, status) {
+  if (categorized.inputFile) status('Reading the input file');
   if (!categorized.inputFile) return {};
   try {
     const content = await step(signal, categorized.inputFile.text());
@@ -40,7 +41,8 @@ async function readInputFile(categorized, signal, scene) {
 }
 
 /** MGL carries its own coordinates, so it needs no topology or trajectory. */
-async function loadMgl(categorized, signal, scene) {
+async function loadMgl(categorized, signal, scene, status) {
+  status('Reading the MGL file');
   const isTrajectory = !categorized.mglFile;
   const source = categorized.mglFile ?? categorized.mglTrajectory;
   const content = await step(signal, source.text());
@@ -67,7 +69,8 @@ async function loadMgl(categorized, signal, scene) {
 }
 
 /** Parses the topology and hands the format its chance to set up the store. */
-async function loadTopology(categorized, files, inputParams, signal, scene) {
+async function loadTopology(categorized, files, inputParams, signal, scene, status) {
+  status('Parsing the topology');
   const chosen = pickTopologyFile(categorized, files);
   if (!chosen) {
     throw new LoadError('No topology file detected. Check that the drop includes one.');
@@ -87,13 +90,14 @@ async function loadTopology(categorized, files, inputParams, signal, scene) {
 }
 
 /** Points the scene at the trajectory and indexes its frames. */
-async function loadTrajectory(categorized, files, signal, scene, exclude) {
+async function loadTrajectory(categorized, files, signal, scene, exclude, status) {
   const file = pickTrajectoryFile(categorized, files, { exclude });
   if (!file) {
     throw new LoadError('No trajectory file detected. Check that the drop includes one.');
   }
   scene.setTrajFile(file);
 
+  status('Indexing the trajectory');
   const index = await step(signal, buildTrajIndex(file));
   scene.setConfigIndex(index);
   scene.setTotalConfigs(index.length);
@@ -103,24 +107,26 @@ async function loadTrajectory(categorized, files, signal, scene, exclude) {
  * @param scene  store writers: setTopData, setPositions, setCurrentBoxSize,
  *               setCurrentTime, setCurrentEnergy, setConfigIndex,
  *               setTotalConfigs, setTrajFile, setFormatParticleRadius
+ * @param status  called with a short line saying what is happening now, so a
+ *                slow load does not look like a hang. Defaults to a no-op.
  * @throws {LoadError} with a message meant for the person
  * @throws {StaleLoad} when a newer load has taken over
  */
-export async function loadSimulation({ files, categorized, signal, scene }) {
-  const inputParams = await readInputFile(categorized, signal, scene);
+export async function loadSimulation({ files, categorized, signal, scene, status = () => {} }) {
+  const inputParams = await readInputFile(categorized, signal, scene, status);
   checkpoint(signal);
 
   // MGL is self-contained: no topology, no trajectory file, nothing after this.
   if (categorized.mglFile || categorized.mglTrajectory) {
-    await loadMgl(categorized, signal, scene);
+    await loadMgl(categorized, signal, scene, status);
     return;
   }
 
-  await loadTopology(categorized, files, inputParams, signal, scene);
+  await loadTopology(categorized, files, inputParams, signal, scene, status);
   // The topology and input files are spoken for; the name-based trajectory
   // fallback must not pick one of them.
   const spokenFor = [pickTopologyFile(categorized, files)?.file, categorized.inputFile];
-  await loadTrajectory(categorized, files, signal, scene, spokenFor);
+  await loadTrajectory(categorized, files, signal, scene, spokenFor, status);
 
   if (categorized.unknown?.length) {
     console.warn('Ignored files of unrecognised type:',
