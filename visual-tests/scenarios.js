@@ -16,6 +16,8 @@ const fixture = (name) => fs.readFileSync(path.join(__dirname, 'fixtures', name)
 const CLUSTERS_A = fixture('clusters.json');
 const CLUSTERS_B = fixture('clusters-b.json');
 
+const IMPOSTORS_ON = (process.env.PPVIEW_URL || 'http://localhost:3111/ppview') + '?impostors=1';
+
 const FORMATS = [
   { name: 'mgl', files: F('mgl.mgl') },
   { name: 'raspberry', files: F('raspberry.top', 'raspberry.dat') },
@@ -30,7 +32,30 @@ const FORMATS = [
   {
     name: 'impostor',
     files: F('lorenzo.top', 'lorenzo.dat', 'patchesA.dat', 'patchesB.dat'),
-    url: (process.env.PPVIEW_URL || 'http://localhost:3111/ppview') + '?impostors=1',
+    url: IMPOSTORS_ON,
+  },
+  // Impostors are per renderer, not per app: each mesh opts in separately and
+  // three different shapes are involved. These two cover the ones the plain
+  // sphere impostor cannot speak for.
+  //
+  // oxDNA is the format most likely to reach a million particles and it draws
+  // four meshes per nucleotide — the backbone is a sphere impostor, the
+  // nucleoside a rotated *ellipsoid* solved by a different shader, and the two
+  // cylinders stay real geometry. A shader that fails to compile draws nothing,
+  // and an ellipsoid solved wrongly still draws something, so this needs its own
+  // fixture rather than an assurance.
+  {
+    name: 'impostor-oxdna',
+    files: F('oxdna.top', 'oxdna.dat'),
+    url: IMPOSTORS_ON,
+  },
+  // Raspberry draws beads, not particles, and the beads carry their radius in
+  // the instance scale rather than in the geometry — the one case where the
+  // shader's radius multiplier is 1.
+  {
+    name: 'impostor-raspberry',
+    files: F('raspberry.top', 'raspberry.dat'),
+    url: IMPOSTORS_ON,
   },
 ];
 
@@ -63,8 +88,14 @@ const FORMATS = [
  * that is the subject.
  */
 const RENDERERS = ['raspberry', 'oxdna', 'srs', 'lorenzo', 'impostor'];
+// The two fixtures that exist only to exercise a shader. They join the scenarios
+// where the *representation* is the subject — does it compile, does it draw the
+// right shape, does the radius reach it, can it be clicked — and stay out of
+// clustering, where hiding and highlighting happen in the write callback that
+// both representations share.
+const NEW_IMPOSTORS = ['impostor-oxdna', 'impostor-raspberry'];
 // Springs are not pickable and srs otherwise picks exactly as lorenzo does.
-const PICKABLE = ['raspberry', 'oxdna', 'lorenzo', 'impostor'];
+const PICKABLE = ['raspberry', 'oxdna', 'lorenzo', 'impostor', ...NEW_IMPOSTORS];
 // MGL frames live in memory; every other format slices them out of a file.
 const LOADERS = ['mgl', 'oxdna'];
 // Scene-wide behaviour — one lighting rig, one control bar, one set of stores.
@@ -529,7 +560,7 @@ const SCENARIOS = {
 const SCENARIO_FORMATS = {
   load: null,          // the per-format smoke test: parse, detect, draw
   playback: LOADERS,   // frame stepping and the cache, one per loading path
-  detail: RENDERERS,   // resolution and radius must reach every renderer
+  detail: [...RENDERERS, ...NEW_IMPOSTORS],  // resolution and radius reach every renderer
   clustering: RENDERERS,     // and so must cluster appearance
   clusterControls: ANY_ONE,  // the pane and the View control: scene-wide
   selection: PICKABLE,       // picking, per pickable renderer

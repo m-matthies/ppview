@@ -6,7 +6,7 @@
 //   - ns↔bb connector cylinder (r=0.1), colored by strand
 //   - bb→bb3' backbone connector (tapered r=0.1 to r=0.02), colored by strand
 
-import React, { useRef, useMemo, useCallback } from "react";
+import React, { useRef, useMemo, useCallback, useEffect } from "react";
 import * as THREE from "three";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
@@ -15,6 +15,10 @@ import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";
 import useClusterVisuals from "../../rendering/useClusterVisuals";
+import {
+  impostorGeometry, makeImpostorMaterial, makeEllipsoidImpostorMaterial,
+  shouldUseImpostors, impostorOverride, applyImpostorRaycast,
+} from "../../rendering/impostors";
 
 // Base-type colors matching oxdna-viewer nucleosideColors
 const BASE_COLORS = {
@@ -60,13 +64,27 @@ function OxDNANucleotides() {
   const baseParticleRadius = useParticleStore(state => state.baseParticleRadius);
   const radiusScale = particleRadius / (baseParticleRadius || 1);
 
+  // A nucleotide draws four meshes, and at 16 segments the two spheres are 1024
+  // of its ~1150 triangles — so oxDNA, the format most likely to actually reach a
+  // million particles, was the one impostors did nothing for. The backbone is a
+  // plain sphere; the nucleoside is a rotated ellipsoid and needs the quadric
+  // shader. The two cylinders stay real geometry: they are ~130 triangles
+  // between them, and a cylinder impostor is a different shape problem.
+  const useImpostors = useMemo(
+    () => shouldUseImpostors(count, impostorOverride()), [count],
+  );
+
   const bbGeo = useMemo(
-    () => new THREE.SphereGeometry(0.2 * radiusScale, sphereSegments, sphereSegments),
-    [sphereSegments, radiusScale],
+    () => (useImpostors
+      ? impostorGeometry()
+      : new THREE.SphereGeometry(0.2 * radiusScale, sphereSegments, sphereSegments)),
+    [useImpostors, sphereSegments, radiusScale],
   );
   const nsGeo = useMemo(
-    () => new THREE.SphereGeometry(0.3 * radiusScale, sphereSegments, sphereSegments),
-    [sphereSegments, radiusScale],
+    () => (useImpostors
+      ? impostorGeometry()
+      : new THREE.SphereGeometry(0.3 * radiusScale, sphereSegments, sphereSegments)),
+    [useImpostors, sphereSegments, radiusScale],
   );
   const conGeo = useMemo(
     () => new THREE.CylinderGeometry(0.1 * radiusScale, 0.1 * radiusScale, 1, sphereSegments),
@@ -77,10 +95,38 @@ function OxDNANucleotides() {
     [sphereSegments, radiusScale],
   );
 
-  const material = useMemo(() => new THREE.MeshStandardMaterial({
-    metalness: 0.1,
-    roughness: 0.6,
-  }), []);
+  const materialParameters = useMemo(() => ({ metalness: 0.1, roughness: 0.6 }), []);
+
+  // The cylinders always use the plain material; only the two spheres change
+  // representation.
+  const material = useMemo(
+    () => new THREE.MeshStandardMaterial(materialParameters), [materialParameters],
+  );
+
+  // Radii feed uniforms rather than geometry in the impostor path, so they are
+  // deliberately absent from these dependency lists: changing the radius control
+  // must not rebuild a material and force a shader recompile.
+  const bbMaterial = useMemo(
+    () => (useImpostors
+      ? makeImpostorMaterial({ ...materialParameters, particleRadius: 0.2 * radiusScale })
+      : material),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [useImpostors, materialParameters, material],
+  );
+  const nsMaterial = useMemo(
+    () => (useImpostors
+      // The instance matrix carries the [0.7, 0.3, 0.7] scale and the rotation
+      // onto a3; the uniform is the radius the sphere geometry used to bake in.
+      ? makeEllipsoidImpostorMaterial({ ...materialParameters, radius: 0.3 * radiusScale })
+      : material),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [useImpostors, materialParameters, material],
+  );
+
+  useEffect(() => {
+    if (bbMaterial.userData.particleRadius) bbMaterial.userData.particleRadius.value = 0.2 * radiusScale;
+    if (nsMaterial.userData.particleRadius) nsMaterial.userData.particleRadius.value = 0.3 * radiusScale;
+  }, [bbMaterial, nsMaterial, radiusScale]);
 
   const strandColors = useMemo(() => {
     const palette = getParticleColors(currentColorScheme);
@@ -228,13 +274,26 @@ function OxDNANucleotides() {
 
   useRegisterPickable('nucleotides', { meshRef: bbRef, resolveIndex, enabled: ready });
 
+  // Picking hits the backbone, so it is the one mesh whose ray has to meet the
+  // sphere the shader draws rather than the quad it draws on. Read through a ref
+  // so changing the radius does not re-register the raycast.
+  const bbRadiusRef = useRef(0.2 * radiusScale);
+  bbRadiusRef.current = 0.2 * radiusScale;
+  useEffect(() => {
+    const mesh = bbRef.current;
+    if (!mesh || !useImpostors) return undefined;
+    const previous = mesh.raycast;
+    applyImpostorRaycast(mesh, () => bbRadiusRef.current);
+    return () => { mesh.raycast = previous; };
+  }, [useImpostors, bbGeo, count]);
+
   if (!ready) return null;
 
   return (
     <>
-      <InstancedLayer ref={bbRef} geometry={bbGeo} material={material} count={count}
+      <InstancedLayer ref={bbRef} geometry={bbGeo} material={bbMaterial} count={count}
         write={writeBackbone} deps={[writeBackbone]} />
-      <InstancedLayer ref={nsRef} geometry={nsGeo} material={material} count={count}
+      <InstancedLayer ref={nsRef} geometry={nsGeo} material={nsMaterial} count={count}
         write={writeNucleoside} deps={[writeNucleoside]} />
       <InstancedLayer ref={conRef} geometry={conGeo} material={material} count={count}
         write={writeConnector} deps={[writeConnector]} />

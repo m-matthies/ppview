@@ -208,6 +208,45 @@ Two traps are encoded here so no renderer can hit them again:
 `geometry` is part of the layer's dependency list, so a geometry change
 repopulates both matrices *and* colours.
 
+### Impostors are per renderer, not per app (`src/rendering/impostors.js`)
+Each mesh opts in separately, and three shapes are involved:
+
+| mesh | representation | radius comes from |
+|---|---|---|
+| `Particles` spheres | sphere impostor | `uParticleRadius`, geometry was `SphereGeometry(particleRadius)` |
+| `RepulsionSites` beads | sphere impostor | the **instance scale**; the multiplier is 1 |
+| `OxDNANucleotides` backbone | sphere impostor | `0.2 * radiusScale` |
+| `OxDNANucleotides` nucleoside | **ellipsoid** impostor | `0.3 * radiusScale`, scale/rotation from the instance matrix |
+| patch cones, springs, nucleotide cylinders | real geometry | — |
+
+**The threshold counts what is drawn, not what is loaded.** `RepulsionSites`
+passes `totalBeads`, because a raspberry particle is several beads: a system well
+under 50,000 by particles can be well over it by spheres. Counting particles left
+the format that draws the most geometry per particle as the last to get impostors.
+
+**A nucleoside is an ellipsoid, so it needs a different shader.** The sphere
+impostor reads its answer off the quad, because a sphere's silhouette is always a
+circle. An ellipsoid's depends on its orientation, so
+`makeEllipsoidImpostorMaterial` intersects the view ray with the quadric instead:
+`mat3(modelViewMatrix * instanceMatrix) * uRadius` maps a unit sphere onto the
+ellipsoid in view space, and inverting it turns ray-ellipsoid intersection back
+into a quadratic. This matters because a nucleotide draws four meshes and at 16
+segments the two spheres are 1024 of its ~1150 triangles — impostoring only the
+backbone would leave half the cost behind.
+
+**Known limitation: ambient occlusion speckles on impostors.** `EffectComposer`
+runs with `enableNormalPass`, and that pass draws every object with an override
+material, which cannot carry a custom vertex shader — so impostors write the
+*quad's* flat normal into the normal buffer while the depth buffer holds the
+*sphere's*. SSAO comparing the two produces noise (measured: `edges` 1938 against
+1614 for the same structure as real geometry). It is pre-existing, it affects all
+three impostor shapes, and it is invisible in the regime impostors actually
+engage — at 50,000+ particles each is a few pixels across. Fixing it properly
+means an AO implementation that reconstructs normals from depth rather than from
+a normal pass. Dropping `gl_FragDepth` would also cure it, but that is what makes
+impostors intersect each other and the box correctly, which matters more here —
+raspberry beads and nucleotide backbones overlap by design.
+
 ### Instance matrices and the cached bounding sphere
 `InstancedLayer` sets `mesh.boundingSphere = null` after every matrix write.
 THREE's `InstancedMesh.raycast` tests the ray against `boundingSphere` first and
@@ -410,7 +449,16 @@ when geometry appears, vanishes, resizes or loses its colour.
 
 **Not every scenario runs against every fixture** — `SCENARIO_FORMATS` in
 `scenarios.js` says which, and is the suite's coverage argument in one table.
-26 jobs, ~170s; the full cross-product was 49 jobs and 334s.
+32 jobs, ~210s; the full cross-product would be 72.
+
+Three of the nine fixtures exist only to exercise a shader: `impostor`,
+`impostor-oxdna` and `impostor-raspberry` load ordinary files with `?impostors=1`,
+because the threshold is 50,000 particles and every fixture here is 40 — without
+them the impostor shaders would have no coverage at all, and a shader that fails
+to compile draws nothing while an ellipsoid solved wrongly still draws something.
+They run the scenarios where the *representation* is the subject (load, detail,
+selection) and stay out of clustering, where hiding and highlighting happen in the
+write callback both representations share.
 
 A page load costs **2.6s before any scenario begins** — Chrome building a
 software WebGL context and the app drawing its first frame. Serving the

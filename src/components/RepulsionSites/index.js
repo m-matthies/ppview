@@ -1,4 +1,4 @@
-import React, { useMemo, useRef, useCallback } from "react";
+import React, { useMemo, useRef, useCallback, useEffect } from "react";
 import * as THREE from 'three';
 import { useUIStore } from "../../store/uiStore";
 import { useParticleStore } from "../../store/particleStore";
@@ -6,6 +6,9 @@ import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox, rotationMatrixOf } from "../../rendering/transforms";
 import useClusterVisuals from "../../rendering/useClusterVisuals";
+import {
+  impostorGeometry, makeImpostorMaterial, shouldUseImpostors, impostorOverride, applyImpostorRaycast,
+} from "../../rendering/impostors";
 
 /**
  * Repulsion-site beads for raspberry particles.
@@ -31,18 +34,42 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   const baseParticleRadius = useParticleStore(state => state.baseParticleRadius);
   const radiusScale = particleRadius / (baseParticleRadius || 1);
 
-  const geometry = useMemo(
-    () => new THREE.SphereGeometry(1, sphereSegments, sphereSegments),
-    [sphereSegments],
-  );
-  const material = useMemo(() => new THREE.MeshStandardMaterial({
-    metalness: 0.1,
-    roughness: 0.7,
-  }), []);
-
   const hasValidData = particles?.length > 0 && repulsionSiteData?.length > 0;
   const numBeads = repulsionSiteData?.length ?? 0;
   const totalBeads = hasValidData ? particles.length * numBeads : 0;
+
+  // On the bead count, not the particle count, because beads are what is drawn:
+  // a raspberry particle is several of them, so a system well under the
+  // threshold by particles can be well over it by spheres. Counting particles
+  // here meant the one format that draws the most geometry per particle was the
+  // last to get impostors.
+  const useImpostors = useMemo(
+    () => shouldUseImpostors(totalBeads, impostorOverride()), [totalBeads],
+  );
+
+  const geometry = useMemo(
+    () => (useImpostors
+      ? impostorGeometry()
+      : new THREE.SphereGeometry(1, sphereSegments, sphereSegments)),
+    [useImpostors, sphereSegments],
+  );
+  const material = useMemo(
+    // The bead radius is written into the instance scale — the sphere geometry
+    // here is a unit sphere — so the shader's radius multiplier is 1.
+    () => (useImpostors
+      ? makeImpostorMaterial({ metalness: 0.1, roughness: 0.7, particleRadius: 1 })
+      : new THREE.MeshStandardMaterial({ metalness: 0.1, roughness: 0.7 })),
+    [useImpostors],
+  );
+
+  // The ray has to meet the sphere the shader draws, not the quad it draws on.
+  useEffect(() => {
+    const mesh = meshRef.current;
+    if (!mesh || !useImpostors) return undefined;
+    const previous = mesh.raycast;
+    applyImpostorRaycast(mesh, () => 1);
+    return () => { mesh.raycast = previous; };
+  }, [useImpostors, geometry, totalBeads]);
 
   // Cluster appearance per particle, resolved once and shared by every bead of
   // that particle. Raspberry is drawn entirely as beads, so without this it was

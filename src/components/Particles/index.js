@@ -6,7 +6,7 @@ import { getParticleColors } from "../../colors";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import useClusterVisuals from "../../rendering/useClusterVisuals";
-import { impostorGeometry, makeImpostorMaterial, shouldUseImpostors, impostorOverride, applyImpostorRaycast } from "../../rendering/impostorSpheres";
+import { impostorGeometry, makeImpostorMaterial, shouldUseImpostors, impostorOverride, applyImpostorRaycast } from "../../rendering/impostors";
 import InstancedLayer from "../../rendering/InstancedLayer";
 import { useRegisterPickable } from "../../rendering/pickingService";
 import { centreOnBox } from "../../rendering/transforms";

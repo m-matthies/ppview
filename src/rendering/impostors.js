@@ -162,6 +162,111 @@ export function makeImpostorMaterial({ particleRadius = 0.5, ...parameters } = {
 }
 
 /**
+ * The same trick for a rotated ellipsoid, which is what a nucleoside is.
+ *
+ * The sphere shader above gets its answer from the quad's own coordinates,
+ * because a sphere looks the same from every direction and its silhouette is
+ * always a circle. An ellipsoid's is not: it depends on the orientation, so the
+ * surface has to be found by intersecting the view ray with the quadric rather
+ * than read off the quad.
+ *
+ * Worth the extra work because a nucleoside is half of oxDNA's triangle budget.
+ * A nucleotide draws four meshes — two spheres and two cylinders — and at 16
+ * segments the two spheres are 1024 of its ~1150 triangles, so impostoring only
+ * the backbone would leave half the cost behind.
+ *
+ * `instanceMatrix` already carries rotation times the non-uniform scale, so the
+ * 3x3 of `modelViewMatrix * instanceMatrix`, times the radius uniform, is
+ * exactly the map from a unit sphere to this ellipsoid in view space. Inverting
+ * it turns ray-ellipsoid intersection back into ray-unit-sphere intersection,
+ * which is a quadratic.
+ */
+export function makeEllipsoidImpostorMaterial({ radius = 1, ...parameters } = {}) {
+  const material = new THREE.MeshStandardMaterial(parameters);
+  const radiusUniform = { value: radius };
+  material.userData.particleRadius = radiusUniform;
+
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uRadius = radiusUniform;
+    shader.vertexShader = shader.vertexShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vCentreView;
+        varying vec3 vPosView;
+        varying mat3 vToLocal;      // view-space offset -> unit-sphere space
+        varying mat3 vToView;       // and back again
+        varying float vProjZZ;
+        varying float vProjWZ;
+        uniform float uRadius;
+      `)
+      .replace('#include <project_vertex>', `
+        // Unit sphere -> view space. The instance matrix holds rotation times
+        // the ellipsoid's non-uniform scale, so this is the whole shape.
+        mat3 toView = mat3(modelViewMatrix) * mat3(instanceMatrix) * uRadius;
+        vToView = toView;
+        vToLocal = inverse(toView);
+
+        vec4 centreView = modelViewMatrix * instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
+        vCentreView = centreView.xyz;
+        vProjZZ = projectionMatrix[2][2];
+        vProjWZ = projectionMatrix[3][2];
+
+        // The quad has to cover the silhouette from any angle, and the longest
+        // semi-axis bounds it whatever the rotation. Over-covering costs a few
+        // discarded fragments; under-covering clips the shape.
+        float bound = max(length(toView[0]), max(length(toView[1]), length(toView[2])));
+
+        vec4 mvPosition = centreView;
+        mvPosition.xy += position.xy * 2.0 * bound;
+        vPosView = mvPosition.xyz;
+        gl_Position = projectionMatrix * mvPosition;
+      `);
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace('#include <common>', `
+        #include <common>
+        varying vec3 vCentreView;
+        varying vec3 vPosView;
+        varying mat3 vToLocal;
+        varying mat3 vToView;
+        varying float vProjZZ;
+        varying float vProjWZ;
+        float gEllipsoidZ;
+      `)
+      .replace('#include <normal_fragment_begin>', `
+        // The camera sits at the origin in view space, so the ray through this
+        // fragment is simply its own position.
+        vec3 rayDir = normalize(vPosView);
+        vec3 originLocal = vToLocal * -vCentreView;
+        vec3 dirLocal = vToLocal * rayDir;
+
+        float a = dot(dirLocal, dirLocal);
+        float b = 2.0 * dot(originLocal, dirLocal);
+        float c = dot(originLocal, originLocal) - 1.0;
+        float disc = b * b - 4.0 * a * c;
+        if (disc < 0.0) discard;             // the ray misses this ellipsoid
+        float t = (-b - sqrt(disc)) / (2.0 * a);
+        vec3 hitLocal = originLocal + t * dirLocal;
+
+        gEllipsoidZ = (vCentreView + vToView * hitLocal).z;
+
+        // A unit sphere's normal is its own surface point; carrying it back
+        // through the inverse-transpose is what keeps it perpendicular to the
+        // ellipsoid rather than to the sphere it came from.
+        vec3 normal = normalize(transpose(vToLocal) * hitLocal);
+        vec3 nonPerturbedNormal = normal;
+      `)
+      .replace('#include <dithering_fragment>', `
+        #include <dithering_fragment>
+        gl_FragDepth = (((vProjZZ * gEllipsoidZ + vProjWZ) / -gEllipsoidZ) + 1.0) * 0.5;
+      `);
+  };
+
+  material.customProgramCacheKey = () => 'impostor-ellipsoid-v1';
+  return material;
+}
+
+/**
  * Above this many particles, impostors are worth their extra per-pixel cost.
  *
  * Below it the triangle count is not a problem and real geometry is simpler:
