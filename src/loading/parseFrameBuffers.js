@@ -31,6 +31,12 @@ const UPPER_E = 69;
 const isSpace = (c) => c === SPACE || c === TAB;
 const isDigit = (c) => c >= ZERO && c <= NINE;
 
+// Powers of ten for the fractional part. Indexed by digit count, so a number
+// needs one division rather than a multiply per digit. Trajectories do not carry
+// more precision than a double holds, so the table stops where that does.
+const POW10 = [1];
+for (let i = 1; i <= 18; i++) POW10[i] = POW10[i - 1] * 10;
+
 /**
  * Reusable buffers, so playback does not allocate three arrays per frame.
  *
@@ -83,20 +89,27 @@ export function parseFrameBuffers(text, buffers) {
 
     let value = 0;
     let seenDigit = false;
-    while (cursor < length && isDigit(text.charCodeAt(cursor))) {
-      value = value * 10 + (text.charCodeAt(cursor) - ZERO);
+    let code;
+    while (cursor < length && (code = text.charCodeAt(cursor)) >= ZERO && code <= NINE) {
+      value = value * 10 + (code - ZERO);
       cursor++;
       seenDigit = true;
     }
     if (cursor < length && text.charCodeAt(cursor) === DOT) {
       cursor++;
-      let scale = 0.1;
-      while (cursor < length && isDigit(text.charCodeAt(cursor))) {
-        value += (text.charCodeAt(cursor) - ZERO) * scale;
-        scale *= 0.1;
+      // The fraction accumulates as an integer and is divided once, rather than
+      // multiplying a running scale by 0.1 per digit. One division per number
+      // instead of one multiply per digit, and it avoids the drift that
+      // repeatedly multiplying by an inexact 0.1 introduces.
+      let fraction = 0;
+      let digits = 0;
+      while (cursor < length && (code = text.charCodeAt(cursor)) >= ZERO && code <= NINE) {
+        fraction = fraction * 10 + (code - ZERO);
+        digits++;
         cursor++;
         seenDigit = true;
       }
+      if (digits > 0) value += fraction / (POW10[digits] ?? Math.pow(10, digits));
     }
     if (!seenDigit) { cursor = start; return NaN; }
 

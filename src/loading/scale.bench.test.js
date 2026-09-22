@@ -10,8 +10,9 @@
  * two orders of magnitude, in Node, where nothing else competes for the thread.
  */
 import { loadFrame } from './loadFrame';
+import { parseFrameBuffers, createFrameBuffers } from './parseFrameBuffers';
 import { parseConfiguration } from '../utils/trajectoryLoader';
-import { applyPeriodicBoundary, computeRotationMatrix, calcCOM } from '../utils/geometryUtils';
+import { applyPeriodicBoundary, computeRotationMatrix, calcCOM, calcCOMFromBuffer } from '../utils/geometryUtils';
 import { getParticleType } from '../formats/parsers/particleType';
 import * as THREE from 'three';
 
@@ -111,6 +112,86 @@ bench('per-frame JS cost by particle count', () => {
     console.log(`  ${colorMs.toFixed(0).padStart(6)} ms  setColorAt`);
     console.log(`  ${((trisPerSphere * n) / 1e6).toFixed(0).padStart(6)} M   triangles submitted (sphere, 16 segments)`);
     expect(matrixMs).toBeGreaterThan(0);
+  });
+
+  it('shows what a cached frame costs against a fresh one', async () => {
+    // Playback loops and scrubbing goes back and forth, so after the first pass
+    // through a trajectory nearly every frame is a revisit.
+    const n = 400_000;
+    const text = frameText(n);
+    const file = { size: text.length, slice: () => ({ text: async () => text }) };
+    const topData = { totalParticles: n, particleTypes: [{ typeIndex: 0 }] };
+    const scene = {
+      setPositions: () => {}, setCurrentBoxSize: () => {},
+      setCurrentTime: () => {}, setCurrentEnergy: () => {},
+    };
+
+    const once = async () => {
+      const t0 = process.hrtime.bigint();
+      await loadFrame({ file, index: [0], frameNumber: 0, topData, scene });
+      return Number(process.hrtime.bigint() - t0) / 1e6;
+    };
+
+    const cold = await once();          // parses
+    const warm = [];
+    for (let i = 0; i < 5; i++) warm.push(await once());
+    warm.sort((a, b) => a - b);
+
+    console.log(`\n  at ${n.toLocaleString()} particles:`);
+    console.log(`  ${cold.toFixed(0).padStart(6)} ms  first visit (parsed)`);
+    console.log(`  ${warm[2].toFixed(0).padStart(6)} ms  revisit (cached)`);
+    console.log(`  ${(cold / warm[2]).toFixed(1).padStart(6)}x   faster`);
+    expect(warm[2]).toBeLessThan(cold);
+  });
+
+  it('shows what is left in the fused path', () => {
+    // The stage breakdown below predates the rewrite and measures the old four
+    // passes. This measures what loadFrame actually runs now, so the next piece
+    // of work is chosen from evidence rather than from the old shape.
+    const n = 400_000;
+    const text = frameText(n);
+    const topData = { totalParticles: n, particleTypes: [{ typeIndex: 0 }] };
+    const buffers = createFrameBuffers();
+
+    const time = (label, fn) => {
+      fn();
+      const samples = [];
+      let value;
+      for (let r = 0; r < 5; r++) {
+        const t0 = process.hrtime.bigint();
+        value = fn();
+        samples.push(Number(process.hrtime.bigint() - t0) / 1e6);
+      }
+      samples.sort((a, b) => a - b);
+      return { label, ms: samples[2], value };
+    };
+
+    const scan = time('parseFrameBuffers (scan into typed arrays)',
+      () => parseFrameBuffers(text, buffers));
+    const frame = scan.value;
+    const com = time('  centre of mass from the buffer',
+      () => calcCOMFromBuffer(frame.positions, frame.count, frame.boxSize));
+    // What building the objects costs, with the arithmetic already done.
+    const objects = time('building one object per particle', () => {
+      const out = new Array(frame.count);
+      for (let i = 0; i < frame.count; i++) {
+        const o = i * 3;
+        out[i] = { x: frame.positions[o], y: frame.positions[o + 1], z: frame.positions[o + 2],
+                   typeIndex: 0, particleType: undefined,
+                   a1: { x: frame.a1[o], y: frame.a1[o + 1], z: frame.a1[o + 2] },
+                   a3: { x: frame.a3[o], y: frame.a3[o + 1], z: frame.a3[o + 2] } };
+      }
+      return out;
+    });
+    const types = time('  getParticleType for every particle', () => {
+      for (let i = 0; i < n; i++) getParticleType(i, topData);
+    });
+
+    console.log(`\n  the fused path at ${n.toLocaleString()} particles:`);
+    for (const stage of [scan, com, objects, types]) {
+      console.log(`  ${stage.ms.toFixed(0).padStart(6)} ms  ${stage.label}`);
+    }
+    expect(scan.value.count).toBe(n);
   });
 
   it('splits that cost between parsing and decorating', () => {

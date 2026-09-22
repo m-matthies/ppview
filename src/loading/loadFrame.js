@@ -1,5 +1,6 @@
 import { calcCOMFromBuffer } from '../utils/geometryUtils';
 import { parseFrameBuffers, createFrameBuffers } from './parseFrameBuffers';
+import { createFrameCache } from './frameCache';
 import { getParticleType } from '../formats/parsers/particleType';
 import { convertMGLToPPViewFormat } from '../utils/mglParser';
 import { LoadError } from './staleness';
@@ -31,41 +32,51 @@ function mglFrame(file, frameNumber, scene) {
 }
 
 /**
- * Turns the parsed buffers into the particles the scene reads.
+ * Centres the structure on the box and wraps it in, writing over the buffer.
  *
- * One pass. Previously this was three: parse the text into objects, wrap those
- * into a second set, then decorate into a third — each allocating a complete
- * copy of the frame. Centring, wrapping and type assignment all happen here
- * while the numbers are already in registers.
- *
- * The objects that come out are still objects, because fourteen modules read
- * `positions[i].x`. Removing them is the next step and needs those callers to
- * move behind an accessor first; this removes the two redundant copies without
- * waiting for that.
+ * In place: this used to produce a second array of objects, and the frame cache
+ * needs the wrapped coordinates anyway, so doing it here means a cached frame is
+ * ready to use without repeating the arithmetic.
  */
-function buildParticles(frame, topData) {
-  const { count, positions, a1, a3, boxSize, hasOrientation } = frame;
+function centreAndWrap(frame) {
+  const { count, positions, boxSize } = frame;
   const com = calcCOMFromBuffer(positions, count, boxSize);
   const [bx, by, bz] = boxSize;
   const tx = bx / 2 - com.x;
   const ty = by / 2 - com.y;
   const tz = bz / 2 - com.z;
 
-  // Real modulus: the built-in % keeps the sign of the dividend, so a particle
-  // centring pushed to -1 would stay there instead of wrapping to L-1.
-  const wrap = (value, length) => {
-    const m = value % length;
-    return m < 0 ? m + length : m;
-  };
+  for (let i = 0; i < count; i++) {
+    const o = i * 3;
+    // Real modulus: the built-in % keeps the sign of the dividend, so a
+    // particle centring pushed to -1 would stay there rather than wrap to L-1.
+    let x = (positions[o] + tx) % bx;
+    let y = (positions[o + 1] + ty) % by;
+    let z = (positions[o + 2] + tz) % bz;
+    positions[o] = x < 0 ? x + bx : x;
+    positions[o + 1] = y < 0 ? y + by : y;
+    positions[o + 2] = z < 0 ? z + bz : z;
+  }
+}
 
+/**
+ * Turns already-wrapped buffers into the particles the scene reads.
+ *
+ * The objects that come out are still objects, because fourteen modules read
+ * `positions[i].x`. That is 15 ms of the 144 ms a frame costs at 400,000
+ * particles, so removing it is worth far less than it looks — the scan is where
+ * the time goes.
+ */
+function buildParticles(frame, topData) {
+  const { count, positions, a1, a3, hasOrientation } = frame;
   const out = new Array(count);
   for (let i = 0; i < count; i++) {
     const o = i * 3;
     const { typeIndex, particleType } = getParticleType(i, topData);
     const particle = {
-      x: wrap(positions[o] + tx, bx),
-      y: wrap(positions[o + 1] + ty, by),
-      z: wrap(positions[o + 2] + tz, bz),
+      x: positions[o],
+      y: positions[o + 1],
+      z: positions[o + 2],
       typeIndex,
       particleType,
     };
@@ -92,6 +103,20 @@ function buildParticles(frame, topData) {
 // first frame of a trajectory.
 const buffers = createFrameBuffers();
 
+// Decoded frames, so a second pass over a trajectory does not re-scan it.
+const cache = createFrameCache();
+
+/** Everything the scene needs from a frame, cached or freshly parsed. */
+function handToScene(frame, topData, scene) {
+  scene.setPositions(buildParticles(frame, topData));
+  scene.setCurrentBoxSize(frame.boxSize);
+  scene.setCurrentTime(frame.time);
+  scene.setCurrentEnergy(frame.energy);
+}
+
+/** For tests, and for measuring whether the cache is earning its memory. */
+export const frameCacheStats = () => cache.stats();
+
 export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   if (frameNumber < 0 || frameNumber >= index.length) {
     throw new LoadError(`Frame ${frameNumber + 1} is outside this trajectory.`);
@@ -105,6 +130,16 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
     return;
   }
 
+  // A frame already decoded is handed straight over: no read, no scan, no
+  // centre of mass, no wrap. Playback loops and scrubbing goes back and forth,
+  // so this is the common case after the first pass through a trajectory.
+  cache.useTrajectory(file);
+  const cached = cache.get(frameNumber);
+  if (cached) {
+    handToScene(cached, topData, scene);
+    return;
+  }
+
   // Read only this frame. The index holds byte offsets, so the last frame runs
   // to the end of the file.
   const start = index[frameNumber];
@@ -113,9 +148,8 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
 
   const frame = parseFrameBuffers(content, buffers);
   if (!frame || frame.count === 0) throw new LoadError('That frame could not be read.');
+  centreAndWrap(frame);
+  cache.put(frameNumber, frame);
 
-  scene.setPositions(buildParticles(frame, topData));
-  scene.setCurrentBoxSize(frame.boxSize);
-  scene.setCurrentTime(frame.time);
-  scene.setCurrentEnergy(frame.energy);
+  handToScene(frame, topData, scene);
 }
