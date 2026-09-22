@@ -208,6 +208,22 @@ Two traps are encoded here so no renderer can hit them again:
 `geometry` is part of the layer's dependency list, so a geometry change
 repopulates both matrices *and* colours.
 
+### Instance matrices and the cached bounding sphere
+`InstancedLayer` sets `mesh.boundingSphere = null` after every matrix write.
+THREE's `InstancedMesh.raycast` tests the ray against `boundingSphere` first and
+computes it **only when it is null** — once, and then never again. Every write
+moves instances, so without this the picker keeps testing against wherever the
+geometry was the first time anyone clicked: click a particle, enlarge the
+particles, and clicking selects nothing.
+
+Raspberry beads show it first because their *offsets* scale with the radius, so
+enlarging particles moves every bead outside the stale sphere, while plain
+spheres — whose centres do not move — carry on working.
+
+Nulled rather than recomputed: `computeBoundingSphere` walks every instance, which
+is not something to do per frame at a million particles. This defers it to the
+next raycast, where it costs one pass per click.
+
 ### `src/rendering/pickingService.js`
 One raycaster and one pair of canvas listeners for the whole scene, provided by
 `PickingProvider` in `ParticleScene`. Layers call `useRegisterPickable(id, {
@@ -293,6 +309,13 @@ re-declare `rgba(20,20,20,0.85)` and friends. Key conventions:
 ### Control bar (`App.js`)
 Three rows: transport + readout, the scrubber, then display options. Toggles are grouped by
 what they affect (Scene · Legends · Tools), separated by hairlines rather than by spacing.
+
+The camera does **not** coast: `OrbitControls` has `enableDamping={false}`.
+Damping keeps applying the last rotation for a few frames after release, so the
+view overshoots where it was let go — in a viewer whose job is reading positions
+off a structure, lining up a projection becomes a series of corrections rather
+than one movement. Under `frameloop="demand"` each coasting frame is also a full
+redraw, which at a million particles is a real cost for decoration.
 
 Keyboard: `Space` play/pause, `←`/`→` step frame (`Shift` for 10), `Home`/`End` jump to ends,
 `P` screenshot, `Q/A W/S E/D` shift on X/Y/Z. The handler ignores events whose target is an
@@ -380,10 +403,25 @@ first is deliberate — a stale render target left bound would otherwise swallow
 
 Headless Chrome drives the real app over CDP: 7 fixtures (one per format, each
 laid out as 5 DBSCAN-separable blobs, plus the impostor path as a `?impostors=1`
-override) x 7 scenarios (load, playback, detail/radius, clustering, selection,
-appearance, overlays) = 49. It records pixel-bucket counts rather than
-image hashes, so it tolerates antialiasing jitter but moves decisively when
-geometry appears, vanishes, resizes or loses its colour.
+override) x 8 scenarios (load, playback, detail/radius, clustering,
+clusterControls, selection, appearance, overlays). It records pixel-bucket counts
+rather than image hashes, so it tolerates antialiasing jitter but moves decisively
+when geometry appears, vanishes, resizes or loses its colour.
+
+**Not every scenario runs against every fixture** — `SCENARIO_FORMATS` in
+`scenarios.js` says which, and is the suite's coverage argument in one table.
+26 jobs, ~170s; the full cross-product was 49 jobs and 334s.
+
+A page load costs **2.6s before any scenario begins** — Chrome building a
+software WebGL context and the app drawing its first frame. Serving the
+production build instead of the dev server does not improve it at all (measured:
+46.9s vs 47.8s for seven scenarios), so the only way to make the suite cheaper is
+to stop paying for the same coverage twice. The per-format claim worth paying for
+is that **scene-wide controls reach every renderer**; formats sharing a renderer
+set cannot make it twice. `flavio` draws exactly what `lorenzo` draws and `mgl` a
+subset of it, so they earn their place by *loading* — a parser and a detection
+path each — and run the scenarios where that is the subject. A scenario missing
+from the table aborts the run rather than quietly fanning out to all seven.
 
 - `edges` counts horizontal gradient: colour buckets cannot see white geometry
   against a light background, which is exactly how the invisible-bead bug hid.
@@ -433,14 +471,30 @@ geometry appears, vanishes, resizes or loses its colour.
 - That scenario records no pixel signature. Which particle a sweep lands on
   varies between runs and a selected particle is yellow, so any measurement there
   drifts — its assertions are its output.
+- **A full `--update` replaces the baseline; `--only --update` merges.** Merging
+  on a full run leaves behind jobs that no longer exist — when the scenario table
+  shrank, 24 stale entries stayed and every run afterwards reported them as
+  `→ undefined`. Worse, a scenario quietly dropped from the table would keep its
+  baseline entry and look like it was still being checked.
+- **A poisoned renderer is retried in a fresh tab.** Long runs degrade: a page
+  reaches a state where the software rasteriser draws nothing, and since a worker
+  reuses its tab, the failure cascades — one run lost 14 of 26 scenarios from
+  `srs/detail` onwards while every one of them passed alone. `run.js` matches
+  "never drew any geometry", discards the tab and retries the job once in a new
+  one, so an environment fault is not reported as fourteen regressions.
+- `pickTargets()` returns points **spread across the frame**, with a minimum
+  separation. Scanning row by row and taking the first twelve lit pixels returned
+  twelve *adjacent* pixels of one particle, so a caller "trying each candidate in
+  turn" retried the same object twelve times — and when that object was
+  unpickable the scenario reported picking as broken.
 - Stop any dev server on the port first; the runner refuses to run against one it
   did not start, since that may be a different build.
 - **It runs serially, and should stay that way.** Parallel tabs look like an easy
   win — scenarios are independent and the suite looks like it is mostly waiting —
   but every worker shares one software rasteriser. Three workers took the same
   244s as one while stalling four scenarios past the CDP timeout on every run.
-  Serial finishes all 36 in ~330s with no failures. `--workers=N` is still there
-  for a machine with a real GPU.
+  Serial finishes the suite with no failures. `--workers=N` is still there for a
+  machine with a real GPU.
 - `settle()` must not await `requestAnimationFrame`: it never fires in a
   background tab, which is a trap if anyone re-enables workers.
 

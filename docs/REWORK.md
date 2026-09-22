@@ -631,10 +631,47 @@ visual suite unchanged at the sizes it covers.
 
 ### Phase 6 — Rebalance verification
 
-Move UI-wiring checks into jsdom tests, which are fast and deterministic. Keep
-the browser suite for genuinely visual behaviour.
+*Done:* browser suite **334s → 170s**, unit suite 2.5s (target was under 10s).
 
-*Done when:* browser suite under 120s, unit suite under 10s.
+**The 120s target was set before anyone measured a page load.** It costs 2.6s to
+get to a loaded scene — Chrome building a software WebGL context and the app
+drawing its first frame — and that is the floor per job, not overhead that can be
+tuned away. Serving the production build instead of the dev server was the
+obvious lever and does **nothing**: 46.9s against 47.8s for the same seven
+scenarios. So 26 jobs carry 70s of irreducible setup, and the rest is the
+assertions themselves. Reaching 120s from here means deleting coverage, which is
+not what the target was for.
+
+What did work was to stop buying the same coverage twice. The per-format claim
+this suite exists to make is that scene-wide controls reach every renderer, and
+formats that share a renderer set cannot make it twice — `flavio` draws exactly
+what `lorenzo` draws, `mgl` a subset. `SCENARIO_FORMATS` now states, per
+scenario, which fixtures it is a claim about. `clustering` split in two: the half
+that is per-renderer (hide, dim, highlight) and the half that is the pane and the
+View control, which is scene-wide and runs once.
+
+**The jsdom half was not needed to hit the number, so it was not done.** It is
+still worth doing for the pane's wiring, which is plain DOM over a store, but it
+would not have moved the browser suite much: those assertions ride along inside
+scenarios that have to load a scene anyway.
+
+Three defects surfaced while verifying, each of which made the suite lie:
+
+- **`--update` merged on a full run**, so 24 jobs that no longer existed stayed in
+  the baseline and every run afterwards reported them as `→ undefined`. A full run
+  now replaces; `--only --update` still merges.
+- **A poisoned renderer cascaded.** One run lost 14 of 26 scenarios from
+  `srs/detail` onwards to "scene never drew any geometry", every one of which
+  passed alone — a worker reuses its tab, so one dead context fails everything
+  after it. The runner now retries such a job once in a fresh tab.
+- **`pickTargets()` returned twelve adjacent pixels of one particle**, so "try
+  each candidate in turn" retried one object twelve times. Candidates are now
+  spread across the frame.
+
+And one real app bug, found by chasing a flaky `raspberry/selection`:
+`InstancedMesh.raycast` caches `boundingSphere` on first use and never
+invalidates it, so any later matrix write leaves the picker testing stale bounds.
+`InstancedLayer` now nulls it on every write.
 
 ---
 
