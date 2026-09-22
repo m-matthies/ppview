@@ -76,13 +76,13 @@ function OxDNANucleotides() {
 
   const bbGeo = useMemo(
     () => (useImpostors
-      ? impostorGeometry()
+      ? impostorGeometry(0.2 * radiusScale)
       : new THREE.SphereGeometry(0.2 * radiusScale, sphereSegments, sphereSegments)),
     [useImpostors, sphereSegments, radiusScale],
   );
   const nsGeo = useMemo(
     () => (useImpostors
-      ? impostorGeometry()
+      ? impostorGeometry(0.3 * radiusScale)
       : new THREE.SphereGeometry(0.3 * radiusScale, sphereSegments, sphereSegments)),
     [useImpostors, sphereSegments, radiusScale],
   );

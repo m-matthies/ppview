@@ -40,8 +40,11 @@ function Particles() {
   const useImpostors = useMemo(() => shouldUseImpostors(count, impostorOverride()), [count]);
 
   const geometry = useMemo(
+    // The radius goes into the geometry in both paths: the occlusion pass draws
+    // the impostor proxy with its own shader and never sees the uniform, so a
+    // proxy sized only by the uniform would be the wrong size there.
     () => (useImpostors
-      ? impostorGeometry()
+      ? impostorGeometry(particleRadius)
       : new THREE.SphereGeometry(particleRadius, sphereSegments, sphereSegments)),
     [useImpostors, particleRadius, sphereSegments],
   );

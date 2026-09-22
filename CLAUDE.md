@@ -234,18 +234,52 @@ into a quadratic. This matters because a nucleotide draws four meshes and at 16
 segments the two spheres are 1024 of its ~1150 triangles — impostoring only the
 backbone would leave half the cost behind.
 
-**Known limitation: ambient occlusion speckles on impostors.** `EffectComposer`
-runs with `enableNormalPass`, and that pass draws every object with an override
-material, which cannot carry a custom vertex shader — so impostors write the
-*quad's* flat normal into the normal buffer while the depth buffer holds the
-*sphere's*. SSAO comparing the two produces noise (measured: `edges` 1938 against
-1614 for the same structure as real geometry). It is pre-existing, it affects all
-three impostor shapes, and it is invisible in the regime impostors actually
-engage — at 50,000+ particles each is a few pixels across. Fixing it properly
-means an AO implementation that reconstructs normals from depth rather than from
-a normal pass. Dropping `gl_FragDepth` would also cure it, but that is what makes
-impostors intersect each other and the box correctly, which matters more here —
-raspberry beads and nucleotide backbones overlap by design.
+**The proxy is a solid, not a billboard, and that is what the occlusion pass
+sees.** `EffectComposer` runs with `enableNormalPass`, and that pass draws every
+object with an override material — so the billboarding, which lived in the
+patched vertex shader, did not happen there. Impostor quads were rendered flat
+and unbillboarded, edge-on from most angles and all but absent from the normal
+buffer, and SSAO reading normals that are not there speckled every impostor
+surface (measured: `edges` 2164 against 1614 for the same structure as real
+geometry).
+
+Removing the `gl_FragDepth` write was tried first and changed nothing (2101), which
+is what ruled the depth out and pointed at the normals. Drawing an icosahedron
+where the shape actually is fixed it: 1575, against 1614 for real geometry — the
+impostor is now marginally *smoother*, because it is analytically round where the
+real sphere is faceted.
+
+### Occlusion is scaled by zoom (`ParticleScene.js#AdaptiveSSAO`)
+Screen-space occlusion is not scale-invariant. Its kernel is a fraction of the
+*screen*, so moving the camera closer leaves it covering the same slice of screen
+but a much smaller slice of the structure: it stops averaging over a couple of
+dozen particles and starts resolving the gaps between four or five. Crevices
+deepen and evenly lit surfaces grow dark patches that say nothing about the
+structure and everything about where the camera is. Measured on a 2744-particle
+lattice, occlusion in a fixed central window grew **12.6x** over a 2.5x zoom.
+
+**`SSAOEffect.radius` looks like the fix and is inert here.** It is documented as
+the occlusion sampling radius, so holding it constant in world terms should make
+the effect scale-invariant. Forcing it across its whole useful range, 0.05 to 0.9,
+moves the measured occlusion from 12.67 to 12.60 — nothing, at either framing.
+Whatever that setting reaches, it is not the image, and it is also a `#define`, so
+driving it recompiles the shader. `intensity` is a uniform and demonstrably does
+reach the image, so the compensation goes there.
+
+**The exponent is measured, not derived.** Occlusion grows about as the cube of
+the linear zoom, so strength is reduced by the cube of the distance ratio,
+calibrated against the first frame's distance. That flattens the same sweep to
+1.01 / 1.20 / 1.28 / 0.72. It is a fit to one dense scene rather than a law, which
+is why `SSAO_ZOOM_EXPONENT` is a named constant.
+
+Reduce only, never boost: zooming out fades occlusion too, but compensating that
+way would push the effect past the strength the preset asks for.
+
+**The visual suite cannot see any of this.** Its fixtures are 40 well-separated
+particles, where moving the occlusion slider from 0 to 30 changes mean luminance
+by 0.25 of a point — there is nothing to occlude. The measurements above came from
+a throwaway 14x14x14 lattice at 1.05 spacing in a 30 box; regenerate one to check
+this again.
 
 ### Instance matrices and the cached bounding sphere
 `InstancedLayer` sets `mesh.boundingSphere = null` after every matrix write.

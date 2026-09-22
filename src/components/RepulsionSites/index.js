@@ -48,8 +48,10 @@ function RepulsionSites({ particles, repulsionSiteData, boxSize, particleScale =
   );
 
   const geometry = useMemo(
+    // A unit proxy: the bead radius is already in the instance scale, so both
+    // the main pass and the occlusion pass get the right size from it.
     () => (useImpostors
-      ? impostorGeometry()
+      ? impostorGeometry(1)
       : new THREE.SphereGeometry(1, sphereSegments, sphereSegments)),
     [useImpostors, sphereSegments],
   );
