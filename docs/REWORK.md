@@ -567,13 +567,62 @@ from about 1.5 s. Verified by 42 visual scenarios reporting no change across six
 formats and the impostor path, which is the check that matters when the whole
 frame-loading path has been replaced.
 
-**Still to do.** `loadFrame` still materialises one object per particle, because fourteen
-modules read `positions[i].x` and the accessor in `rendering/frame.js` is the
-migration those callers move behind. Landing the parser without them would mean
-converting typed arrays straight back into objects, paying both costs. The next
-step is the renderers, which are the consumers that matter at a million
-particles; the cold ones — export, clustering, the selection panel — can keep an
-adapter.
+**Then the profile said to stop optimising and start remembering.** Of the 144 ms
+a frame now costs at 400,000 particles, **117 ms is the text scan** and only
+**19 ms — 13% — is building the particle objects**. Three separate attempts to
+make the scanner faster (one allocation instead of four in the wrap, scalar
+arithmetic in the rotation, integer fraction accumulation in the number reader)
+each moved it by less than the measurement noise. 12.9 MB of characters and 3.6
+million numbers is close to the floor for reading that text at all.
+
+That reframes the remaining work. The accessor migration was planned on the
+assumption that per-particle objects were a large share of the frame; measured,
+they are an eighth of it, spread across fourteen modules. It is still worth doing
+for the allocation pressure at a million particles, but it is no longer the next
+thing — so `rendering/frame.js`, the accessor scaffolded for it, is **deleted**.
+It had no callers and no test, and this plan's own rule is no new abstraction
+without two callers. An uncalled wrapper around a representation that is going to
+change will be rewritten when the migration actually happens; until then it is
+only something to keep in sync.
+
+**The next thing is not scanning twice.** `loading/frameCache.js` keeps decoded
+frames, so playback loops, scrubbing back and forth, and flipping between two
+frames skip the read, the scan, the centre of mass and the wrap entirely —
+leaving only the work of handing particles to the scene.
+
+| revisiting a frame at 400,000 particles | |
+|---|---|
+| parsed again | 183 ms |
+| served from the cache | **47 ms** |
+
+Bounded by bytes rather than frame count, because a frame is 36 bytes per
+particle: 3.6 MB at a hundred thousand and 36 MB at a million, so a frame budget
+would be either useless for small systems or ruinous for large ones. It stores
+copies, since the parser's buffers are reused by the next frame — the one bug
+that would make every cached frame quietly become the most recent one, and the
+first thing `frameCache.test.js` pins.
+
+**A cache needs the suite to check the frames still differ.** The visual suite
+had no multi-frame coverage at all: every fixture was one frame, so nothing in it
+could have noticed a cache serving the wrong one. The fixtures now carry three
+frames and a `playback` scenario steps forward twice, back once, and asserts that
+**a revisited frame renders identically to the parsed one** — the specific risk
+the cache introduces — and that stepping back to the first frame restores it.
+
+Two things had to be right for that to mean anything:
+
+- **The drift has to survive centring.** The oxDNA-style fixtures re-centre each
+  frame on its centre of mass, which subtracts a uniform drift straight back out;
+  drifting one blob of five is what makes the frame move. MGL frames are *not*
+  re-centred, so there the opposite holds and a uniform drift is the one that
+  shows. Getting this backwards for MGL produced a scenario that failed while the
+  app was working perfectly.
+- **A bucket count cannot see a translation.** `coloured`, `edges` and the tints
+  are all blind to geometry sliding across the frame: a blob that moves keeps its
+  pixel count, its edge count and its colour exactly. `measure()` therefore also
+  reports `cx`/`cy`, the centroid of the coloured pixels in thousandths of the
+  frame. Without it a regression that advanced the frame counter while drawing the
+  same coordinates would have read as no change at all.
 
 **Done when:** one million particles both plays and orbits — the load path a
 fraction of its current 1.5 s, and the frame drawing in single-digit millions of

@@ -378,9 +378,10 @@ first is deliberate — a stale render target left bound would otherwise swallow
 
 ## Visual regression tests (`visual-tests/`)
 
-Headless Chrome drives the real app over CDP: 6 fixtures (one per format, each
-laid out as 5 DBSCAN-separable blobs) x 6 scenarios (load, detail/radius,
-clustering, selection, appearance, overlays). It records pixel-bucket counts rather than
+Headless Chrome drives the real app over CDP: 7 fixtures (one per format, each
+laid out as 5 DBSCAN-separable blobs, plus the impostor path as a `?impostors=1`
+override) x 7 scenarios (load, playback, detail/radius, clustering, selection,
+appearance, overlays) = 49. It records pixel-bucket counts rather than
 image hashes, so it tolerates antialiasing jitter but moves decisively when
 geometry appears, vanishes, resizes or loses its colour.
 
@@ -390,6 +391,20 @@ geometry appears, vanishes, resizes or loses its colour.
   geometry is, as opposed to how much of it there is. Pixel counts cannot tell
   magenta from green, so a regression that dropped cluster colours entirely read
   as no change at all.
+- `cx`/`cy` are the centroid of the coloured pixels, in thousandths of the frame.
+  Every other measurement is a bucket count, and **a count is blind to a rigid
+  translation** — a blob that slides keeps its pixel count, its edge count and its
+  colour exactly. Without a centroid, a frame step that advanced the counter while
+  drawing the same coordinates read as no change at all.
+- **Fixtures drift differently depending on whether the format re-centres.** The
+  oxDNA-style fixtures re-centre each frame on its centre of mass, which subtracts
+  a uniform drift straight back out, so only the first blob of five drifts. MGL
+  frames are *not* re-centred, so there a uniform drift is the one that moves the
+  structure across the screen. Getting this backwards produced a `playback`
+  failure against a perfectly working app.
+- The `playback` scenario is what covers the frame cache: it asserts that a
+  revisited frame renders **identically** to the parsed one, which is the one way
+  a cache can be wrong that nothing else would notice.
 - **Anything that changes the scene must wait for the change, not just for the
   canvas to hold still.** `settle()` samples a lead-in delay then three identical
   frames, but a heavy scene under a software rasteriser can still commit slower
@@ -435,6 +450,30 @@ geometry appears, vanishes, resizes or loses its colour.
 - **Zero-scale hidden instances**: skipped instances use `makeScale(0,0,0)` matrix instead of `continue` to avoid ghost geometry
 - **Demand rendering**: `frameloop="demand"` on Canvas. Components that update Three.js buffers (`Particles.js`, `OxDNANucleotides.js`) must call `invalidate()` from `useThree()` at the end of their position effects — otherwise the canvas does not redraw after trajectory frame changes.
 - **Memoized clustering**: only recomputes when epsilon/minPoints change
+
+### Frames are cached, because scanning the text is the floor (`loading/frameCache.js`)
+Reading a frame at 400,000 particles costs 144 ms, of which **117 ms is the text
+scan** and only 19 ms is building the particle objects. Three attempts to make the
+scanner faster each moved it by less than the measurement noise — 12.9 MB of
+characters and 3.6 million numbers per frame is close to the floor.
+
+So the way to play a large trajectory is not to scan faster but to scan once.
+`createFrameCache` keeps decoded frames, and `loadFrame` consults it *before* any
+file read: a hit skips the read, the scan, the centre of mass and the wrap
+(183 ms → 47 ms on revisit). Playback loops, scrubbing goes back and forth and
+comparisons flip between two frames, so a hit is the common case after the first
+pass.
+
+Two things it must keep doing:
+- **Store copies.** `parseFrameBuffers` reuses its `Float32Array`s between frames,
+  so keeping a reference would make every cached frame quietly become the most
+  recent one.
+- **Budget by bytes, not frames.** A frame is 36 bytes per particle — 3.6 MB at a
+  hundred thousand, 36 MB at a million — so a frame count is either useless for
+  small systems or ruinous for large ones.
+
+`useTrajectory(file)` drops everything when the file changes; frame indices mean
+something different in another trajectory.
 
 ### In-place GPU buffer updates (no VRAM leak)
 `mesh.instanceColor = new THREE.InstancedBufferAttribute(...)` replaces the JS object but never frees the old WebGL buffer (`gl.deleteBuffer` is never called, since `WebGLAttributes` uses a WeakMap keyed by the JS object). Over thousands of trajectory frames this grows GPU memory unboundedly.
