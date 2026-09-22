@@ -507,6 +507,29 @@ Remaining at 400k: parsing 157 ms, `decorate` 136 ms, the wrap loop 81 ms,
 splitting lines 68 ms. Those are the allocation-bound stages the typed-array work
 targets.
 
+**`parseFrameBuffers` is the first of them.** It walks the frame text once and
+writes into `Float32Array`s reused between frames: no `split`, no substrings, no
+per-particle objects. At 400,000 particles it replaces 221 ms of splitting and
+parsing with **128 ms**, and — the part that matters more than the ratio — it
+produces no garbage, so the collector has nothing to do afterwards.
+
+The number scanner is written out rather than calling `parseFloat`, because
+`parseFloat` needs a string, and getting one means `slice`: an allocation per
+field, nine per particle, which is the cost being removed.
+
+It is verified against `parseConfiguration` coordinate by coordinate rather than
+by eye. Writing that test caught a real defect: the scanner treated a newline as
+ordinary whitespace, so a row of three columns read on into the next row and the
+frame came out with half its particles. Numbers now stop at a line boundary.
+
+**Not yet wired in.** `loadFrame` still uses the four-pass path, because fourteen
+modules read `positions[i].x` and the accessor in `rendering/frame.js` is the
+migration those callers move behind. Landing the parser without them would mean
+converting typed arrays straight back into objects, paying both costs. The next
+step is the renderers, which are the consumers that matter at a million
+particles; the cold ones — export, clustering, the selection panel — can keep an
+adapter.
+
 **Done when:** one million particles both plays and orbits — the load path a
 fraction of its current 1.5 s, and the frame drawing in single-digit millions of
 triangles rather than 512 million — measured by the same benchmark, with the
