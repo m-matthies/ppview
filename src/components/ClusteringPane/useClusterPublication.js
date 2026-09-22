@@ -14,7 +14,8 @@ import { useClusteringStore } from '../../store/clusteringStore';
  * including ones nobody is clustering.
  */
 export default function useClusterPublication({
-  clusters, selectedClusters, showOnlySelected, hiddenClusters, colorByCluster, clusterColorAt,
+  clusters, selectedClusters, showOnlySelected, hiddenClusters, colorByCluster,
+  clusterColorAt,
 }) {
   const highlightClusters = useClusteringStore(state => state.highlightClusters);
   const setHiddenParticles = useClusteringStore(state => state.setHiddenParticles);

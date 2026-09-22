@@ -1,21 +1,27 @@
 import { create } from 'zustand';
 
 /**
- * True when the clustering is currently holding something back from the scene.
+ * True when the clustering is doing something to the scene.
  *
- * One definition shared by the pane's own reset button and the control bar's,
- * so the two can never disagree about whether there is anything to undo.
- * Selection alone does not count: without "show only selected" it changes
- * nothing on screen, and offering to undo an invisible state is noise.
+ * One definition shared by the pane's reset button and the control bar's, so the
+ * two can never disagree about whether there is anything to undo.
+ *
+ * Selection alone does not count: with "show only selected" off it changes
+ * nothing on screen, and offering to undo an invisible state is noise. Once that
+ * box is ticked it always counts — either some particles are hidden, or the rest
+ * are drawn enlarged in cluster colours, and both are states worth an escape
+ * hatch.
+ *
+ * This briefly compared selected clusters against the cluster count, to avoid
+ * offering a reset when a cluster file covers every particle. That was wrong
+ * twice over: DBSCAN leaves noise particles in no cluster, so "everything
+ * selected" still hides them; and even when nothing is hidden the scene is
+ * visibly clustered — highlighted at 1.3x in cluster colours — so there is
+ * plainly something to undo. Pressing Select all took both reset buttons off
+ * screen.
  */
 export const isSceneRestricted = (state) =>
-  state.hiddenClusters.size > 0
-  // "Show only selected" with everything selected hides nothing, which is
-  // exactly the state a dropped cluster file leaves behind — offering to undo
-  // it put two reset buttons on screen with nothing to reset.
-  || (state.showOnlySelected
-      && state.clusterCount > 0
-      && state.selectedClusters.size < state.clusterCount);
+  state.hiddenParticles.size > 0 || state.showOnlyHighlightedClusters;
 
 export const useClusteringStore = create((set) => ({
   // Particle indices belonging to a highlighted cluster.
