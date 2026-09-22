@@ -222,11 +222,21 @@ const SceneContent = React.memo(function SceneContent({
 
   return (
     <>
+      {/*
+        No damping: the camera stops when the pointer does.
+
+        Damping keeps applying the last rotation for a few frames after release,
+        so the view coasts past where it was let go. In a viewer whose job is
+        reading positions off a structure, that overshoot means lining a
+        projection up is a series of corrections rather than one movement — and
+        under `frameloop="demand"` each coasting frame is a redraw of the whole
+        scene, which at a million particles is a real cost for an effect that is
+        only decoration.
+      */}
       <OrbitControls
         ref={controlsRef}
         onChange={() => invalidate()} // Trigger re-render on camera changes
-        enableDamping={true}
-        dampingFactor={0.05}
+        enableDamping={false}
       />
 
       <SceneLighting s={lightingSettings} />

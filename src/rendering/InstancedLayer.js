@@ -65,6 +65,21 @@ export function useInstancedLayer({
     }
 
     mesh.instanceMatrix.needsUpdate = true;
+    // Drop the cached bounds so the next raycast recomputes them.
+    //
+    // THREE's InstancedMesh.raycast tests the ray against `boundingSphere`
+    // first, and computes it only when it is null — once, and then never again.
+    // Every write here moves instances, so without this the picker keeps
+    // testing against wherever the geometry was the first time anyone clicked.
+    // Raspberry beads made it visible: their offsets scale with the particle
+    // radius, so enlarging particles moved every bead outside the stale sphere
+    // and clicking stopped selecting anything at all, while plain spheres —
+    // whose centres do not move — carried on working.
+    //
+    // Nulled rather than recomputed: computeBoundingSphere walks every
+    // instance, which is not something to do per frame at a million particles.
+    // This defers it to the next raycast, where it happens once per click.
+    mesh.boundingSphere = null;
     if (wroteAnyColor && mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
     // frameloop is "demand": without this the buffers are updated but nothing
     // redraws until some unrelated event happens to request a frame.
