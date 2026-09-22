@@ -11,7 +11,7 @@
  */
 import { loadFrame } from './loadFrame';
 import { parseConfiguration } from '../utils/trajectoryLoader';
-import { applyPeriodicBoundary, computeRotationMatrix } from '../utils/geometryUtils';
+import { applyPeriodicBoundary, computeRotationMatrix, calcCOM } from '../utils/geometryUtils';
 import { getParticleType } from '../formats/parsers/particleType';
 import * as THREE from 'three';
 
@@ -120,16 +120,27 @@ bench('per-frame JS cost by particle count', () => {
     const lines = frameText(n).split('\n');
     const topData = { totalParticles: n, particleTypes: [{ typeIndex: 0 }] };
 
+    // Median of several runs, not a single sample. A major GC landing inside one
+    // timed run moved a stage by 30% and made an improvement look like a
+    // regression — the measurement has to be steadier than the effect it is
+    // meant to detect.
     const time = (label, fn) => {
       fn();                                   // warm up
-      const t0 = process.hrtime.bigint();
-      const value = fn();
-      return { label, ms: Number(process.hrtime.bigint() - t0) / 1e6, value };
+      const samples = [];
+      let value;
+      for (let i = 0; i < 5; i++) {
+        const t0 = process.hrtime.bigint();
+        value = fn();
+        samples.push(Number(process.hrtime.bigint() - t0) / 1e6);
+      }
+      samples.sort((a, b) => a - b);
+      return { label, ms: samples[2], value };
     };
 
     const split = time('split lines', () => frameText(n).split('\n'));
     const parsed = time('parseConfiguration', () => parseConfiguration(lines));
     const config = parsed.value;
+    const com = time('  of which calcCOM', () => calcCOM(config.positions, config.boxSize));
     const wrapped = time('applyPeriodicBoundary',
       () => applyPeriodicBoundary(config.positions, config.boxSize));
     const positions = wrapped.value;
@@ -140,7 +151,7 @@ bench('per-frame JS cost by particle count', () => {
     }));
 
     console.log(`\n  at ${n.toLocaleString()} particles:`);
-    for (const stage of [split, parsed, wrapped, decorated]) {
+    for (const stage of [split, parsed, wrapped, com, decorated]) {
       console.log(`  ${stage.ms.toFixed(0).padStart(6)} ms  ${stage.label}`);
     }
     expect(decorated.value).toHaveLength(n);

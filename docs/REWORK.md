@@ -437,6 +437,41 @@ touching five renderers.
 Springs, patches and nucleotides are unaffected: they do not occur at these
 counts.
 
+**Progress on Track A.** The first measurement of the four stages was too coarse
+to act on: a single timed sample per stage, so a major GC landing inside one run
+moved a stage by 30% and made a change look like a regression. The benchmark
+takes medians now.
+
+With that fixed, the stage breakdown pointed somewhere the phase had not
+considered. `applyPeriodicBoundary` was the largest stage at 253 ms, and
+**`calcCOM` was 181 ms of it** — six trig calls per particle, cos and sin per
+axis. Allocation was not its cost, and typed arrays would not have touched it: a
+first attempt that cut four allocations per particle down to one moved the number
+not at all.
+
+The centre of mass is a *statistic* — it decides where to centre the view — so it
+is now estimated from a stride sample above 50,000 particles, and computed
+exactly below that, leaving small systems bit-for-bit unchanged.
+
+| | before | after |
+|---|---|---|
+| `calcCOM` at 400k | 181 ms | **18 ms** |
+| `applyPeriodicBoundary` at 400k | 253 ms | **99 ms** |
+| whole frame | 148 ms per 100k | **114 ms per 100k** |
+
+Writing the accuracy test for that turned up something worth knowing
+independently: **a structure filling its periodic box has no meaningful centre of
+mass at all.** A circular mean is the angle of the summed unit vectors, and for
+points spread evenly around the circle that sum is near zero, so its angle is
+decided by noise — the full computation is as arbitrary as a sampled one. The
+test asserts the resultant length directly rather than comparing two arbitrary
+answers. Sampling agrees closely wherever the statistic is defined: a clumped
+structure to within 0.5 box units, a 314,432-particle lattice to within 1.
+
+Remaining at 400k: parsing 157 ms, `decorate` 136 ms, the wrap loop 81 ms,
+splitting lines 68 ms. Those are the allocation-bound stages the typed-array work
+targets.
+
 **Done when:** one million particles both plays and orbits — the load path a
 fraction of its current 1.5 s, and the frame drawing in single-digit millions of
 triangles rather than 512 million — measured by the same benchmark, with the

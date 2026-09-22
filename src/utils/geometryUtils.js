@@ -3,117 +3,108 @@
 // Calculate center of mass taking periodic boundary conditions into account
 // Based on: https://doi.org/10.1080/2151237X.2008.10129266
 // https://en.wikipedia.org/wiki/Center_of_mass#Systems_with_periodic_boundary_conditions
+// Above this many particles the centre of mass is estimated from a sample.
+//
+// It costs six trig calls per particle — cos and sin per axis — which made it
+// 181 ms of the 253 ms spent wrapping a 400,000-particle frame, and would be
+// close to half a second at a million. Allocation is not the cost here and
+// typed arrays would not touch it; the arithmetic itself is the cost.
+//
+// But this is a *statistic*, not data: it decides where to centre the view. A
+// mean taken over 50,000 particles and one taken over a million agree far more
+// closely than the centring needs. Below the threshold every particle is used,
+// so small systems are bit-for-bit unchanged.
+const COM_SAMPLE_LIMIT = 50_000;
+
+// Calculate center of mass taking periodic boundary conditions into account
+// Based on: https://doi.org/10.1080/2151237X.2008.10129266
+// https://en.wikipedia.org/wiki/Center_of_mass#Systems_with_periodic_boundary_conditions
 export const calcCOM = (positions, boxSize) => {
-  // Create one averaging variable for each dimension, representing that 1D
-  // interval as a unit circle in 2D (with the circumference being the
-  // bounding box side length)
-  let cm_x = { x: 0, y: 0 }; // Vector2-like object
-  let cm_y = { x: 0, y: 0 };
-  let cm_z = { x: 0, y: 0 };
-  
-  positions.forEach((pos) => {
-    // Calculate positions on unit circle for each dimension and add to the sum
-    const angle_x = (pos.x * 2 * Math.PI) / boxSize[0];
-    const angle_y = (pos.y * 2 * Math.PI) / boxSize[1];
-    const angle_z = (pos.z * 2 * Math.PI) / boxSize[2];
-    
-    cm_x.x += Math.cos(angle_x);
-    cm_x.y += Math.sin(angle_x);
-    cm_y.x += Math.cos(angle_y);
-    cm_y.y += Math.sin(angle_y);
-    cm_z.x += Math.cos(angle_z);
-    cm_z.y += Math.sin(angle_z);
-  });
-  
-  // Divide center of mass sums to get the averages
-  const numPositions = positions.length;
-  cm_x.x /= numPositions;
-  cm_x.y /= numPositions;
-  cm_y.x /= numPositions;
-  cm_y.y /= numPositions;
-  cm_z.x /= numPositions;
-  cm_z.y /= numPositions;
-  
-  // Convert back from unit circle coordinates into x,y,z
-  const cms = {
-    x: boxSize[0] / (2 * Math.PI) * (Math.atan2(-cm_x.y, -cm_x.x) + Math.PI),
-    y: boxSize[1] / (2 * Math.PI) * (Math.atan2(-cm_y.y, -cm_y.x) + Math.PI),
-    z: boxSize[2] / (2 * Math.PI) * (Math.atan2(-cm_z.y, -cm_z.x) + Math.PI)
+  const count = positions.length;
+  if (count === 0) return { x: 0, y: 0, z: 0 };
+
+  // A stride rather than a random sample: deterministic, so the same frame
+  // always centres identically, and cheap to walk. Chosen so the sample is
+  // spread over the whole array rather than taken from one end.
+  const stride = count > COM_SAMPLE_LIMIT ? Math.ceil(count / COM_SAMPLE_LIMIT) : 1;
+
+  // Each 1D interval is treated as a unit circle whose circumference is the box
+  // side, so the mean is well defined across the periodic boundary.
+  let xCos = 0, xSin = 0, yCos = 0, ySin = 0, zCos = 0, zSin = 0;
+  let sampled = 0;
+
+  const kx = (2 * Math.PI) / boxSize[0];
+  const ky = (2 * Math.PI) / boxSize[1];
+  const kz = (2 * Math.PI) / boxSize[2];
+
+  for (let i = 0; i < count; i += stride) {
+    const p = positions[i];
+    const ax = p.x * kx;
+    const ay = p.y * ky;
+    const az = p.z * kz;
+    xCos += Math.cos(ax); xSin += Math.sin(ax);
+    yCos += Math.cos(ay); ySin += Math.sin(ay);
+    zCos += Math.cos(az); zSin += Math.sin(az);
+    sampled++;
+  }
+
+  const toCoord = (cos, sin, length) =>
+    length / (2 * Math.PI) * (Math.atan2(-sin / sampled, -cos / sampled) + Math.PI);
+
+  return {
+    x: toCoord(xCos, xSin, boxSize[0]),
+    y: toCoord(yCos, ySin, boxSize[1]),
+    z: toCoord(zCos, zSin, boxSize[2]),
   };
-  
-  return cms;
 };
 
-// Helper function to apply periodic boundary conditions using oxview logic
+/**
+ * Centres the structure on the box and wraps every particle into it.
+ *
+ * Rewritten for size. The previous version allocated four objects per particle —
+ * a rest-spread to strip x/y/z, a centred copy, a copy inside the wrapper, and a
+ * spread to put the fields back — and recomputed two loop-invariant vectors on
+ * every call to the inner helper. At 400,000 particles that was 230 ms, the
+ * single most expensive stage of loading a frame.
+ *
+ * One of those vectors was also dead arithmetic: `shift` is
+ * `boxSize/2 - centeringGoal`, and `centeringGoal` *is* `boxSize/2`, so the
+ * add-then-subtract either side of the modulus always cancelled.
+ *
+ * The result is the same object shape as before: x, y, z replaced, every other
+ * field carried through by reference.
+ */
 export const applyPeriodicBoundary = (positions, boxSize) => {
-  // We need actual modulus (handles negative numbers correctly)
-  const realMod = (n, m) => ((n % m) + m) % m;
-  
-  // Calculate center of mass using periodic boundary conditions
+  const count = positions.length;
+  if (count === 0) return [];
+
   const com = calcCOM(positions, boxSize);
-  
-  // Use box center as the centering goal
-  const centeringGoal = {
-    x: boxSize[0] / 2,
-    y: boxSize[1] / 2,
-    z: boxSize[2] / 2
+  const [bx, by, bz] = boxSize;
+  // Centre of the box, minus where the structure actually is.
+  const tx = bx / 2 - com.x;
+  const ty = by / 2 - com.y;
+  const tz = bz / 2 - com.z;
+
+  // Real modulus: the built-in % keeps the sign of the dividend, so a particle
+  // that centring pushed to -1 would stay at -1 rather than wrapping to L-1.
+  const wrap = (value, length) => {
+    const m = value % length;
+    return m < 0 ? m + length : m;
   };
-  
-  // Calculate translation needed to center the system
-  const translation = {
-    x: centeringGoal.x - com.x,
-    y: centeringGoal.y - com.y,
-    z: centeringGoal.z - com.z
-  };
-  
-  // Define function to calculate a coordinate's position within periodic boundaries
-  const coordInBox = (coord) => {
-    const p = { ...coord };
-    const shift = {
-      x: boxSize[0] / 2 - centeringGoal.x,
-      y: boxSize[1] / 2 - centeringGoal.y,
-      z: boxSize[2] / 2 - centeringGoal.z
-    };
-    
-    // Add shift
-    p.x += shift.x;
-    p.y += shift.y;
-    p.z += shift.z;
-    
-    // Apply periodic boundaries using real modulus
-    p.x = realMod(p.x, boxSize[0]);
-    p.y = realMod(p.y, boxSize[1]);
-    p.z = realMod(p.z, boxSize[2]);
-    
-    // Subtract shift
-    p.x -= shift.x;
-    p.y -= shift.y;
-    p.z -= shift.z;
-    
-    return p;
-  };
-  
-  // Apply "Monomer" boxing option with centering - treat each particle individually
-  return positions.map((pos) => {
-    const { x, y, z, ...rest } = pos;
-    
-    // First apply the centering translation
-    const centeredPos = {
-      x: x + translation.x,
-      y: y + translation.y,
-      z: z + translation.z
-    };
-    
-    // Then apply periodic boundaries
-    const newPos = coordInBox(centeredPos);
-    
-    return {
-      x: newPos.x,
-      y: newPos.y,
-      z: newPos.z,
-      ...rest,
-    };
-  });
+
+  const out = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const p = positions[i];
+    // One new object per particle, not four. Object.assign copies the remaining
+    // fields — a1, a3, and anything the topology attached — by reference, and
+    // the explicit coordinates afterwards overwrite the originals.
+    out[i] = Object.assign({}, p, {
+      x: wrap(p.x + tx, bx),
+      y: wrap(p.y + ty, by),
+      z: wrap(p.z + tz, bz),
+    });
+  }
+  return out;
 };
 
 // Function to apply only periodic wrapping without re-centering
