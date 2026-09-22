@@ -1,5 +1,5 @@
-import { parseConfiguration } from '../utils/trajectoryLoader';
-import { applyPeriodicBoundary } from '../utils/geometryUtils';
+import { calcCOMFromBuffer } from '../utils/geometryUtils';
+import { parseFrameBuffers, createFrameBuffers } from './parseFrameBuffers';
 import { getParticleType } from '../formats/parsers/particleType';
 import { convertMGLToPPViewFormat } from '../utils/mglParser';
 import { LoadError } from './staleness';
@@ -31,20 +31,53 @@ function mglFrame(file, frameNumber, scene) {
 }
 
 /**
- * Attaches each particle's type and orientation to its position.
+ * Turns the parsed buffers into the particles the scene reads.
  *
- * Done here rather than in the renderers because every renderer needs it and
- * the topology is the only place the mapping exists.
+ * One pass. Previously this was three: parse the text into objects, wrap those
+ * into a second set, then decorate into a third — each allocating a complete
+ * copy of the frame. Centring, wrapping and type assignment all happen here
+ * while the numbers are already in registers.
+ *
+ * The objects that come out are still objects, because fourteen modules read
+ * `positions[i].x`. Removing them is the next step and needs those callers to
+ * move behind an accessor first; this removes the two redundant copies without
+ * waiting for that.
  */
-function decorate(positions, boxSize, topData) {
-  return applyPeriodicBoundary(positions, boxSize).map((position, index) => {
-    const { typeIndex, particleType } = getParticleType(index, topData);
-    // No rotation matrix. Only patch cones and raspberry beads ever read one,
-    // and rotationMatrixOf derives it from the a1/a3 this object already
-    // carries — so it is computed by the two layers that use it, for the
-    // instances they draw, instead of for every particle of every frame.
-    return { ...position, typeIndex, particleType };
-  });
+function buildParticles(frame, topData) {
+  const { count, positions, a1, a3, boxSize, hasOrientation } = frame;
+  const com = calcCOMFromBuffer(positions, count, boxSize);
+  const [bx, by, bz] = boxSize;
+  const tx = bx / 2 - com.x;
+  const ty = by / 2 - com.y;
+  const tz = bz / 2 - com.z;
+
+  // Real modulus: the built-in % keeps the sign of the dividend, so a particle
+  // centring pushed to -1 would stay there instead of wrapping to L-1.
+  const wrap = (value, length) => {
+    const m = value % length;
+    return m < 0 ? m + length : m;
+  };
+
+  const out = new Array(count);
+  for (let i = 0; i < count; i++) {
+    const o = i * 3;
+    const { typeIndex, particleType } = getParticleType(i, topData);
+    const particle = {
+      x: wrap(positions[o] + tx, bx),
+      y: wrap(positions[o + 1] + ty, by),
+      z: wrap(positions[o + 2] + tz, bz),
+      typeIndex,
+      particleType,
+    };
+    // Only formats that carry orientation pay for the two extra objects; a
+    // trajectory of plain spheres does not.
+    if (hasOrientation) {
+      particle.a1 = { x: a1[o], y: a1[o + 1], z: a1[o + 2] };
+      particle.a3 = { x: a3[o], y: a3[o + 1], z: a3[o + 2] };
+    }
+    out[i] = particle;
+  }
+  return out;
 }
 
 /**
@@ -55,6 +88,10 @@ function decorate(positions, boxSize, topData) {
  * @param scene        setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy
  * @throws {LoadError} with a message meant for the person
  */
+// Reused across frames, so playback allocates no buffers at all after the
+// first frame of a trajectory.
+const buffers = createFrameBuffers();
+
 export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   if (frameNumber < 0 || frameNumber >= index.length) {
     throw new LoadError(`Frame ${frameNumber + 1} is outside this trajectory.`);
@@ -74,11 +111,11 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   const end = frameNumber + 1 < index.length ? index[frameNumber + 1] : file.size;
   const content = await file.slice(start, end).text();
 
-  const config = parseConfiguration(content.split(/\r?\n/));
-  if (!config) throw new LoadError('That frame could not be read.');
+  const frame = parseFrameBuffers(content, buffers);
+  if (!frame || frame.count === 0) throw new LoadError('That frame could not be read.');
 
-  scene.setPositions(decorate(config.positions, config.boxSize, topData));
-  scene.setCurrentBoxSize(config.boxSize);
-  scene.setCurrentTime(config.time);
-  scene.setCurrentEnergy(config.energy);
+  scene.setPositions(buildParticles(frame, topData));
+  scene.setCurrentBoxSize(frame.boxSize);
+  scene.setCurrentTime(frame.time);
+  scene.setCurrentEnergy(frame.energy);
 }

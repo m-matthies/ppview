@@ -59,6 +59,44 @@ export const calcCOM = (positions, boxSize) => {
 };
 
 /**
+ * The same circular mean, over a flat `[x, y, z, x, y, z, …]` buffer.
+ *
+ * A separate entry point rather than a branch inside `calcCOM`: the inner loop
+ * runs once per particle per frame, and testing which representation it holds on
+ * every iteration is exactly the kind of cost this work exists to remove.
+ */
+export const calcCOMFromBuffer = (positions, count, boxSize) => {
+  if (count === 0) return { x: 0, y: 0, z: 0 };
+
+  const stride = count > COM_SAMPLE_LIMIT ? Math.ceil(count / COM_SAMPLE_LIMIT) : 1;
+  const kx = (2 * Math.PI) / boxSize[0];
+  const ky = (2 * Math.PI) / boxSize[1];
+  const kz = (2 * Math.PI) / boxSize[2];
+
+  let xCos = 0, xSin = 0, yCos = 0, ySin = 0, zCos = 0, zSin = 0;
+  let sampled = 0;
+  for (let i = 0; i < count; i += stride) {
+    const o = i * 3;
+    const ax = positions[o] * kx;
+    const ay = positions[o + 1] * ky;
+    const az = positions[o + 2] * kz;
+    xCos += Math.cos(ax); xSin += Math.sin(ax);
+    yCos += Math.cos(ay); ySin += Math.sin(ay);
+    zCos += Math.cos(az); zSin += Math.sin(az);
+    sampled++;
+  }
+
+  const toCoord = (cos, sin, length) =>
+    length / (2 * Math.PI) * (Math.atan2(-sin / sampled, -cos / sampled) + Math.PI);
+
+  return {
+    x: toCoord(xCos, xSin, boxSize[0]),
+    y: toCoord(yCos, ySin, boxSize[1]),
+    z: toCoord(zCos, zSin, boxSize[2]),
+  };
+};
+
+/**
  * Centres the structure on the box and wraps every particle into it.
  *
  * Rewritten for size. The previous version allocated four objects per particle —

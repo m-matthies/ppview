@@ -544,7 +544,30 @@ for an orientation nothing would read.
 Cumulatively the frame is down from 148 ms per 100k to 85 — about 850 ms at a
 million, from roughly 1.5 s.
 
-**Not yet wired in.** `loadFrame` still uses the four-pass path, because fourteen
+**The four passes became one.** `loadFrame` now scans the text with
+`parseFrameBuffers` and then walks the buffers once, centring, wrapping and
+assigning types while the numbers are still in registers. Orientation objects are
+attached only for formats that carry orientation, so a trajectory of plain
+spheres pays for none.
+
+| at 400,000 particles | |
+|---|---|
+| four passes | 340 ms |
+| one pass | **144 ms** |
+
+| cumulative | ms per 100k |
+|---|---|
+| where this phase started | 148 |
+| after sampling the centre of mass | 114 |
+| after moving the rotation to its callers | 85 |
+| after fusing the passes | **36** |
+
+**About 4.1x faster overall** — roughly 360 ms per frame at a million particles,
+from about 1.5 s. Verified by 42 visual scenarios reporting no change across six
+formats and the impostor path, which is the check that matters when the whole
+frame-loading path has been replaced.
+
+**Still to do.** `loadFrame` still materialises one object per particle, because fourteen
 modules read `positions[i].x` and the accessor in `rendering/frame.js` is the
 migration those callers move behind. Landing the parser without them would mean
 converting typed arrays straight back into objects, paying both costs. The next
