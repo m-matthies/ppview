@@ -694,40 +694,80 @@ mid-turn and look more broken than a static mark does.
 
 ## Clusters over time (`utils/kymograph.js`, `components/ClusterKymograph/`)
 
-A kymograph of the clustering: one column per frame, one row per particle,
-opened from the clustering pane, which computes it. A cluster reads as a
-horizontal band, so persistence, growth, merging and breakup are visible at once
-— none of which a single frame can show.
+Time across, each cluster a band whose **height is how many particles it holds**.
+A band that thickens is a cluster growing, two bands becoming one is a merge, and
+a band that ends is a cluster dissolving. Opened from the clustering pane, which
+computes it.
 
-**Rows are particles, not clusters.** A row per cluster would draw a line through
-unrelated things and call it a history, because DBSCAN renumbers every frame. A
-particle index is stable, so the picture is honest and a single row can be
-followed across it.
+**It was a kymograph first — one row per particle — and that was the wrong
+picture**, for three reasons worth keeping written down because they are not
+obvious until you try it:
 
-**Colour encodes cluster identity, and this is the one place in the app that does
-not colour by size.** Everywhere else, size is used precisely because a cluster
-index is an artefact of the order DBSCAN walked the particles — but over time
-that reasoning inverts: colouring by size means a particle moving between two
-clusters of the same size changes nothing, and watching that happen is the entire
-point. `assignLineages` matches clusters between consecutive frames by shared
-membership; contested lineages go to the larger overlap and the loser starts a
-new one, which is what makes a split read correctly.
+- rows fall below a pixel on any real structure, so the thing meant to show
+  evolution becomes a smear;
+- rows have to be grouped by *some* frame's clustering, so every particle that
+  later leaves is stranded in the wrong group and the bands decay into noise
+  exactly as the trajectory gets interesting;
+- it shows membership but never shows a **merge** or a **split**, which are the
+  two events anyone watching clusters over time is watching for.
 
-**Emphasis is keyed on the lineage, per pixel — not on the particle, per row.**
-Emphasising the particles a cluster held at one frame cannot follow that cluster:
-a particle joining later stays grey and one leaving stays coloured, so the band
-drifts away from what was selected. And the pane's selection is resolved through
-the column of the frame **on screen**, not the one the row order came from —
-resolving it through the reference frame made one selected cluster resolve to two
-lineages as soon as anything moved, and the picture silently stopped greying
-anything.
+Bands fix all three: height is a count, so nothing goes sub-pixel however many
+particles there are; a cluster is one continuous shape however much its
+membership churns; and a merge is two bands becoming one. Individual particles
+are not lost — the ones selected in the scene are drawn as a white line through
+the bands they belong to, so following one as it changes cluster is a line
+crossing from band to band, with a gap where it belonged to no cluster.
 
-It is optional and explicitly asked for: DBSCAN once per frame, so a run costing
-2.4s at one frame costs two minutes over fifty. It reports progress through
-`busyMessage`, yields between frames so that message repaints and a stop is
-noticed, and reuses `loadFrame` with a capture bag in place of the scene's
-setters — which means it inherits the MGL branch, the centring, the wrap and the
-frame cache without moving the view anyone is looking at.
+### Identity is the whole problem
+DBSCAN renumbers from scratch every frame, so "the same cluster as last frame" is
+not something the algorithm says. `assignLineages` says it, by matching clusters
+on the particles they share; contested lineages go to the larger overlap and the
+loser starts a new one, which is what makes a split read correctly. Everything
+else is built on that: the colour, the bands, the particle traces.
+
+### Colour comes from the lineage, everywhere, once a time view exists
+This is the one place the app does not colour a cluster by its size. Size is
+right for a single frame and wrong across a trajectory: sizes change, so the
+cluster you picked is a different colour two frames later — in the pane and in
+the scene both. Measured on two clusters of eight: two near-identical reds at one
+frame, a green and a red at another, the *same clusters* throughout. Nothing then
+connects a band to a selection, which is why tracking one was impossible.
+
+So `lineageColourer` supplies the colour while a time view exists, through the
+pane's `effectiveColorAt` — the list swatches, the particles in the scene and the
+bands all agree, and none of them change as the trajectory plays. An explicit
+swatch override still wins.
+
+### Following a cluster shows the fate of its particles, not its size
+Selecting a cluster switches the picture to its **cohort**: the particles it held
+at that moment, followed individually, and grouped at every later frame by which
+cluster each of them is in *now*. The total height is then fixed — it is the
+cohort — and what moves is how it is divided. Staying together is one solid
+block; dispersing fans out into the colours of wherever the particles went, with
+grey for the ones in no cluster at all.
+
+This is a different question from the band, and the band cannot answer it: **a
+cluster can hold a steady forty particles all run and have exchanged every one of
+them**, and its band would not flinch.
+
+The cohort is **latched at the frame it was picked in**, read through a ref, or
+scrubbing would redefine who the cohort is — making it agree with whatever is on
+screen and answer nothing. Same reason the emphasis is latched: the pane selects
+by cluster *index*, so re-resolving as the frame changes walks the highlight onto
+whichever cluster now holds that index. The pane's selection seeds it, resolved
+through the column of the frame on screen since that is the frame the pane's
+clusters describe.
+
+Ctrl/Cmd-click a band to follow it, again to stop. A lineage is stable, so this
+holds whatever the pane does afterwards.
+
+### Cost
+DBSCAN once per frame, so a run costing 2.4s at one frame costs two minutes over
+fifty. Optional and explicitly asked for; reports progress through `busyMessage`,
+yields between frames so that message repaints and a stop is noticed, and reuses
+`loadFrame` with a capture bag in place of the scene's setters — inheriting the
+MGL branch, the centring, the wrap and the frame cache without moving the view
+anyone is looking at.
 
 The `migrate` fixture exists for this: two blobs of eight and one particle that
 walks between them, both clusters the same size throughout. Every other fixture
@@ -912,7 +952,12 @@ also stops there, and says so when the box is what limits it.
 
 **Core, border and noise are the textbook definitions.** `minPoints` **counts the
 point itself**, so `minPoints: 3` means three particles within epsilon including
-this one. A point with at least `minPoints` neighbours is *core* and extends its
+this one. The control is labelled **Neighbours needed**, not "Min Points", because
+it is a *density* and not a minimum cluster size — and reads as the latter.
+Raising it dissolves clusters holding far more particles than the number, which is
+correct and surprising enough that the pane says so: a loose ring of twelve where
+each particle sees only two others disappears at four, while a tight group of
+twelve survives to twelve. Pinned by `clustering.test.js`. A point with at least `minPoints` neighbours is *core* and extends its
 cluster; a point within epsilon of a core point but not core itself is a *border*
 point, which joins that cluster but does **not** extend it — that is what stops
 two dense groups linked by a thin trail of stragglers from being reported as one.

@@ -1,5 +1,7 @@
 import {
-  pickIndices, assignLineages, orderRows, lineageSlots, paintKymograph, NOISE,
+  pickIndices, assignLineages, lineageSlots, NOISE, lineageColourer, columnForFrame,
+  cohortOf, cohortFrames,
+  bandSizes, bandOrder, stackFrames, particleTrace,
 } from './kymograph';
 
 const lineages = (clusters, particleCount, previous = null, next = 1) =>
@@ -86,34 +88,6 @@ describe('assignLineages', () => {
   });
 });
 
-describe('orderRows', () => {
-  const of = (clusters, count) => lineages(clusters, count).lineageOf;
-
-  // Without grouping, rows interleave every cluster and the picture is static.
-  test('groups a cluster into contiguous rows', () => {
-    const order = orderRows(of([[0, 3], [1, 4]], 5), 5);
-    const positionOf = new Map(order.map((particle, row) => [particle, row]));
-    expect(Math.abs(positionOf.get(0) - positionOf.get(3))).toBe(1);
-    expect(Math.abs(positionOf.get(1) - positionOf.get(4))).toBe(1);
-  });
-
-  test('puts the largest cluster first, so sampling keeps it', () => {
-    const order = orderRows(of([[9], [0, 1, 2]], 10), 10);
-    expect(order.slice(0, 3).sort((a, b) => a - b)).toEqual([0, 1, 2]);
-  });
-
-  test('noise goes last: it is the absence of a cluster, not the smallest one', () => {
-    const order = orderRows(of([[0, 1]], 4), 4);
-    expect(order.slice(0, 2).sort((a, b) => a - b)).toEqual([0, 1]);
-    expect(order.slice(2).sort((a, b) => a - b)).toEqual([2, 3]);
-  });
-
-  test('is stable, so two runs draw the same picture', () => {
-    const lineageOf = of([[2, 0], [3, 1]], 4);
-    expect(orderRows(lineageOf, 4)).toEqual(orderRows(lineageOf, 4));
-  });
-});
-
 describe('lineageSlots', () => {
   // Indexed by first appearance, not by the raw id: a long run creates many
   // short-lived lineages, and indexing the palette by id walked past its end and
@@ -129,75 +103,124 @@ describe('lineageSlots', () => {
   });
 });
 
-describe('paintKymograph', () => {
-  const columns = [Int32Array.from([2, 2, 0]), Int32Array.from([2, 0, 0])];
-  const rows = [0, 1, 2];
-  const palette = ['#ff0000', '#00ff00'];
-  const pixel = (image, x, y) => {
-    const o = (y * image.width + x) * 4;
-    return [image.data[o], image.data[o + 1], image.data[o + 2], image.data[o + 3]];
-  };
+describe('bands', () => {
+  const columns = [
+    Int32Array.from([1, 1, 1, 2, 2, 0]),   // 3 + 2, one noise
+    Int32Array.from([1, 1, 2, 2, 2, 2]),   // 2 + 4
+  ];
 
-  test('is one pixel per particle per frame', () => {
-    const image = paintKymograph({ columns, rows, palette });
-    expect(image.width).toBe(2);
-    expect(image.height).toBe(3);
+  test('a band is as tall as its cluster', () => {
+    expect([...bandSizes(columns[0])]).toEqual([[1, 3], [2, 2]]);
   });
 
-  test('paints a clustered particle in the palette and noise in the background', () => {
-    const image = paintKymograph({ columns, rows, palette });
-    expect(pixel(image, 0, 0)).toEqual([255, 0, 0, 255]);
-    expect(pixel(image, 1, 1)[3]).toBeLessThan(255);       // noise
+  test('noise is not a band', () => {
+    expect(bandSizes(columns[0]).has(NOISE)).toBe(false);
   });
 
-  test('greys what is outside the selected lineage, and only that', () => {
-    const image = paintKymograph({ columns, rows, palette, emphasis: new Set([2]) });
-    expect(pixel(image, 0, 0)).toEqual([255, 0, 0, 255]);   // lineage 2, full colour
-    const [r, g, b] = pixel(image, 0, 2);                   // noise, muted
-    expect([r, g, b]).toEqual([28, 30, 36]);
+  // Sorting per frame would make a band jump the stack whenever two clusters
+  // swapped size, which reads as the cluster moving rather than growing.
+  test('the stacking order is one order for the whole run', () => {
+    expect(bandOrder(columns)).toEqual(bandOrder(columns));
+    expect(bandOrder(columns)).toHaveLength(2);
   });
 
-  // The reason emphasis is keyed on the lineage rather than the particle: a row
-  // that leaves the selected cluster has to go grey at the frame it leaves, not
-  // stay coloured for the whole run because of where it started.
-  test('a particle that leaves the selected lineage is muted from then on', () => {
-    const moving = [Int32Array.from([7]), Int32Array.from([9])];
-    const image = paintKymograph({
-      columns: moving, rows: [0], palette: ['#ff0000', '#00ff00'], emphasis: new Set([7]),
-    });
-    expect(pixel(image, 0, 0)).toEqual([255, 0, 0, 255]);   // still in lineage 7
-    const [r, g, b] = pixel(image, 1, 0);                   // moved to lineage 9
-    expect(r).toBe(g);
-    expect(g).toBe(b);
+  test('spans are fractions of the particle count, so noise leaves a gap', () => {
+    const stacks = stackFrames(columns, bandOrder(columns), 6);
+    const total = [...stacks[0].values()].reduce((n, s) => n + s.size, 0);
+    expect(total).toBe(5);                                  // one particle is noise
+    expect(Math.max(...[...stacks[0].values()].map(s => s.end))).toBeCloseTo(5 / 6);
   });
 
-  test('and one that joins it is in colour from the frame it joins', () => {
-    const joining = [Int32Array.from([9]), Int32Array.from([7])];
-    const image = paintKymograph({
-      columns: joining, rows: [0], palette: ['#ff0000', '#00ff00'], emphasis: new Set([7]),
-    });
-    const [r, g] = pixel(image, 0, 0);
-    expect(r).toBe(g);                                       // not yet: muted
-    // Lineage 7 appears second here, so it takes the second palette entry.
-    const [jr, jg] = pixel(image, 1, 0);
-    expect(jg).toBeGreaterThan(jr);
+  test('bands do not overlap', () => {
+    const stacks = stackFrames(columns, bandOrder(columns), 6);
+    const spans = [...stacks[1].values()].sort((a, b) => a.start - b.start);
+    for (let i = 1; i < spans.length; i++) {
+      expect(spans[i].start).toBeGreaterThanOrEqual(spans[i - 1].end - 1e-9);
+    }
   });
 
-  // The default scheme is the golden-angle generator, which emits
-  // 'hsl(h,s%,l%)' rather than hex. Parsing only hex painted every pixel black,
-  // and every test here used a hex palette, so none of them noticed.
-  test('reads hsl palette entries, which the default scheme produces', () => {
-    const image = paintKymograph({
-      columns, rows, palette: ['hsl(120,50%,65%)'],
-    });
-    const [r, g, b] = pixel(image, 0, 0);
-    expect([r, g, b]).not.toEqual([0, 0, 0]);
-    expect(g).toBeGreaterThan(r);          // a green hue stays green
+  test('a particle trace follows it from one band to the other', () => {
+    const order = bandOrder(columns);
+    const stacks = stackFrames(columns, order, 6);
+    // Particle 2 is in lineage 1 at first and lineage 2 after.
+    const trace = particleTrace(columns, stacks, 2);
+    expect(trace[0]).not.toBeNull();
+    expect(trace[1]).not.toBeNull();
+    expect(trace[0]).not.toBeCloseTo(trace[1]);
   });
 
-  test('an empty selection is no selection, not everything greyed', () => {
-    const all = paintKymograph({ columns, rows, palette });
-    const none = paintKymograph({ columns, rows, palette, emphasis: null });
-    expect(Array.from(none.data)).toEqual(Array.from(all.data));
+  test('and is null while the particle is in no cluster', () => {
+    const order = bandOrder(columns);
+    expect(particleTrace(columns, stackFrames(columns, order, 6), 5)[0]).toBeNull();
+  });
+});
+
+describe('lineageColourer', () => {
+  // Deleted once by an over-eager cleanup, which webpack only warns about — the
+  // app compiled and then threw on render. Worth a test of its own.
+  const data = { columns: [Int32Array.from([5, 5, 0])], frames: [0], particleCount: 3 };
+
+  test('gives a cluster a colour from its lineage', () => {
+    const colour = lineageColourer(data, ['#123456'], 0);
+    expect(colour(0)).toBe('#123456');
+  });
+
+  test('and nothing for a particle in no cluster', () => {
+    expect(lineageColourer(data, ['#123456'], 0)(2)).toBeNull();
+  });
+
+  test('the same cluster gets the same colour at every frame', () => {
+    const twoFrames = {
+      columns: [Int32Array.from([5, 5, 9]), Int32Array.from([5, 9, 9])],
+      frames: [0, 1],
+      particleCount: 3,
+    };
+    const palette = ['#111111', '#222222'];
+    expect(lineageColourer(twoFrames, palette, 0)(0))
+      .toBe(lineageColourer(twoFrames, palette, 1)(0));
+  });
+});
+
+describe('cohort', () => {
+  // Three particles start together in lineage 1. One stays, one moves to
+  // lineage 2, one falls out of every cluster.
+  const columns = [
+    Int32Array.from([1, 1, 1, 2]),
+    Int32Array.from([1, 2, 0, 2]),
+  ];
+
+  test('the cohort is who was in the cluster at that moment', () => {
+    expect(cohortOf(columns[0], new Set([1]))).toEqual([0, 1, 2]);
+  });
+
+  test('its height is constant: what moves is how it is divided', () => {
+    const frames = cohortFrames(columns, [0, 1, 2], bandOrder(columns));
+    for (const spans of frames) {
+      const total = [...spans.values()].reduce((n, s) => n + s.size, 0);
+      expect(total).toBe(3);
+      expect(Math.max(...[...spans.values()].map(s => s.end))).toBeCloseTo(1);
+    }
+  });
+
+  test('it shows where each one went', () => {
+    const [, second] = cohortFrames(columns, [0, 1, 2], bandOrder(columns));
+    expect(second.get(1).size).toBe(1);        // stayed
+    expect(second.get(2).size).toBe(1);        // joined the other cluster
+    expect(second.get(NOISE).size).toBe(1);    // left every cluster
+  });
+
+  // "Left every cluster" is a fate worth seeing; dropping it would silently
+  // shrink the cohort instead of showing it dispersing.
+  test('noise is a destination, and comes last', () => {
+    const [, second] = cohortFrames(columns, [0, 1, 2], bandOrder(columns));
+    const last = [...second.entries()].pop();
+    expect(last[0]).toBe(NOISE);
+    expect(last[1].end).toBeCloseTo(1);
+  });
+
+  test('a cohort that stays together is one block', () => {
+    const together = [Int32Array.from([1, 1]), Int32Array.from([1, 1])];
+    const [, second] = cohortFrames(together, [0, 1], bandOrder(together));
+    expect(second.size).toBe(1);
   });
 });

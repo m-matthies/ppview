@@ -1,124 +1,243 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DraggablePanel from '../DraggablePanel';
 import { useParticleStore } from '../../store/particleStore';
-import { goToFrame } from '../../store/commands';
 import { useUIStore } from '../../store/uiStore';
+import { goToFrame } from '../../store/commands';
 import { getParticleColors } from '../../colors';
-import { paintKymograph, lineageSlots, NOISE } from '../../utils/kymograph';
+import {
+  lineageSlots, NOISE, bandOrder, stackFrames, particleTrace, columnForFrame,
+  cohortOf, cohortFrames,
+} from '../../utils/kymograph';
 import { CloseIcon } from '../Icons';
 import './ClusterKymograph.css';
 
 /**
- * The clustering over time: one column per frame, one row per particle.
+ * How the clustering changes over the trajectory: time across, clusters as
+ * bands whose height is how many particles they hold.
  *
- * Opened from the clustering pane, which computes it — the parameters are the
- * pane's, and so is the selection it responds to. A cluster reads as a
- * horizontal band, so persistence, growth and breakup are visible at a glance in
- * a way no single frame can show.
+ * This was a kymograph first — one row per particle — and that is the obvious
+ * reading of "clusters over time" and the wrong one. Rows fall below a pixel as
+ * soon as a structure is large; rows are grouped by one frame's clustering, so
+ * every particle that later leaves is stranded in the wrong group and the bands
+ * decay into noise exactly as the trajectory gets interesting; and it shows
+ * membership but never shows a merge or a split, which are the two events anyone
+ * watching clusters over time is watching for.
  *
- * Drawn to a canvas rather than to elements: even a modest run is hundreds of
- * columns by a thousand rows, and that many DOM nodes is not a picture, it is a
- * hang.
+ * Bands fix all three. Height is a count, so nothing goes sub-pixel however many
+ * particles there are. A cluster is one continuous shape however much its
+ * membership churns. And a merge is two bands becoming one.
+ *
+ * Individual particles are not lost in the change: the ones selected in the
+ * scene are drawn as a line through the bands they belong to, so following one
+ * as it moves between clusters is a line crossing from one band to another.
  */
-function ClusterKymograph({ data, selectedParticles, onClose, onRecompute, running }) {
+function ClusterKymograph({
+  data, selectedParticles, selectionToken, onClose, onRecompute, running,
+}) {
   const canvasRef = useRef(null);
+  const plotRef = useRef(null);
   const colorScheme = useUIStore(state => state.currentColorScheme);
   const currentConfigIndex = useParticleStore(state => state.currentConfigIndex);
+  const trackedParticles = useUIStore(state => state.selectedParticles);
 
   const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
   const [hover, setHover] = useState(null);
+  // Redrawn when the plot is resized: the canvas is sized to its box, so a drag
+  // of the resize handle has to repaint rather than stretch what is there.
+  const [plotSize, setPlotSize] = useState(0);
 
-  // Which palette entry each lineage was painted with, so the readout's swatch
-  // is the colour actually on screen rather than a second guess at it.
+  const stack = useMemo(() => {
+    if (!data?.columns?.length) return null;
+    const order = bandOrder(data.columns);
+    return { order, frames: stackFrames(data.columns, order, data.particleCount) };
+  }, [data]);
+
   const slots = useMemo(
     () => (data?.columns ? lineageSlots(data.columns) : null),
     [data],
   );
+  const colourOf = useCallback(
+    (lineage) => palette[(slots?.get(lineage) ?? 0) % palette.length],
+    [palette, slots],
+  );
 
-  /** Which column holds the frame on screen. */
-  const currentColumn = useMemo(() => {
-    if (!data?.frames?.length) return null;
-    const nearest = data.frames.findIndex(f => f >= currentConfigIndex);
-    return nearest === -1 ? data.frames.length - 1 : nearest;
-  }, [data, currentConfigIndex]);
+  const currentColumn = useMemo(
+    () => (data?.frames?.length ? columnForFrame(data, currentConfigIndex) : null),
+    [data, currentConfigIndex],
+  );
 
   /**
-   * The lineages the pane has selected.
+   * Which clusters are being followed.
    *
-   * Looked up in the column of the frame **on screen**, because that is the
-   * frame the pane's clusters describe. Using the column the row order came from
-   * instead was wrong as soon as anything moved: scrubbing to a frame where a
-   * particle had changed cluster made the pane's one cluster resolve to two
-   * lineages, and the picture stopped greying anything at all.
-   *
-   * Repaints whenever the pane's selection changes, which is the whole of
-   * "responsive to the cluster pane".
+   * Pinned by clicking a band, which is the gesture that makes tracking work at
+   * all: a lineage is stable, so pinning one follows that cluster and nothing
+   * else, whatever the pane does afterwards. Falling back to the pane's
+   * selection keeps the two panels connected when nothing is pinned.
    */
-  const emphasis = useMemo(() => {
-    if (!data?.columns?.length || !selectedParticles?.size) return null;
-    const column = data.columns[currentColumn ?? 0] ?? data.columns[0];
+  const [pinned, setPinned] = useState(null);
+  const [paneEmphasis, setPaneEmphasis] = useState(null);
+  const columnRef = useRef(0);
+  columnRef.current = currentColumn ?? 0;
+
+  useEffect(() => {
+    if (!data?.columns?.length || !selectedParticles?.size) {
+      setPaneEmphasis(null);
+      return;
+    }
+    // Resolved through the frame on screen, because that is the frame the pane's
+    // clusters describe — and then held. The pane selects by cluster *index* and
+    // DBSCAN renumbers every frame, so re-resolving as the frame changes walks
+    // the highlight onto whichever cluster now holds that index.
+    const column = data.columns[columnRef.current] ?? data.columns[0];
     const lineages = new Set();
     selectedParticles.forEach((particle) => {
       const lineage = column[particle];
       if (lineage !== undefined && lineage !== NOISE) lineages.add(lineage);
     });
-    return lineages.size > 0 ? lineages : null;
-  }, [data, selectedParticles, currentColumn]);
+    setPaneEmphasis(lineages.size > 0 ? lineages : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionToken, data]);
+
+  const emphasis = pinned ?? paneEmphasis;
+
+  /**
+   * Following a cluster shows the fate of the particles that made it up.
+   *
+   * Not its size over time, which is a different question and a misleading
+   * answer to this one: a cluster can hold a steady forty particles all run and
+   * have exchanged every one of them, and its band would not flinch. So the
+   * cohort is fixed at the frame it was selected in, and every later frame
+   * divides it by where those particles are *now* — staying together is one
+   * solid block, dispersing fans out into the colours of wherever they went.
+   */
+  const [cohort, setCohort] = useState(null);
+  useEffect(() => {
+    if (!emphasis || !data?.columns?.length || !stack) { setCohort(null); return; }
+    // Fixed at the frame it was selected in, read through a ref so that scrubbing
+    // does not quietly redefine who the cohort is — which would make it agree
+    // with whatever is on screen and answer nothing.
+    const column = data.columns[columnRef.current] ?? data.columns[0];
+    const members = cohortOf(column, emphasis);
+    setCohort(members.length === 0
+      ? null
+      : { members, frames: cohortFrames(data.columns, members, stack.order) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emphasis, data, stack]);
+
+  useEffect(() => {
+    const plot = plotRef.current;
+    if (!plot || typeof ResizeObserver === 'undefined') return undefined;
+    const observer = new ResizeObserver(() => setPlotSize(plot.clientHeight));
+    observer.observe(plot);
+    return () => observer.disconnect();
+  }, [data]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !data?.columns?.length) return;
-    const { data: pixels, width, height } = paintKymograph({
-      columns: data.columns, rows: data.rows, palette, emphasis,
-    });
+    if (!canvas || !stack || !data?.columns?.length) return;
+    const box = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const width = Math.max(1, Math.round(box.width * dpr));
+    const height = Math.max(1, Math.round(box.height * dpr));
     canvas.width = width;
     canvas.height = height;
-    const ctx = canvas.getContext('2d');
-    ctx.putImageData(new ImageData(pixels, width, height), 0, 0);
-  }, [data, palette, emphasis]);
 
-  // Where the frame on screen sits in the picture, as a percentage so it stays
-  // put when the canvas is stretched to the panel's width.
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#1d1e25';
+    ctx.fillRect(0, 0, width, height);
+    const columnWidth = width / data.columns.length;
+
+    // The cohort when a cluster is being followed, every cluster otherwise.
+    const frames = cohort ? cohort.frames : stack.frames;
+    for (let frame = 0; frame < frames.length; frame++) {
+      const x = frame * columnWidth;
+      for (const [lineage, span] of frames[frame]) {
+        // In the cohort view nothing is muted — every band is somewhere the
+        // followed particles actually went, and greying those would hide the
+        // answer. Noise takes the flat tone: it is not a cluster.
+        const muted = cohort
+          ? lineage === NOISE
+          : (emphasis !== null && !emphasis.has(lineage));
+        // A flat desaturated tone rather than a translucent wash: over a dark
+        // panel, alpha leaves a muddy tint that still reads as a colour.
+        ctx.fillStyle = muted ? '#3f4149' : colourOf(lineage);
+        const top = Math.round(span.start * height);
+        const bottom = Math.round(span.end * height);
+        ctx.fillRect(Math.floor(x), top, Math.ceil(columnWidth) + 1, Math.max(1, bottom - top));
+      }
+    }
+
+    // Followed particles last, so a trace is never hidden by a band. A gap in a
+    // line is a frame where that particle belonged to no cluster at all, which
+    // is worth seeing rather than interpolating over.
+    ctx.lineWidth = Math.max(1.5, 1.5 * dpr);
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = '#ffffff';
+    for (const particle of trackedParticles ?? []) {
+      const trace = particleTrace(data.columns, frames, particle);
+      ctx.beginPath();
+      let drawing = false;
+      trace.forEach((y, frame) => {
+        if (y === null) { drawing = false; return; }
+        const px = frame * columnWidth + columnWidth / 2;
+        const py = y * height;
+        if (drawing) ctx.lineTo(px, py); else ctx.moveTo(px, py);
+        drawing = true;
+      });
+      ctx.stroke();
+    }
+  }, [data, stack, cohort, emphasis, colourOf, trackedParticles, plotSize]);
+
   const playhead = useMemo(() => {
     if (currentColumn === null || !data?.frames?.length) return null;
     return (100 * (currentColumn + 0.5)) / data.frames.length;
   }, [data, currentColumn]);
 
-  /** Which cell the pointer is over: a particle, a frame, and its cluster. */
+  /** The band under the pointer: a frame, a cluster and how big it was. */
   const readAt = (event) => {
-    if (!data?.frames?.length) return null;
+    if (!data?.frames?.length || !stack) return null;
     const rect = event.currentTarget.getBoundingClientRect();
-    const column = Math.min(data.frames.length - 1, Math.max(0,
+    const frame = Math.min(data.frames.length - 1, Math.max(0,
       Math.floor(((event.clientX - rect.left) / rect.width) * data.frames.length)));
-    const row = Math.min(data.rows.length - 1, Math.max(0,
-      Math.floor(((event.clientY - rect.top) / rect.height) * data.rows.length)));
-    const particle = data.rows[row];
-    const lineage = data.columns[column][particle] ?? NOISE;
-    return {
-      particle,
-      frame: data.frames[column],
-      lineage,
-      color: lineage === NOISE ? null : palette[(slots.get(lineage) ?? 0) % palette.length],
-    };
+    const y = (event.clientY - rect.top) / rect.height;
+    const frames = cohort ? cohort.frames : stack.frames;
+    for (const [lineage, span] of frames[frame]) {
+      if (y >= span.start && y <= span.end) {
+        return { frame: data.frames[frame], lineage, size: span.size, colour: colourOf(lineage) };
+      }
+    }
+    return { frame: data.frames[frame], lineage: NOISE, size: 0, colour: null };
   };
 
-  /** Clicking the picture goes to that frame, which is the obvious thing to want. */
-  const goToColumn = (event) => {
-    if (!data?.frames?.length) return;
-    const rect = event.currentTarget.getBoundingClientRect();
-    const fraction = (event.clientX - rect.left) / rect.width;
-    const column = Math.min(data.frames.length - 1,
-      Math.max(0, Math.floor(fraction * data.frames.length)));
-    // The shared command, not setCurrentConfigIndex: it clamps and asks for the
-    // redraw that demand rendering needs.
-    goToFrame(data.frames[column]);
+  /**
+   * A plain click goes to that frame; a modifier click follows that cluster.
+   *
+   * The same modifier the scene uses to add to a selection, so the gesture means
+   * the same in both places. Clicking away from any band clears the pinning.
+   */
+  const onPlotClick = (event) => {
+    const cell = readAt(event);
+    if (!cell) return;
+    if (event.ctrlKey || event.metaKey || event.shiftKey) {
+      if (cell.lineage === NOISE) { setPinned(null); return; }
+      setPinned((current) => {
+        const next = new Set(current ?? []);
+        if (next.has(cell.lineage)) next.delete(cell.lineage);
+        else next.add(cell.lineage);
+        return next.size > 0 ? next : null;
+      });
+      return;
+    }
+    goToFrame(cell.frame);
   };
+
+  const clusterCount = stack?.order.length ?? 0;
 
   return (
     <DraggablePanel
       // Clear of the clustering pane where there is room, and inside the window
-      // where there is not. A fixed x put an 860px panel half off a 1440px
-      // screen, and the clamp let it: it only promises a reachable corner.
+      // where there is not: DraggablePanel's clamp only promises a reachable
+      // corner, so a panel that does not fit is one with its text cut off.
       initialX={Math.max(20, Math.min(600, window.innerWidth - 840))}
       initialY={80}
       className="kymograph-panel"
@@ -141,7 +260,8 @@ function ClusterKymograph({ data, selectedParticles, onClose, onRecompute, runni
             <>
               <div
                 className="kymograph-plot"
-                onClick={goToColumn}
+                ref={plotRef}
+                onClick={onPlotClick}
                 onMouseMove={(e) => setHover(readAt(e))}
                 onMouseLeave={() => setHover(null)}
                 role="presentation"
@@ -151,47 +271,79 @@ function ClusterKymograph({ data, selectedParticles, onClose, onRecompute, runni
                   <span className="kymograph-playhead" style={{ left: `${playhead}%` }} />
                 )}
               </div>
+
               <div className="kymograph-readout">
-                {hover ? (
+                {hover && hover.lineage !== NOISE ? (
                   <>
-                    <span className="num">particle {hover.particle}</span>
-                    <span className="num">frame {hover.frame}</span>
                     <span>
-                      {hover.lineage === NOISE ? 'not in a cluster' : (
-                        <>
-                          <span className="kymograph-swatch" style={{ background: hover.color }} />
-                          cluster {hover.lineage}
-                        </>
-                      )}
+                      <span className="kymograph-swatch" style={{ background: hover.colour }} />
+                      cluster {hover.lineage}
                     </span>
+                    <span className="num">
+                      {hover.size} {cohort ? 'of the followed particles' : 'particles'}
+                    </span>
+                    <span className="num">frame {hover.frame}</span>
                   </>
+                ) : hover && cohort ? (
+                  <span className="num">
+                    {hover.size} of the followed particles are in no cluster at frame {hover.frame}
+                  </span>
                 ) : (
-                  <span>Point at the picture to read off a particle and its cluster.</span>
+                  <span>
+                    {cohort
+                      ? `Following ${cohort.members.length} particles. Each band is where some of them are now.`
+                      : 'Point at a band to read off a cluster, or follow one to see where its particles go.'}
+                  </span>
                 )}
               </div>
 
               <div className="kymograph-axis">
                 <span className="num">frame {data.frames[0]}</span>
-                <span>{data.rows.length.toLocaleString()} of {data.particleCount.toLocaleString()} particles</span>
+                <span>
+                  {clusterCount} cluster{clusterCount === 1 ? '' : 's'} across{' '}
+                  {data.frames.length} frames
+                </span>
                 <span className="num">{data.frames[data.frames.length - 1]}</span>
               </div>
+
               <p className="kymograph-note">
-                Each row is a particle, each column a frame, and the colour is
-                which cluster it was in — clusters are matched between frames by
-                the particles they share, so a row changing colour is a particle
-                changing cluster. Rows are grouped by the frame that was on
-                screen, and the picture can be dragged taller from its bottom edge.
-                {emphasis
-                  ? ' The selected clusters are in colour wherever they go, so a particle'
-                    + ' changes shade at the frame it joins or leaves one.'
-                  : ' Select clusters in the clustering pane to pick them out here.'}
+                {cohort ? (
+                  <>
+                    Following the {cohort.members.length} particles that made up
+                    the selected cluster. The height is fixed — it is those
+                    particles — and each band is how many of them are in a given
+                    cluster at that frame, in that cluster&rsquo;s colour, with grey
+                    for the ones in no cluster. Staying together is one solid
+                    block; splitting apart fans out.
+                  </>
+                ) : (
+                  <>
+                    Each band is one cluster and its height is how many particles
+                    it holds, so a band that thickens is a cluster growing and two
+                    bands becoming one is a merge. Clusters are matched between
+                    frames by the particles they share, and keep their colour —
+                    the same colour the pane and the scene give them.
+                  </>
+                )}
               </p>
+              <p className="kymograph-note">
+                Click to go to a frame, or hold Ctrl/Cmd on a band to follow that
+                cluster{cohort ? ' — again to stop' : ''}. Particles selected in
+                the scene are drawn as a white line through the bands they belong
+                to.
+              </p>
+
+              <button className="select-button" onClick={onRecompute} disabled={running}>
+                {running ? 'Working…' : 'Recompute with the current settings'}
+              </button>
             </>
           )}
 
-          <button className="select-button" onClick={onRecompute} disabled={running}>
-            {running ? 'Working…' : 'Recompute with the current settings'}
-          </button>
+          {!data && (
+            <button className="select-button" onClick={onRecompute} disabled={running}>
+              {running ? 'Working…' : 'Recompute with the current settings'}
+            </button>
+          )}
         </div>
       </div>
     </DraggablePanel>

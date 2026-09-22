@@ -178,3 +178,28 @@ describe('generateHistogram', () => {
     expect(generateHistogram([])).toEqual([]);
   });
 });
+
+describe('minPoints is a density, not a minimum cluster size', () => {
+  // Reported as a bug: raising it dissolves clusters holding far more particles
+  // than the number. That is correct, and surprising enough to pin down.
+  const ring = (count, spacing) => Array.from({ length: count }, (_, i) => {
+    const r = (count * spacing) / (2 * Math.PI);
+    const a = (2 * Math.PI * i) / count;
+    return { x: 30 + r * Math.cos(a), y: 30 + r * Math.sin(a), z: 30 };
+  });
+
+  test('a loose ring of twelve dissolves once it needs four neighbours', () => {
+    const points = ring(12, 1.0);
+    const box = [60, 60, 60];
+    // Each particle sees itself and its two neighbours: a density of three.
+    expect(dbscan(points, 1.2, 3, box).map(c => c.length)).toEqual([12]);
+    expect(dbscan(points, 1.2, 4, box)).toEqual([]);
+  });
+
+  test('a tight group of twelve survives to twelve, and no further', () => {
+    const blob = Array.from({ length: 12 }, (_, i) => ({ x: 30 + i * 0.05, y: 30, z: 30 }));
+    const box = [60, 60, 60];
+    expect(dbscan(blob, 1.2, 12, box).map(c => c.length)).toEqual([12]);
+    expect(dbscan(blob, 1.2, 13, box)).toEqual([]);
+  });
+});

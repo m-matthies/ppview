@@ -17,6 +17,8 @@ import useClusterSource from './useClusterSource';
 import useClusterColours from './useClusterColours';
 import useClusterPublication from './useClusterPublication';
 import ClusterKymograph from '../ClusterKymograph';
+import { lineageColourer } from '../../utils/kymograph';
+import { getParticleColors } from '../../colors';
 import useKymograph from '../ClusterKymograph/useKymograph';
 import { CloseIcon } from '../Icons';
 import './ClusteringPane.css';
@@ -25,6 +27,8 @@ import './ClusteringPane.css';
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
+  // The lineage colour is read from the frame on screen.
+  const currentConfigIndex = useParticleStore(state => state.currentConfigIndex);
   const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
   const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
   // Visibility belongs to the UI store, which is what the control-bar toggle
@@ -78,6 +82,32 @@ function ClusteringPane() {
   const { colorForSize, clusterColorAt } = useClusterColours({
     clusters, colorScheme, fileClusters, colorOverrides,
   });
+
+  /**
+   * Cluster colour, from the lineage once a time view has been computed.
+   *
+   * The size ladder is right for one frame and wrong across a trajectory: a
+   * cluster's size rank changes as it grows and shrinks, so its colour changes
+   * with it, in the pane and in the scene. Tracking a cluster through time then
+   * has nothing to hold on to. A lineage does not change, so while a time view
+   * exists it supplies the colour and everything agrees — the swatch in the
+   * list, the particles in the scene and the band in the picture.
+   *
+   * An explicit swatch override still wins: that is someone saying what they
+   * want this cluster to look like, which no default should overrule.
+   */
+  const colourByLineage = useMemo(() => {
+    if (!kymograph?.columns?.length) return null;
+    return lineageColourer(kymograph, getParticleColors(colorScheme, 12), currentConfigIndex);
+  }, [kymograph, colorScheme, currentConfigIndex]);
+
+  const effectiveColorAt = useCallback((clusterIndex) => {
+    if (colorOverrides[clusterIndex]) return colorOverrides[clusterIndex];
+    const member = clusters[clusterIndex]?.[0];
+    const byLineage = member === undefined ? null : colourByLineage?.(member);
+    return byLineage ?? clusterColorAt(clusterIndex);
+  }, [colorOverrides, clusters, colourByLineage, clusterColorAt]);
+
 
 
   // Selection lives in this component, so a change of active overlay has to be
@@ -223,7 +253,7 @@ function ClusteringPane() {
   // Notify store about highlighted clusters
   useClusterPublication({
     clusters, selectedClusters, showOnlySelected, hiddenClusters,
-    colorByCluster, clusterColorAt,
+    colorByCluster, clusterColorAt: effectiveColorAt,
   });
 
   // Everything the pane can do to the scene, undone in one click.
@@ -300,6 +330,10 @@ function ClusteringPane() {
     <ClusterKymograph
       data={kymograph}
       selectedParticles={selectedParticles}
+      // The store's Set, whose identity changes only when someone selects
+      // something — unlike the particle set, which the pane rebuilds from the
+      // current frame's clusters on every frame.
+      selectionToken={selectedClusters}
       running={kymographRunning}
       onRecompute={runKymograph}
       onClose={() => { setShowKymograph(false); cancelKymograph(); clearKymograph(); }}
@@ -437,7 +471,7 @@ function ClusteringPane() {
             selectedClusters={selectedClusters}
             hiddenClusters={hiddenClusters}
             fileClusters={fileClusters}
-            clusterColorAt={clusterColorAt}
+            clusterColorAt={effectiveColorAt}
             onColorChange={setClusterColor}
             onToggleVisible={toggleClusterVisible}
             onToggleSelected={handleClusterToggle}

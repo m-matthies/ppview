@@ -3,7 +3,7 @@ import { useParticleStore } from '../../store/particleStore';
 import { useUIStore } from '../../store/uiStore';
 import { loadFrame } from '../../loading/loadFrame';
 import { dbscan } from '../../utils/clustering';
-import { pickIndices, assignLineages, orderRows, MAX_ROWS, MAX_COLS } from '../../utils/kymograph';
+import { pickIndices, assignLineages, MAX_COLS } from '../../utils/kymograph';
 
 /**
  * Walks the trajectory, clusters every frame it samples, and hands back the
@@ -49,10 +49,6 @@ export default function useKymograph() {
 
     const frames = pickIndices(frameCount, MAX_COLS);
     const columns = [];
-    // Ordering is fixed by one frame — the one on screen — so bands do not
-    // reshuffle from column to column. Reordering per frame would make every
-    // cluster look like it was constantly falling apart.
-    let rows = null;
     // Which column the ordering came from: the panel needs it to turn the
     // pane's selected clusters into the lineages they are.
     let referenceColumn = 0;
@@ -91,10 +87,7 @@ export default function useKymograph() {
         previous = tracked.lineageOf;
         nextLineage = tracked.nextLineage;
         columns.push(tracked.lineageOf);
-        if (frames[i] === currentConfigIndex || rows === null) {
-          rows = orderRows(tracked.lineageOf, particleCount);
-          referenceColumn = columns.length - 1;
-        }
+        if (frames[i] === currentConfigIndex) referenceColumn = columns.length - 1;
 
         // Yield, so the progress message repaints and a cancel is noticed. The
         // clustering itself blocks, so without this the whole run is one freeze
@@ -107,7 +100,6 @@ export default function useKymograph() {
       setResult({
         columns,
         frames,
-        rows: pickIndices(rows.length, MAX_ROWS).map(i => rows[i]),
         referenceColumn,
         particleCount,
         error: null,

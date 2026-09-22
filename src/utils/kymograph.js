@@ -1,42 +1,28 @@
 /**
- * A kymograph of a clustering: time across, particles down.
+ * Clusters over a trajectory: which cluster each particle is in, frame by frame.
  *
- * Each column is one trajectory frame, each row one particle, and the colour of
- * a pixel says how large the cluster that particle belonged to in that frame
- * was. A cluster reads as a horizontal band, so it is immediately visible
- * whether one persists, grows, splits or dissolves — which is the question a
- * single frame cannot answer.
+ * The data behind the time view. Its job is to give clusters an identity that
+ * survives from one frame to the next, because DBSCAN renumbers from scratch
+ * every time it runs — without that, "the same cluster" is not a thing that can
+ * be said at all, and neither the picture nor a selection can track anything.
  *
- * **Rows are particles, not clusters, and that is deliberate.** A cluster's
- * index is an artefact of the order DBSCAN happened to walk the particles, so it
- * means something different in every frame; a row per cluster would draw a line
- * through unrelated things and call it a history. A particle index is stable, so
- * the picture is honest without needing to track cluster identity between
- * frames at all.
+ * `assignLineages` supplies that identity by matching clusters on the particles
+ * they share. Everything else here is built on it: the colour a cluster keeps
+ * for the whole run, the bands it is drawn as, and the path a single particle
+ * takes between them.
  *
- * **Colour encodes cluster identity, tracked between frames.** This is the one
- * place in the app that does not colour by size. Size is what the rest of the UI
- * uses because a cluster index is an artefact of the order DBSCAN walked the
- * particles — but over time that reasoning inverts: colouring by size means a
- * particle moving from one cluster to another of the same size changes nothing,
- * and watching a particle change clusters is the entire point of this view.
- *
- * So clusters are matched between consecutive frames by how many particles they
- * share, and the colour follows that lineage. A row changing colour is a
- * particle changing cluster; a band changing colour is a cluster being taken
- * over by another.
+ * The file is named for the picture this started as — a kymograph, one row per
+ * particle — which is kept in the history rather than the code: rows fall below
+ * a pixel on any real structure, rows grouped by one frame's clustering decay as
+ * membership churns, and it could show membership but never a merge or a split.
+ * `components/ClusterKymograph` explains what replaced it.
  */
-
-/** Noise, and the pixels of a particle no cluster claimed. */
-import { parseColorToHsl, hslToHex } from '../colors';
 
 export const NOISE = 0;
 
-// A kymograph is an image, and past these it stops being readable rather than
-// merely large: rows thinner than a pixel cannot be told apart, and neither can
-// columns. Both are sampled evenly rather than truncated, so the picture still
-// spans the whole trajectory and the whole structure.
-export const MAX_ROWS = 1600;
+// Past this many columns the picture stops being readable rather than merely
+// large. Frames are sampled evenly rather than truncated, so it still spans the
+// whole trajectory.
 export const MAX_COLS = 800;
 
 /**
@@ -115,35 +101,6 @@ export function assignLineages(clusters, particleCount, previous, nextLineage) {
 }
 
 /**
- * Row order: particles grouped by the cluster they were in at a reference frame.
- *
- * Without this the rows are in file order, which interleaves every cluster and
- * turns the picture into static. Grouping them makes a cluster a contiguous
- * band, which is the whole point — and it is what lets a single row be followed
- * across the picture as it leaves one band and joins another.
- *
- * Clusters are ordered largest first, so the big ones stay together when the
- * rows are sampled, and ties break on particle index so two runs agree.
- */
-export function orderRows(lineageOf, particleCount) {
-  const sizes = new Map();
-  for (let i = 0; i < particleCount; i++) {
-    const lineage = lineageOf[i];
-    if (lineage !== NOISE) sizes.set(lineage, (sizes.get(lineage) ?? 0) + 1);
-  }
-  const rank = new Map(
-    [...sizes.entries()]
-      .sort((a, b) => b[1] - a[1] || a[0] - b[0])
-      .map(([lineage], position) => [lineage, position]),
-  );
-  // Noise last: it is the absence of a cluster, not the smallest one.
-  const rankOf = (particle) => rank.get(lineageOf[particle]) ?? sizes.size;
-
-  return Array.from({ length: particleCount }, (_, i) => i)
-    .sort((a, b) => rankOf(a) - rankOf(b) || a - b);
-}
-
-/**
  * Lineages in the order they first appear, as a lineage -> slot map.
  *
  * The palette is indexed by this slot rather than by the raw lineage id, so the
@@ -162,71 +119,182 @@ export function lineageSlots(columns) {
   return slots;
 }
 
-/**
- * A palette entry as RGB, whichever way it is spelled.
- *
- * The static schemes are `#rrggbb` and the golden-angle generator produces
- * `hsl(h,s%,l%)`; `parseColorToHsl` and `hslToHex` already exist for exactly
- * this, and writing a second parser here got every pixel wrong — `parseInt` on
- * an `hsl(...)` string is NaN, which painted the whole picture black.
- */
-const toRgb = (color) => {
-  const hsl = parseColorToHsl(color);
-  const hex = hsl ? hslToHex(hsl.h, hsl.s, hsl.l) : '#000000';
-  const value = parseInt(hex.slice(1), 16);
-  return [(value >> 16) & 255, (value >> 8) & 255, value & 255];
-};
+/** Which column of a computed run holds a given trajectory frame. */
+export function columnForFrame(data, frame) {
+  if (!data?.frames?.length) return 0;
+  const nearest = data.frames.findIndex(f => f >= frame);
+  return nearest === -1 ? data.frames.length - 1 : nearest;
+}
 
 /**
- * Paints the image.
+ * A cluster's colour from its lineage: one colour per cluster, for all time.
  *
- * @param columns   one Int32Array of per-particle lineage ids per frame drawn
- * @param rows      particle indices, in display order
- * @param palette   hex colours, indexed by size rank
- * @param emphasis  null, or the set of *lineages* to keep at full strength
- *                  while everything else is muted
- * @returns {{ data: Uint8ClampedArray, width: number, height: number }}
+ * This is what makes a cluster trackable at all. Everywhere else the app colours
+ * a cluster by its size, which is the right call for a single frame — but sizes
+ * change from frame to frame, so the cluster you picked is a different colour
+ * two frames later, in the pane and in the scene both. Measured on two clusters
+ * of eight: two near-identical reds at one frame, a green and a red at another,
+ * the same clusters throughout. Nothing then connects a band to a selection.
+ *
+ * Once a time view exists there is a stable identity to colour by, so the whole
+ * app uses it: the pane's swatches, the particles in the scene and the bands
+ * all agree, and none of them change as the trajectory plays.
+ *
+ * @returns (particleIndex) => hex, or null when that particle is in no cluster
  */
-export function paintKymograph({ columns, rows, palette, emphasis = null }) {
-  const width = columns.length;
-  const height = rows.length;
-  const data = new Uint8ClampedArray(width * height * 4);
-  const slots = lineageSlots(columns);
-  // Cache the parsed palette: this loop runs once per pixel and parsing a hex
-  // string per pixel is the kind of thing that makes a picture take a second.
-  const rgb = palette.map(toRgb);
+export function lineageColourer(data, palette, frame) {
+  if (!data?.columns?.length || !palette?.length) return null;
+  const slots = lineageSlots(data.columns);
+  const column = data.columns[columnForFrame(data, frame)] ?? data.columns[0];
+  return (particle) => {
+    const lineage = column[particle];
+    if (lineage === undefined || lineage === NOISE) return null;
+    return palette[(slots.get(lineage) ?? 0) % palette.length];
+  };
+}
 
-  for (let y = 0; y < height; y++) {
-    const particle = rows[y];
-    for (let x = 0; x < width; x++) {
-      const lineage = columns[x][particle] ?? NOISE;
-      // Muted per *pixel*, on the lineage, not per row on the particle.
-      //
-      // Emphasising the particles that were in the cluster at one frame cannot
-      // follow the cluster: a particle that joins it later stays grey, and one
-      // that leaves stays coloured, so the band drifts away from the thing that
-      // was selected. Keyed on the lineage, the selected cluster keeps its
-      // colour wherever it goes and a particle changes shade at the frame it
-      // joins or leaves — which is what tracking a lineage means.
-      const muted = emphasis !== null && !emphasis.has(lineage);
-      const offset = (y * width + x) * 4;
-      if (lineage === NOISE) {
-        // Background, not a colour: noise is what did not cluster.
-        data[offset] = 28; data[offset + 1] = 30; data[offset + 2] = 36;
-        data[offset + 3] = muted ? 90 : 160;
-        continue;
-      }
-      const [r, g, b] = rgb[(slots.get(lineage) ?? 0) % rgb.length];
-      if (muted) {
-        // Toward grey rather than transparent: a translucent band over a dark
-        // panel still reads as a colour, just a wrong one.
-        const grey = (r * 0.2126 + g * 0.7152 + b * 0.0722) * 0.55;
-        data[offset] = grey; data[offset + 1] = grey; data[offset + 2] = grey;
-      } else {
-        data[offset] = r; data[offset + 1] = g; data[offset + 2] = b;
-      }
-      data[offset + 3] = 255;
+// ---------------------------------------------------------------- bands
+//
+// The picture this is actually drawn as.
+//
+// One row per particle was the obvious reading of "clusters over time" and the
+// wrong one. Rows go below a pixel as soon as a structure is large, so the thing
+// meant to show evolution becomes a smear; and because rows are grouped by one
+// frame's clustering, every particle that later leaves is stranded in the wrong
+// group, so the bands decay into noise exactly as the trajectory gets
+// interesting. Worst of all it shows membership but never shows a *merge* or a
+// *split* — the two events anyone watching clusters over time is watching for.
+//
+// A band per cluster, its height its size, fixes all three: height is a count so
+// nothing goes sub-pixel, a cluster is one continuous shape however its
+// membership churns, and a merge is two bands becoming one.
+
+/** How many particles each lineage holds in a frame. */
+export function bandSizes(column) {
+  const sizes = new Map();
+  for (const lineage of column) {
+    if (lineage !== NOISE) sizes.set(lineage, (sizes.get(lineage) ?? 0) + 1);
+  }
+  return sizes;
+}
+
+/**
+ * The order bands are stacked in, and it has to be one order for the whole run.
+ *
+ * Sorting per frame would make a band jump the stack whenever two clusters
+ * swapped size, which reads as the cluster moving rather than growing. Longest
+ * lived first, then largest, then by id so it is deterministic: a cluster that
+ * is present throughout sits at the top and stays there.
+ */
+export function bandOrder(columns) {
+  const life = new Map();
+  const peak = new Map();
+  for (const column of columns) {
+    for (const [lineage, size] of bandSizes(column)) {
+      life.set(lineage, (life.get(lineage) ?? 0) + 1);
+      peak.set(lineage, Math.max(peak.get(lineage) ?? 0, size));
     }
   }
-  return { data, width, height };
+  return [...life.keys()].sort((a, b) =>
+    life.get(b) - life.get(a) || peak.get(b) - peak.get(a) || a - b);
+}
+
+/**
+ * Stacked spans per frame: where each band starts and ends, as a fraction.
+ *
+ * Fractions of the particle count rather than of the stack, so a frame where
+ * half the particles are noise leaves half the height empty instead of silently
+ * rescaling — losing particles to noise is a real event and hiding it would be a
+ * lie about the structure.
+ */
+export function stackFrames(columns, order, particleCount) {
+  return columns.map((column) => {
+    const sizes = bandSizes(column);
+    const spans = new Map();
+    let offset = 0;
+    for (const lineage of order) {
+      const size = sizes.get(lineage) ?? 0;
+      if (size === 0) continue;
+      spans.set(lineage, {
+        start: offset / particleCount,
+        end: (offset + size) / particleCount,
+        size,
+      });
+      offset += size;
+    }
+    return spans;
+  });
+}
+
+/** Where a particle sits in the stack at each frame, or null while it is noise. */
+export function particleTrace(columns, stacks, particle) {
+  return columns.map((column, frame) => {
+    const lineage = column[particle];
+    if (lineage === undefined || lineage === NOISE) return null;
+    const span = stacks[frame].get(lineage);
+    return span ? (span.start + span.end) / 2 : null;
+  });
+}
+
+// ---------------------------------------------------------------- cohort
+//
+// What became of the particles that made up one cluster.
+//
+// The bands above answer "how big was this cluster at each frame", which is not
+// the same question as "where did its particles go". A cluster can hold a steady
+// forty particles all run and have exchanged every one of them; the band would
+// not flinch. So selecting a cluster switches to its cohort: the particles it
+// held at that moment, followed individually, and grouped at every later frame
+// by the cluster each of them is in *now*.
+//
+// The total height is then constant — it is the cohort, and the cohort does not
+// change size — and what moves is how it is divided. A cohort that stays
+// together is one solid block; one that disperses fans out into the colours of
+// wherever its particles went.
+
+/** The particles a lineage holds in a frame. */
+export function cohortOf(column, lineages) {
+  const cohort = [];
+  for (let i = 0; i < column.length; i++) {
+    if (lineages.has(column[i])) cohort.push(i);
+  }
+  return cohort;
+}
+
+/**
+ * Where a cohort's particles are at each frame, stacked as fractions of it.
+ *
+ * Noise is a destination like any other and goes last, because "left every
+ * cluster" is one of the fates worth seeing and dropping it would silently
+ * shrink the cohort instead.
+ */
+export function cohortFrames(columns, cohort, order) {
+  const rank = new Map(order.map((lineage, i) => [lineage, i]));
+  const size = Math.max(1, cohort.length);
+
+  return columns.map((column) => {
+    const counts = new Map();
+    for (const particle of cohort) {
+      const lineage = column[particle] ?? NOISE;
+      counts.set(lineage, (counts.get(lineage) ?? 0) + 1);
+    }
+    const destinations = [...counts.keys()].sort((a, b) => {
+      if (a === NOISE) return 1;
+      if (b === NOISE) return -1;
+      return (rank.get(a) ?? order.length) - (rank.get(b) ?? order.length) || a - b;
+    });
+
+    const spans = new Map();
+    let offset = 0;
+    for (const lineage of destinations) {
+      const count = counts.get(lineage);
+      spans.set(lineage, {
+        start: offset / size,
+        end: (offset + count) / size,
+        size: count,
+      });
+      offset += count;
+    }
+    return spans;
+  });
 }

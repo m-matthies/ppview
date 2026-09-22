@@ -30,7 +30,7 @@ function ClusterParameters({ epsilon, onEpsilonChange, epsilonLimit, minPoints, 
 
     <div className="parameter-control">
       <label htmlFor="minpoints-slider">
-        Min Points: {minPoints}
+        Neighbours needed: {minPoints}
       </label>
       <input
         id="minpoints-slider"
@@ -42,6 +42,21 @@ function ClusterParameters({ epsilon, onEpsilonChange, epsilonLimit, minPoints, 
         onChange={(e) => onMinPointsChange(parseInt(e.target.value, 10))}
         className="parameter-slider"
       />
+      {/*
+        Named for what it does, because "Min Points" reads as a minimum cluster
+        size and is not one: it is how many particles have to be within epsilon
+        of a particle for it to count as dense. A loose group of twelve where
+        each particle sees only two others disappears at three neighbours; a
+        tight group of twelve survives to twelve. Raising this dissolving a
+        cluster far larger than the number is correct, and surprising enough to
+        be worth saying on screen.
+      */}
+      <span className="checkbox-hint">
+        How many particles must lie within the epsilon distance of a particle —
+        counting itself — for it to be dense enough to build a cluster around.
+        This is a density, not a minimum cluster size: a large, loosely packed
+        cluster can dissolve while a small tight one survives.
+      </span>
     </div>
   </div>
   );

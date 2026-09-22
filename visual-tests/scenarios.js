@@ -104,11 +104,12 @@ const LOADERS = ['mgl', 'oxdna'];
 const ANY_ONE = ['lorenzo'];
 
 const SCENARIOS = {
-  // The clustering over time: computed by the pane, and responding to it.
+  // The clustering over time, drawn as one band per cluster.
   //
-  // Scene-wide — one pane, one canvas, one set of stores — so it runs against a
-  // single fixture. What it has to prove is that the picture is built at all,
-  // that the pane's selection reaches it, and that clicking a column seeks.
+  // Runs against the one fixture where a cluster actually changes: two blobs of
+  // eight and a particle that walks between them. What it has to prove is that
+  // the picture is built, that a cluster keeps one colour — the pane's colour —
+  // for the whole run, and that a band can be pinned and followed.
   kymograph: `
     await settle();
     byLabel('Clustering').click();
@@ -123,98 +124,108 @@ const SCENARIOS = {
     await settle();
 
     const canvas = document.querySelector('.kymograph-canvas');
-    const shot = () => {
+    const hex2 = (n) => n.toString(16).padStart(2, '0');
+    const shown = () => {
       const c = document.createElement('canvas');
       c.width = canvas.width; c.height = canvas.height;
       c.getContext('2d').drawImage(canvas, 0, 0);
       const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      let grey = 0, coloured = 0;
+      const seen = new Set();
       for (let i = 0; i < d.length; i += 4) {
-        if (d[i+3] < 200) continue;
-        (d[i] === d[i+1] && d[i+1] === d[i+2]) ? grey++ : coloured++;
+        seen.add('#' + hex2(d[i]) + hex2(d[i+1]) + hex2(d[i+2]));
       }
-      return { grey, coloured };
+      return seen;
     };
+    const paneColours = () => [...document.querySelectorAll('.cluster-swatch')]
+      .map(i => i.value).sort();
 
-    const out = { size: canvas.width + 'x' + canvas.height, before: shot() };
-    assert(canvas.width > 1, 'one column per frame, so more than one column');
-    assert(out.before.grey === 0, 'nothing is greyed while nothing is selected');
+    const out = { size: canvas.width + 'x' + canvas.height };
+    assert(canvas.width > 1 && canvas.height > 1, 'the picture must have been drawn');
 
-    // Selecting a cluster in the pane must repaint the picture.
-    document.querySelector('.cluster-item input[type=checkbox]').click();
+    // A cluster's colour must be the pane's, and must not change as the
+    // trajectory plays. Colouring by size rank — right for one frame — gave
+    // these two clusters two near-identical reds at frame 0, both being size 8,
+    // and a green and a red at the last frame: the same clusters, recoloured by
+    // scrubbing, with nothing to match a band to a selection.
+    const paneStart = paneColours();
+    out.paneColours = paneStart.join(',');
+    assert(paneStart.length > 0, 'the pane lists clusters');
+    const first = shown();
+    assert(paneStart.every(c => first.has(c)),
+      'every cluster colour in the pane must be a colour in the picture');
+
+    // Which cluster colours are actually drawn — independent of how a muted
+    // band happens to be tinted.
+    const clustersShown = () => { const s = shown(); return paneStart.filter(c => s.has(c)); };
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     await settle();
-    out.after = shot();
-    assert(out.after.grey > 0, 'selecting a cluster must grey the rest');
-    assert(out.after.coloured > 0, 'and keep the selected one in colour');
-    assert(out.after.coloured < out.before.coloured, 'fewer coloured pixels than before');
+    assert(paneColours().join(',') === out.paneColours,
+      'a cluster must keep its colour as the trajectory plays');
+    assert(clustersShown().length === paneStart.length, 'and so must the bands');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    await settle();
 
-    // Selecting a cluster must follow *that cluster*, not the particles it
-    // happened to hold at one frame. This fixture moves one particle out of the
-    // first blob, so whichever blob is selected, its band has to stay coloured
-    // for the whole run while the migrating row changes at the frame it leaves.
-    const litPerColumn = () => {
-      const c = document.createElement('canvas');
-      c.width = canvas.width; c.height = canvas.height;
-      c.getContext('2d').drawImage(canvas, 0, 0);
-      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      const counts = [];
-      for (let x = 0; x < c.width; x++) {
-        let lit = 0;
-        for (let y = 0; y < c.height; y++) {
-          const o = (y * c.width + x) * 4;
-          if (!(d[o] === d[o+1] && d[o+1] === d[o+2])) lit++;
-        }
-        counts.push(lit);
-      }
-      return counts;
-    };
-    out.perColumn = litPerColumn().join(',');
-    // A lineage that survives the run is coloured in every column. Emphasis
-    // keyed on the particles of one frame would have left later columns empty.
-    assert(litPerColumn().every(n => n > 0),
-      'the selected cluster must stay visible in every frame, not just the one it was selected in');
-
-    out.playhead = !!document.querySelector('.kymograph-playhead');
-    assert(out.playhead, 'the current frame must be marked');
-
-    // The point of the whole view: this fixture walks one particle from one
-    // cluster to another, and both clusters are the same size throughout — so a
-    // row that changes colour can only be a cluster change, never a size change.
-    const shotRaw = () => {
-      const c = document.createElement('canvas');
-      c.width = canvas.width; c.height = canvas.height;
-      c.getContext('2d').drawImage(canvas, 0, 0);
-      return c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-    };
-    const raw = shotRaw();
-    const at = (x, y) => { const o = (y * canvas.width + x) * 4; return raw[o] + ',' + raw[o+1] + ',' + raw[o+2]; };
-    let changed = 0;
-    for (let y = 0; y < canvas.height; y++) if (at(0, y) !== at(canvas.width - 1, y)) changed++;
-    out.rowsThatChanged = changed;
-    assert(changed === 1, 'exactly the one particle that changes cluster changes colour');
-
-    // Clicking a column seeks, through the shared command rather than by
-    // setting the index: a control that sets it itself skips the clamp and the
-    // redraw demand rendering needs.
-    const readout = () => [...document.querySelectorAll('input[type=range]')]
-      .find(r => Number(r.max) > 0)?.value;
-    const startFrame = readout();
+    // Pinning a band follows that cluster: a lineage is stable, so this holds
+    // whatever the pane does afterwards and whatever frame is on screen.
     const plot = document.querySelector('.kymograph-plot');
     const box = plot.getBoundingClientRect();
+    // The lower band, which is the cluster that *loses* a particle. Following
+    // the one that gains would give a cohort that stays together — true, but it
+    // is the dispersal that this view exists to show.
+    plot.dispatchEvent(new MouseEvent('click', {
+      clientX: box.left + 8, clientY: box.top + box.height * 0.7,
+      ctrlKey: true, bubbles: true }));
+    // Following a cluster switches to its cohort: the particles that made it up,
+    // and where each of them is at every frame. Read a single column, because
+    // the picture spans the whole run — the question is what one frame shows.
+    const columnColours = (fraction) => {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = canvas.height;
+      c.getContext('2d').drawImage(canvas, 0, 0);
+      const x = Math.min(canvas.width - 1, Math.floor(fraction * canvas.width));
+      const d = c.getContext('2d').getImageData(x, 0, 1, canvas.height).data;
+      const seen = new Set();
+      for (let i = 0; i < d.length; i += 4) {
+        seen.add('#' + hex2(d[i]) + hex2(d[i+1]) + hex2(d[i+2]));
+      }
+      return paneStart.filter(col => seen.has(col));
+    };
+
+    assert(await waitFor(() => columnColours(0.02).length === 1, 4000),
+      'at the frame it was picked, the cohort is all still in its own cluster');
+    const followed = columnColours(0.02)[0];
+    out.followed = followed;
+
+    // ...and by the end one of them has left for the other cluster. This is the
+    // whole question, and the band view alone could not answer it: a cluster can
+    // hold a steady count and have exchanged every member.
+    out.fate = columnColours(0.98).join(',');
+    assert(columnColours(0.98).length === 2,
+      'and by the end it has split, showing where its particles went');
+    assert(columnColours(0.98).includes(followed),
+      'with the ones that stayed still in the cluster they started in');
+
+    // Latched at the frame it was picked: scrubbing must not redefine who the
+    // cohort is, or it would agree with whatever is on screen and answer nothing.
+    const picture = () => [...shown()].sort().join(',');
+    const beforeSeek = picture();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    await settle();
+    assert(picture() === beforeSeek,
+      'the cohort must not change when the frame does');
+
+    // A plain click seeks.
+    const readout = () => [...document.querySelectorAll('input[type=range]')]
+      .find(r => Number(r.max) > 0)?.value;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    await settle();
+    const startFrame = readout();
     plot.dispatchEvent(new MouseEvent('click', {
       clientX: box.left + box.width - 4, clientY: box.top + box.height / 2, bubbles: true }));
     assert(await waitFor(() => readout() !== startFrame, 4000),
-      'clicking a column must go to that frame');
+      'clicking a band must go to that frame');
     out.seeked = readout();
-
-    // Seeking must not lose the emphasis. The pane's clusters describe the frame
-    // on screen, so resolving them through the frame the row order came from
-    // made one selected cluster resolve to two lineages as soon as a particle
-    // had moved — and the picture quietly stopped greying anything.
-    await settle();
-    out.afterSeek = shot();
-    assert(out.afterSeek.grey > 0,
-      'the selection must still be emphasised after moving to another frame');
     return out;
   `,
 

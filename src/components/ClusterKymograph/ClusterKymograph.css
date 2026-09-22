@@ -96,3 +96,17 @@
     margin-right: var(--space-2);
     vertical-align: -1px;
 }
+
+/* A followed particle's row. Drawn across the whole picture rather than as a
+   tick in a gutter: the point is to see where that one row goes, and at several
+   hundred rows the eye cannot hold a position on its own. */
+.kymograph-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 0;
+    margin-top: -1px;
+    border-top: 1px dashed var(--ink);
+    opacity: 0.75;
+    pointer-events: none;
+}

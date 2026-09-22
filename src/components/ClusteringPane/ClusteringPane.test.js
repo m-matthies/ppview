@@ -39,7 +39,7 @@ describe('ClusteringPane', () => {
   test('displays parameter controls', () => {
     render(<ClusteringPane />);
     expect(screen.getByText(/Epsilon Distance:/)).toBeInTheDocument();
-    expect(screen.getByText(/Min Points:/)).toBeInTheDocument();
+    expect(screen.getByText(/Neighbours needed:/)).toBeInTheDocument();
   });
 
   test('displays statistics section', () => {
@@ -75,7 +75,7 @@ describe('ClusteringPane', () => {
     render(<ClusteringPane />);
     const minPointsSlider = screen.getByDisplayValue('3');
     fireEvent.change(minPointsSlider, { target: { value: '5' } });
-    expect(screen.getByText(/Min Points: 5/)).toBeInTheDocument();
+    expect(screen.getByText(/Neighbours needed: 5/)).toBeInTheDocument();
   });
 
   // The pane is mounted by App only while showClusteringPane is true, so its
