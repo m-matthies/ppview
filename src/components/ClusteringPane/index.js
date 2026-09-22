@@ -16,6 +16,8 @@ import ClusterList from './ClusterList';
 import useClusterSource from './useClusterSource';
 import useClusterColours from './useClusterColours';
 import useClusterPublication from './useClusterPublication';
+import ClusterKymograph from '../ClusterKymograph';
+import useKymograph from '../ClusterKymograph/useKymograph';
 import { CloseIcon } from '../Icons';
 import './ClusteringPane.css';
 
@@ -58,6 +60,13 @@ function ClusteringPane() {
     clusters, clusterSource, clusterSourceId, setClusterSourceId, clusterOverlays,
     fileClusters, epsilon, setEpsilon, epsilonLimit, minPoints, setMinPoints,
   } = useClusterSource();
+
+  // Optional and explicitly asked for: this is DBSCAN once per frame.
+  const [showKymograph, setShowKymograph] = useState(false);
+  const {
+    result: kymograph, running: kymographRunning,
+    compute: computeKymograph, cancel: cancelKymograph, clear: clearKymograph,
+  } = useKymograph();
 
 
   // True when the active view is the very cluster set shown here — including
@@ -263,14 +272,50 @@ function ClusteringPane() {
     setHiddenClusters(next);
   }, [setHiddenClusters]);
   
+  /**
+   * The particles of the selected clusters, which is what the time view greys
+   * everything else against.
+   *
+   * Particle indices rather than cluster indices, because a cluster index means
+   * something different in every frame — the time view is drawn per particle for
+   * exactly that reason.
+   */
+  const selectedParticles = useMemo(() => {
+    const out = new Set();
+    selectedClusters.forEach((clusterIndex) => {
+      (clusters[clusterIndex] ?? []).forEach(particle => out.add(particle));
+    });
+    return out;
+  }, [selectedClusters, clusters]);
+
+  const runKymograph = useCallback(() => {
+    setShowKymograph(true);
+    computeKymograph({ epsilon, minPoints });
+  }, [computeKymograph, epsilon, minPoints, setShowKymograph]);
+
+  // The time view outlives the panel deliberately, the same way the clustering
+  // itself does: it costs a minute to build, and closing the controls that
+  // started it is not a reason to throw it away.
+  const timeView = showKymograph ? (
+    <ClusterKymograph
+      data={kymograph}
+      selectedParticles={selectedParticles}
+      running={kymographRunning}
+      onRecompute={runKymograph}
+      onClose={() => { setShowKymograph(false); cancelKymograph(); clearKymograph(); }}
+    />
+  ) : null;
+
   // No UI when there is nothing to cluster, or when the panel is closed — but
   // the hooks above still run, which is the point: closing the panel hides the
   // controls, it does not switch the clustering off.
   if (!positions || positions.length === 0 || !showClusteringPane) {
-    return null;
+    return timeView;
   }
 
   return (
+    <>
+    {timeView}
     <DraggablePanel initialX={250} initialY={20} className="clustering-pane" storageId="clustering">
       <div className="clustering-header drag-handle" tabIndex={0}>
         <h3>Particle Clustering</h3>
@@ -371,6 +416,22 @@ function ClusteringPane() {
         </div>
 
         {clusters.length > 0 && (
+          <div className="pp-section">
+            <button
+              className="select-button"
+              onClick={runKymograph}
+              disabled={kymographRunning}
+              title="Cluster every frame and draw the result as time across, particles down"
+            >
+              {kymographRunning ? 'Building the time view…' : 'Clusters over time'}
+            </button>
+            {kymographRunning && (
+              <button className="select-button" onClick={cancelKymograph}>Stop</button>
+            )}
+          </div>
+        )}
+
+        {clusters.length > 0 && (
           <ClusterList
             clusters={clusters}
             selectedClusters={selectedClusters}
@@ -386,6 +447,7 @@ function ClusteringPane() {
 
       </div>
     </DraggablePanel>
+    </>
   );
 }
 

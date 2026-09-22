@@ -394,8 +394,11 @@ Keyboard: `Space` play/pause, `←`/`→` step frame (`Shift` for 10), `Home`/`E
 `P` screenshot, `Q/A W/S E/D` shift on X/Y/Z. The handler ignores events whose target is an
 `input`, `textarea`, `select` or contenteditable, so typing in a panel does not move particles.
 
-All frame changes go through `goToFrame()` — it clamps and triggers the redraw. Do not call
-`setCurrentConfigIndex` directly from a new control.
+All frame changes go through `goToFrame()` in `store/commands.js` — it clamps and triggers the
+redraw. Do not call `setCurrentConfigIndex` directly from a new control. It lives in `commands`
+rather than `usePlayback` because it spans two stores (the frame is the particle store's, the
+renderer handle the UI store's), and a caller outside `App` — the time view's click-to-seek —
+cannot reach that hook's arguments.
 
 ## Wiring rules (things that have silently broken before)
 
@@ -483,7 +486,7 @@ when geometry appears, vanishes, resizes or loses its colour.
 
 **Not every scenario runs against every fixture** — `SCENARIO_FORMATS` in
 `scenarios.js` says which, and is the suite's coverage argument in one table.
-32 jobs, ~210s; the full cross-product would be 72.
+34 jobs, ~230s; the full cross-product would be 90.
 
 Three of the nine fixtures exist only to exercise a shader: `impostor`,
 `impostor-oxdna` and `impostor-raspberry` load ordinary files with `?impostors=1`,
@@ -688,6 +691,48 @@ being worked on is worse than saying nothing. It sits above the floating panels
 (z-index 1500) because it reports on work those panels started, and it carries **no
 spinner** — the main thread is blocked, so anything animated would freeze
 mid-turn and look more broken than a static mark does.
+
+## Clusters over time (`utils/kymograph.js`, `components/ClusterKymograph/`)
+
+A kymograph of the clustering: one column per frame, one row per particle,
+opened from the clustering pane, which computes it. A cluster reads as a
+horizontal band, so persistence, growth, merging and breakup are visible at once
+— none of which a single frame can show.
+
+**Rows are particles, not clusters.** A row per cluster would draw a line through
+unrelated things and call it a history, because DBSCAN renumbers every frame. A
+particle index is stable, so the picture is honest and a single row can be
+followed across it.
+
+**Colour encodes cluster identity, and this is the one place in the app that does
+not colour by size.** Everywhere else, size is used precisely because a cluster
+index is an artefact of the order DBSCAN walked the particles — but over time
+that reasoning inverts: colouring by size means a particle moving between two
+clusters of the same size changes nothing, and watching that happen is the entire
+point. `assignLineages` matches clusters between consecutive frames by shared
+membership; contested lineages go to the larger overlap and the loser starts a
+new one, which is what makes a split read correctly.
+
+**Emphasis is keyed on the lineage, per pixel — not on the particle, per row.**
+Emphasising the particles a cluster held at one frame cannot follow that cluster:
+a particle joining later stays grey and one leaving stays coloured, so the band
+drifts away from what was selected. And the pane's selection is resolved through
+the column of the frame **on screen**, not the one the row order came from —
+resolving it through the reference frame made one selected cluster resolve to two
+lineages as soon as anything moved, and the picture silently stopped greying
+anything.
+
+It is optional and explicitly asked for: DBSCAN once per frame, so a run costing
+2.4s at one frame costs two minutes over fifty. It reports progress through
+`busyMessage`, yields between frames so that message repaints and a stop is
+noticed, and reuses `loadFrame` with a capture bag in place of the scene's
+setters — which means it inherits the MGL branch, the centring, the wrap and the
+frame cache without moving the view anyone is looking at.
+
+The `migrate` fixture exists for this: two blobs of eight and one particle that
+walks between them, both clusters the same size throughout. Every other fixture
+is static, so none of them can show a cluster changing — and same-size clusters
+are exactly the case size-colouring cannot distinguish.
 
 ## The corner reports viewing state (`.scene-corner`)
 

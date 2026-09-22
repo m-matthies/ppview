@@ -95,6 +95,30 @@ const N = pos.length;
   fs.writeFileSync(path.join(OUT, 'mgl.mgl'), lines.join('\n') + '\n');
 }
 
+// ------------------------------------------------- Migration (for the time view)
+//
+// Two blobs, and one particle that walks from the first to the second over six
+// frames. Every other fixture here is static, so none of them can show a cluster
+// changing — which is the one thing the kymograph exists to make visible. The
+// two clusters are the same size throughout, deliberately: that is the case
+// colouring by cluster *size* cannot distinguish.
+{
+  const COUNT = 16, FRAMES_M = 6;
+  fs.writeFileSync(path.join(OUT, 'migrate.top'), `${COUNT} 1\n${COUNT} 1 patchesA.dat\n`);
+  const blob = (cx) => Array.from({ length: 8 }, (_, i) =>
+    [cx + (i % 2) * 0.7, 20 + Math.floor(i / 2) * 0.7, 30 + (i % 3) * 0.5]);
+  const lines = [];
+  for (let f = 0; f < FRAMES_M; f++) {
+    lines.push(`t = ${f * 1000}`, `b = ${BOX} ${BOX} ${BOX}`, 'E = -1 -1 0');
+    const a = blob(20);
+    const b = blob(40);
+    // Particle 0 crosses the gap, so it is in neither cluster on the way.
+    a[0] = [20 + 20 * (f / (FRAMES_M - 1)), 20, 30];
+    [...a, ...b].forEach(([x, y, z]) => lines.push(confLine([x, y, z])));
+  }
+  fs.writeFileSync(path.join(OUT, 'migrate.dat'), lines.join('\n') + '\n');
+}
+
 // ---------------------------------------------------------- Raspberry
 {
   const top = [

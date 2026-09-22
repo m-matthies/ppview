@@ -29,6 +29,7 @@ const FORMATS = [
   // because the threshold that selects them is 50,000 particles and every
   // fixture here is 40 — without this the impostor shader would have no
   // coverage at all, and a shader that fails to compile renders nothing.
+  { name: 'migrate', files: F('migrate.top', 'migrate.dat', 'patchesA.dat') },
   {
     name: 'impostor',
     files: F('lorenzo.top', 'lorenzo.dat', 'patchesA.dat', 'patchesB.dat'),
@@ -103,6 +104,120 @@ const LOADERS = ['mgl', 'oxdna'];
 const ANY_ONE = ['lorenzo'];
 
 const SCENARIOS = {
+  // The clustering over time: computed by the pane, and responding to it.
+  //
+  // Scene-wide — one pane, one canvas, one set of stores — so it runs against a
+  // single fixture. What it has to prove is that the picture is built at all,
+  // that the pane's selection reaches it, and that clicking a column seeks.
+  kymograph: `
+    await settle();
+    byLabel('Clustering').click();
+    await waitFor(() => document.querySelector('.cluster-item'), 15000);
+    await settle();
+
+    const byText = (t) => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === t);
+    assert(byText('Clusters over time'), 'the pane must offer the time view');
+    byText('Clusters over time').click();
+    assert(await waitFor(() => document.querySelector('.kymograph-canvas'), 30000),
+      'the time view must appear');
+    await settle();
+
+    const canvas = document.querySelector('.kymograph-canvas');
+    const shot = () => {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = canvas.height;
+      c.getContext('2d').drawImage(canvas, 0, 0);
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      let grey = 0, coloured = 0;
+      for (let i = 0; i < d.length; i += 4) {
+        if (d[i+3] < 200) continue;
+        (d[i] === d[i+1] && d[i+1] === d[i+2]) ? grey++ : coloured++;
+      }
+      return { grey, coloured };
+    };
+
+    const out = { size: canvas.width + 'x' + canvas.height, before: shot() };
+    assert(canvas.width > 1, 'one column per frame, so more than one column');
+    assert(out.before.grey === 0, 'nothing is greyed while nothing is selected');
+
+    // Selecting a cluster in the pane must repaint the picture.
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    await settle();
+    out.after = shot();
+    assert(out.after.grey > 0, 'selecting a cluster must grey the rest');
+    assert(out.after.coloured > 0, 'and keep the selected one in colour');
+    assert(out.after.coloured < out.before.coloured, 'fewer coloured pixels than before');
+
+    // Selecting a cluster must follow *that cluster*, not the particles it
+    // happened to hold at one frame. This fixture moves one particle out of the
+    // first blob, so whichever blob is selected, its band has to stay coloured
+    // for the whole run while the migrating row changes at the frame it leaves.
+    const litPerColumn = () => {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = canvas.height;
+      c.getContext('2d').drawImage(canvas, 0, 0);
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const counts = [];
+      for (let x = 0; x < c.width; x++) {
+        let lit = 0;
+        for (let y = 0; y < c.height; y++) {
+          const o = (y * c.width + x) * 4;
+          if (!(d[o] === d[o+1] && d[o+1] === d[o+2])) lit++;
+        }
+        counts.push(lit);
+      }
+      return counts;
+    };
+    out.perColumn = litPerColumn().join(',');
+    // A lineage that survives the run is coloured in every column. Emphasis
+    // keyed on the particles of one frame would have left later columns empty.
+    assert(litPerColumn().every(n => n > 0),
+      'the selected cluster must stay visible in every frame, not just the one it was selected in');
+
+    out.playhead = !!document.querySelector('.kymograph-playhead');
+    assert(out.playhead, 'the current frame must be marked');
+
+    // The point of the whole view: this fixture walks one particle from one
+    // cluster to another, and both clusters are the same size throughout — so a
+    // row that changes colour can only be a cluster change, never a size change.
+    const shotRaw = () => {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = canvas.height;
+      c.getContext('2d').drawImage(canvas, 0, 0);
+      return c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+    };
+    const raw = shotRaw();
+    const at = (x, y) => { const o = (y * canvas.width + x) * 4; return raw[o] + ',' + raw[o+1] + ',' + raw[o+2]; };
+    let changed = 0;
+    for (let y = 0; y < canvas.height; y++) if (at(0, y) !== at(canvas.width - 1, y)) changed++;
+    out.rowsThatChanged = changed;
+    assert(changed === 1, 'exactly the one particle that changes cluster changes colour');
+
+    // Clicking a column seeks, through the shared command rather than by
+    // setting the index: a control that sets it itself skips the clamp and the
+    // redraw demand rendering needs.
+    const readout = () => [...document.querySelectorAll('input[type=range]')]
+      .find(r => Number(r.max) > 0)?.value;
+    const startFrame = readout();
+    const plot = document.querySelector('.kymograph-plot');
+    const box = plot.getBoundingClientRect();
+    plot.dispatchEvent(new MouseEvent('click', {
+      clientX: box.left + box.width - 4, clientY: box.top + box.height / 2, bubbles: true }));
+    assert(await waitFor(() => readout() !== startFrame, 4000),
+      'clicking a column must go to that frame');
+    out.seeked = readout();
+
+    // Seeking must not lose the emphasis. The pane's clusters describe the frame
+    // on screen, so resolving them through the frame the row order came from
+    // made one selected cluster resolve to two lineages as soon as a particle
+    // had moved — and the picture quietly stopped greying anything.
+    await settle();
+    out.afterSeek = shot();
+    assert(out.afterSeek.grey > 0,
+      'the selection must still be emphasised after moving to another frame');
+    return out;
+  `,
+
   // Baseline render, plus the scene-furniture toggles.
   load: `
     // Settle before the very first measurement too: every other reading in the
@@ -558,6 +673,7 @@ const SCENARIOS = {
  * is a claim about, and therefore what a second fixture would add.
  */
 const SCENARIO_FORMATS = {
+  kymograph: ['migrate'],   // the one fixture where a cluster actually changes
   load: null,          // the per-format smoke test: parse, detect, draw
   playback: LOADERS,   // frame stepping and the cache, one per loading path
   detail: [...RENDERERS, ...NEW_IMPOSTORS],  // resolution and radius reach every renderer

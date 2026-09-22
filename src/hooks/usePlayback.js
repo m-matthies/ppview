@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { useParticleStore } from '../store/particleStore';
 import { useUIStore } from '../store/uiStore';
+import { goToFrame as goToFrameCommand } from '../store/commands';
 
 /**
  * Moving through a trajectory: one frame at a time, or played.
@@ -29,14 +30,9 @@ export default function usePlayback({ totalConfigs, invalidateScene }) {
     setIsPlaying(false);
   }, [setIsPlaying]);
 
-  const goToFrame = useCallback((index) => {
-    const clamped = Math.min(Math.max(index, 0), Math.max(totalConfigs - 1, 0));
-    if (clamped === useParticleStore.getState().currentConfigIndex) return;
-    setCurrentConfigIndex(clamped);
-    // After the store has committed, not during: the frame effect has to run
-    // first or there is nothing new to draw.
-    setTimeout(invalidateScene, 0);
-  }, [totalConfigs, invalidateScene, setCurrentConfigIndex]);
+  // Delegated, so the clamp and the redraw have one definition. Callers outside
+  // App — the time view's click-to-seek — cannot reach this hook's arguments.
+  const goToFrame = useCallback((index) => goToFrameCommand(index), []);
 
   const stepFrame = useCallback((delta) => {
     goToFrame(useParticleStore.getState().currentConfigIndex + delta);

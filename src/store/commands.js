@@ -1,5 +1,7 @@
 import { useClusteringStore } from './clusteringStore';
 import { useOverlayStore, COMPUTED_VIEW } from './overlayStore';
+import { useParticleStore } from './particleStore';
+import { useUIStore } from './uiStore';
 
 /**
  * Actions that span more than one store.
@@ -37,4 +39,31 @@ export function clearClustering() {
   }
 
   useClusteringStore.getState().resetClusterState();
+}
+
+/**
+ * Move to a frame: the one way to do it.
+ *
+ * Clamps, and requests the redraw that demand rendering needs — a control that
+ * sets `currentConfigIndex` itself skips both, which is why this is the only
+ * route. `usePlayback` wraps it for the transport and the keyboard; anything
+ * else, like clicking a column of the time view, calls it directly.
+ *
+ * It lives here because it spans two stores: the frame is the particle store's,
+ * the renderer handle is the UI store's. `usePlayback` used to own the clamp and
+ * take `invalidateScene` as an argument, which meant any caller outside `App`
+ * had to be handed it.
+ */
+export function goToFrame(index) {
+  const particles = useParticleStore.getState();
+  const total = particles.totalConfigs;
+  const clamped = Math.min(Math.max(index, 0), Math.max(total - 1, 0));
+  if (clamped === particles.currentConfigIndex) return;
+  particles.setCurrentConfigIndex(clamped);
+  // After the store has committed, not during: the frame effect has to run
+  // first or there is nothing new to draw.
+  setTimeout(() => {
+    const sceneRef = useUIStore.getState().sceneRef;
+    if (sceneRef?.invalidate) sceneRef.invalidate();
+  }, 0);
 }

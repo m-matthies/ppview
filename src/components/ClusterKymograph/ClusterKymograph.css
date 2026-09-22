@@ -1,0 +1,98 @@
+/* ==========================================================================
+   Clusters over time
+   ========================================================================== */
+
+/* The floating-panel shell. `panels.css` carries the header, body and section
+   chrome, but the surface itself is each panel's own — the pane next door does
+   the same. Without it the header and captions float unreadably over the scene. */
+.kymograph-panel {
+    z-index: 900;
+    display: flex;
+    flex-direction: column;
+    /* Wide, because the picture is the point — but never wider than the window.
+       DraggablePanel's clamp only guarantees a corner stays reachable, by
+       design, so a panel that does not fit is a panel with its text cut off. */
+    width: min(820px, calc(100vw - 2 * var(--space-5)));
+    background: var(--surface-0);
+    backdrop-filter: var(--blur);
+    -webkit-backdrop-filter: var(--blur);
+    border: 1px solid var(--line);
+    border-radius: var(--radius-panel);
+    box-shadow: var(--shadow-panel);
+    color: var(--ink);
+}
+
+.kymograph-body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+}
+
+.kymograph-plot {
+    position: relative;
+    cursor: crosshair;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-control);
+    overflow: hidden;
+    /* The picture's own aspect ratio is meaningless — it is however many frames
+       by however many particles — so it is stretched to a readable band, and
+       made resizable: how tall a row needs to be depends entirely on how many
+       particles there are, which only the person looking knows. */
+    height: 460px;
+    min-height: 160px;
+    resize: vertical;
+}
+
+.kymograph-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    /* Nearest-neighbour: these pixels are data, and smoothing invents rows and
+       columns that were never clustered. */
+    image-rendering: pixelated;
+}
+
+.kymograph-playhead {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    margin-left: -1px;
+    background: var(--accent);
+    pointer-events: none;
+}
+
+.kymograph-axis {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--space-3);
+    font-size: var(--text-xs);
+    color: var(--ink-dim);
+}
+
+.kymograph-note {
+    margin: 0;
+    font-size: var(--text-xs);
+    line-height: 1.5;
+    color: var(--ink-dim);
+}
+
+/* What is under the pointer. A row is a particle and a column a frame, and
+   neither is labelled — at a thousand rows they could not be — so the readout
+   is how you find out which one you are looking at. */
+.kymograph-readout {
+    display: flex;
+    gap: var(--space-4);
+    min-height: 1.4em;
+    font-size: var(--text-xs);
+    color: var(--ink-dim);
+}
+
+.kymograph-swatch {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 2px;
+    margin-right: var(--space-2);
+    vertical-align: -1px;
+}
