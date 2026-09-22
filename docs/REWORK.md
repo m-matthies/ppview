@@ -340,49 +340,70 @@ Selection membership also moved from `selectedParticles.includes(i)` — a linea
 scan run once per particle, inside a loop over every particle — to a `Set` built
 once.
 
-### Phase 5 — Stable frame identity
-*The one with real risk. Do it last, and only if measurement justifies it.*
+### Phase 5 — The per-frame pipeline at scale
+*Re-specified after measuring. The first version of this phase was written
+against the wrong problem size and was nearly skipped on that basis.*
 
-Give each frame a monotonic `frameId` so consumers key off a number rather than
-array identity. Optionally move positions to a `Float32Array` behind an accessor.
+**Systems reach into the millions of particles.** The original profile was taken
+at 8,000, where the software rasteriser accounts for 93% of the time and all
+application JavaScript is under 1% — and on that evidence this phase was marked
+"measured, and skipped". That conclusion was an artefact of benchmarking two
+orders of magnitude below the real workload. It is recorded here rather than
+quietly corrected, because the reasoning error is the more useful lesson: a
+profile answers only the question its inputs pose.
 
-*Done when:* a profile shows the win. **If no profile shows a win, skip this
-phase** — it is speculative until measured.
+Measured in Node, with nothing competing for the thread
+(`BENCH=1 npx react-scripts test --testPathPattern=scale.bench`):
 
-**Status: measured, and skipped.** The premise is false.
-
-`bench/` builds a trajectory large enough for per-frame cost to be visible
-(8,000 particles x 60 frames, parameterised by `BENCH_PARTICLES`/`BENCH_FRAMES`)
-and takes a CDP CPU profile of playback, aggregated by self time. Over 17.3s of
-playback at 8,000 particles:
-
-| share | time | what |
+| particles | ms/frame | ms per 100k |
 |---|---|---|
-| 93.4% | 16,152 ms | `(program)` — the rasteriser, drawing |
-| 5.5% | 953 ms | idle |
-| 0.2% | 27 ms | garbage collector |
-| 0.1% | 26 ms | `parseConfiguration` |
-| 0% | **1 ms** | **`decorate`** — the per-frame allocation this phase proposes to remove |
+| 10,000 | 14 | 144 |
+| 100,000 | 146 | 146 |
+| 400,000 | 600 | 150 |
 
-All application JavaScript together is under 1%. The allocation the phase exists
-to eliminate costs **1 ms across eight frames**; GC costs 0.2%. Repeating at
-1,000 particles scales JS down proportionally — `decorate` disappears from the
-profile entirely — so the shape holds rather than being an artefact of one size.
+Linear at ~148 ms per 100k, so **one million particles is ~1.5 seconds of
+JavaScript per frame** before anything is drawn, with roughly a gigabyte
+allocated and discarded each time. That is not slow playback; it is not playback.
 
-Two honest caveats. This runs on a software rasteriser, so `(program)` is far
-larger than it would be on a GPU; on real hardware JavaScript would be a bigger
-*share*. But the absolute numbers are what decide it: ~0.1 ms per frame of
-allocation against a 16 ms budget is not worth a data-structure rewrite, however
-the rest of the frame is spent.
+The cost is not where the phase originally assumed. At 400,000 particles:
 
-And the profile points somewhere else: the JS that does cost something is
-`parseConfiguration` — **parsing trajectory text**, 26 ms per eight frames and
-growing with particle count. If the JS path is ever worth optimising, that is the
-target, not the object shape. Phase 5 as written would have optimised the wrong
-thing.
+| stage | ms | what it allocates |
+|---|---|---|
+| split lines | 64 | 400k strings |
+| `parseConfiguration` | 162 | 400k objects, each with nested `a1`/`a3` |
+| `applyPeriodicBoundary` | **237** | another 400k objects |
+| `decorate` | 168 | another 400k, plus a matrix each |
 
-The harness is committed so the decision can be re-checked rather than taken on
-trust: `./bench/run.sh`, or `BENCH_SCRIPT=bench/cpu-profile.js ./bench/run.sh`.
+Four full passes over every particle, each allocating a complete copy of the
+frame. The single largest stage is `applyPeriodicBoundary`, which the original
+phase did not mention at all.
+
+**The work, in order of value:**
+
+1. **Parse into typed arrays.** One `Float32Array(3n)` for positions and one for
+   each orientation vector, filled in a single pass, instead of `n` objects with
+   nested objects inside them. Removes stages 1 and 2 as separate passes.
+2. **Wrap in place.** `applyPeriodicBoundary` reads and rewrites a whole array to
+   change a few coordinates; it can operate on the typed array without producing
+   a second copy.
+3. **Stop materialising per-particle derived data.** `typeIndex`, `particleType`
+   and `rotationMatrix` are recomputed and re-allocated every frame although
+   type assignment is fixed by the topology and the rotation is derivable on
+   demand. Renderers can read them from flat arrays or compute them in the write
+   loop they already run.
+4. **A frame identity.** Once positions are a typed array, consumers need a
+   monotonic `frameId` to key memos on, because the buffer is reused and its
+   identity no longer changes.
+
+**Accessor first, representation second.** Every renderer, the picking service,
+the clustering and the exporters read `positions[i].x` today. Introduce the
+accessor that hides the representation, migrate callers behind it while the
+underlying array is unchanged, and only then swap the storage. That keeps each
+step verifiable by the existing suite instead of producing one large change that
+either works or does not.
+
+**Done when:** a frame at one million particles costs a fraction of what it does
+now, measured by the same benchmark, with the visual suite unchanged.
 
 ### Phase 6 — Rebalance verification
 
