@@ -196,14 +196,25 @@ const pickTargets = (max = 12) => {
     const i = (y * w + x) * 4;
     return Math.max(d[i], d[i+1], d[i+2]) - Math.min(d[i], d[i+1], d[i+2]) > 45;
   };
-  const out = [];
-  for (let y = 2; y < h - 2 && out.length < max; y++) {
-    for (let x = 2; x < w - 2 && out.length < max; x++) {
+  //
+  // Spread out, and that is the whole point of returning several. Scanning
+  // row by row and taking the first twelve lit pixels returned twelve *adjacent*
+  // pixels of one particle — x 711-732, y 210-213 — so a caller "trying each
+  // candidate in turn" was retrying the same object twelve times. When that one
+  // object was unpickable the scenario reported picking as broken, which is how
+  // raspberry/selection failed roughly one run in four while picking worked.
+  // Requiring separation makes the candidates independent, so only a real
+  // regression fails all of them.
+  const chosen = [];
+  const apart = (x, y) => chosen.every(([px, py]) => Math.abs(px - x) + Math.abs(py - y) > 24);
+  for (let y = 2; y < h - 2 && chosen.length < max; y += 2) {
+    for (let x = 2; x < w - 2 && chosen.length < max; x += 2) {
       if (!lit(x, y) || !lit(x-2, y) || !lit(x+2, y) || !lit(x, y-2) || !lit(x, y+2)) continue;
-      out.push([x * rect.width / w, y * rect.height / h]);
+      if (!apart(x, y)) continue;
+      chosen.push([x, y]);
     }
   }
-  return out;
+  return chosen.map(([x, y]) => [x * rect.width / w, y * rect.height / h]);
 };
 
 /**

@@ -34,6 +34,43 @@ const FORMATS = [
   },
 ];
 
+/**
+ * Which fixtures a scenario runs against.
+ *
+ * Running all seven through all seven scenarios cost 334s, and a page load is
+ * 2.6s of that before a scenario begins — Chrome building a software WebGL
+ * context and the app drawing its first frame, which serving the production
+ * build instead of the dev server does not improve at all. So the only way to
+ * make the suite cheaper is to stop paying for coverage twice.
+ *
+ * The per-format claim this suite exists to make is that **scene-wide controls
+ * reach every renderer**: detail, radius, clustering appearance and picking were
+ * a ragged feature matrix once, and that is the bug class worth seven fixtures.
+ * Formats that share a renderer set cannot make that claim twice:
+ *
+ * | fixture   | renderers |
+ * |-----------|-----------|
+ * | lorenzo   | spheres + patch cones |
+ * | flavio    | spheres + patch cones — identical to lorenzo |
+ * | mgl       | spheres only — a subset of lorenzo |
+ * | raspberry | spheres + repulsion beads |
+ * | oxdna     | four nucleotide meshes |
+ * | srs       | spheres + patch cones + spring cylinders |
+ * | impostor  | the impostor shader |
+ *
+ * So `flavio` and `mgl` earn their place by *loading* — a parser and a detection
+ * path each — not by drawing something new, and they run the scenarios where
+ * that is the subject.
+ */
+const RENDERERS = ['raspberry', 'oxdna', 'srs', 'lorenzo', 'impostor'];
+// Springs are not pickable and srs otherwise picks exactly as lorenzo does.
+const PICKABLE = ['raspberry', 'oxdna', 'lorenzo', 'impostor'];
+// MGL frames live in memory; every other format slices them out of a file.
+const LOADERS = ['mgl', 'oxdna'];
+// Scene-wide behaviour — one lighting rig, one control bar, one set of stores.
+// A second fixture would re-measure the same code against different pixels.
+const ANY_ONE = ['lorenzo'];
+
 const SCENARIOS = {
   // Baseline render, plus the scene-furniture toggles.
   load: `
@@ -52,6 +89,13 @@ const SCENARIOS = {
     byLabel('Coordinate axes').click(); await settle();
     out.axesOff = measure();
     byLabel('Coordinate axes').click(); await settle();
+    // Patch cones are gated on the patch legend (Particles/index.js reads
+    // showPatchLegend), and which formats have patches at all is a per-format
+    // fact — so this toggle belongs here rather than in the scene-wide
+    // appearance scenario, which now runs against one fixture.
+    byLabel('Patch legend').click(); await settle();
+    out.patchesOn = measure();
+    byLabel('Patch legend').click(); await settle();
     out.restored = measure();
     return out;
   `,
@@ -107,8 +151,61 @@ const SCENARIOS = {
     return out;
   `,
 
-  // Selection and cluster highlighting, the features that were ragged.
+  // Cluster appearance must reach every renderer.
+  //
+  // This is the half of clustering that is genuinely per-format: three renderers
+  // draw parts of the same patchy particle, and each used to decide appearance
+  // for itself — so raspberry particles ignored clustering entirely and springs
+  // ignored both clustering and selection. Hiding, dimming and highlighting are
+  // the three states `getClusterAppearance` returns, so all three are exercised
+  // here against each distinct renderer set.
   clustering: `
+    const out = {};
+    byLabel('Clustering').click();
+    await waitFor(() => document.querySelector('.cluster-item'), 15000);
+    await settle();
+    // Asserted, not measured: every fixture is five separable blobs, and a drop
+    // to zero moves by less than ABSOLUTE_SLACK, so as a measurement it would be
+    // swallowed exactly the way the dead selection test was.
+    assert(document.querySelectorAll('.cluster-item').length === 5,
+      'DBSCAN must find the five blobs every fixture is built from');
+    out.open = measure();
+
+    // Show only selected, with nothing selected: everything the renderer draws
+    // has to collapse, beads and springs and cones included.
+    clusterBoxes()[0].click(); await settle();
+    out.hiddenAll = measure();
+    assert(out.hiddenAll.coloured < out.open.coloured - 10,
+      'hiding every cluster must remove geometry from the screen');
+
+    // Faint markers bring one small sphere back per particle — including for
+    // raspberry, where the marker is the centre sphere its beads normally hide.
+    clusterBoxes()[1].click(); await settle();
+    out.dimmedAll = measure();
+    // Neutral and edges, not the coloured bucket: the markers are deliberately
+    // grey, so the saturated bucket cannot see them at all — it reads 14 either
+    // way, for every format. Grey lands in neutral, silhouettes in edges.
+    assert((out.dimmedAll.neutral - out.hiddenAll.neutral)
+         + (out.dimmedAll.edges - out.hiddenAll.edges) > 20,
+      'faint markers must put grey spheres back on screen');
+    clusterBoxes()[1].click(); await settle();
+
+    // Must name the checkbox: each row leads with a colour swatch input.
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    await settle();
+    out.oneSelected = measure();
+    assert(out.oneSelected.coloured > out.hiddenAll.coloured + 10,
+      'selecting a cluster must bring its particles back');
+    return out;
+  `,
+
+  // Everything about the clustering *controls*: the View selector, the way out,
+  // and the fact that closing the panel does not switch the clustering off.
+  //
+  // None of it is format-specific — one pane, one control bar, one store — so it
+  // runs against a single fixture. What is format-specific is whether cluster
+  // appearance reaches each renderer, and that is the `clustering` scenario.
+  clusterControls: `
     const out = {};
     byLabel('Clustering').click();
     await waitFor(() => document.querySelector('.cluster-item'), 15000);
@@ -244,10 +341,22 @@ const SCENARIOS = {
     // Try candidates in turn: a single point can sit on geometry that is drawn
     // but deliberately not pickable (a patch cone, a spring). A real picking
     // regression fails every one of them.
+    // Records what it tried, so a failure says why. "clicking a particle must
+    // select it" alone cannot distinguish picking being broken from the scan
+    // finding nothing to click on, and those want completely different fixes.
+    let lastAttempt = 'no attempt';
     const pickSomething = async () => {
-      for (const [x, y] of pickTargets()) {
+      const targets = pickTargets();
+      lastAttempt = targets.length + ' candidates: ' + targets.map(t => t.map(Math.round).join(',')).join(' ');
+      for (const [x, y] of targets) {
         click(x, y);
-        if (await waitFor(() => selectedCount() === 1, 700)) return [x, y];
+        // Generous, because this wait is only ever paid in full when a click
+        // genuinely missed. 700ms was not always enough for React to commit a
+        // selection under a loaded machine, and losing that race on all twelve
+        // candidates reported picking as broken when it was not — once in four
+        // full runs. A real regression still fails every candidate, it just
+        // takes longer to say so.
+        if (await waitFor(() => selectedCount() === 1, 1500)) return [x, y];
         await clear();
       }
       return null;
@@ -255,7 +364,7 @@ const SCENARIOS = {
 
     const out = {};
     const hit = await pickSomething();
-    assert(hit, 'clicking a particle must select it');
+    assert(hit, 'clicking a particle must select it — tried ' + lastAttempt);
 
     click(hit[0], hit[1], { ctrlKey: true });
     assert(await waitFor(() => selectedCount() === 0, 2000),
@@ -280,7 +389,7 @@ const SCENARIOS = {
     await clear();
 
     const clusteredHit = await pickSomething();
-    assert(clusteredHit, 'clicking a particle must still select it once clustered');
+    assert(clusteredHit, 'clicking a particle must still select it once clustered — tried ' + lastAttempt);
     click(clusteredHit[0], clusteredHit[1], { ctrlKey: true });
     assert(await waitFor(() => selectedCount() === 0, 2000),
       'a modifier click on a selected particle must deselect it, not add another');
@@ -294,8 +403,6 @@ const SCENARIOS = {
   // Lighting must drive the scene, and the patch legend gates patch rendering.
   appearance: `
     const out = {};
-    byLabel('Patch legend').click(); await settle();
-    out.patchesOn = measure();
     byLabel('Particle legend').click(); await settle();
     out.legendsOn = measure();
 
@@ -413,4 +520,21 @@ const SCENARIOS = {
   `,
 };
 
-module.exports = { FORMATS, SCENARIOS };
+/**
+ * Which fixtures each scenario runs against. `null` means all of them.
+ *
+ * Read this as the suite's coverage argument: every entry says what the scenario
+ * is a claim about, and therefore what a second fixture would add.
+ */
+const SCENARIO_FORMATS = {
+  load: null,          // the per-format smoke test: parse, detect, draw
+  playback: LOADERS,   // frame stepping and the cache, one per loading path
+  detail: RENDERERS,   // resolution and radius must reach every renderer
+  clustering: RENDERERS,     // and so must cluster appearance
+  clusterControls: ANY_ONE,  // the pane and the View control: scene-wide
+  selection: PICKABLE,       // picking, per pickable renderer
+  appearance: ANY_ONE,       // one lighting rig, one background
+  overlays: ANY_ONE,         // overlay registration and the View: scene-wide
+};
+
+module.exports = { FORMATS, SCENARIOS, SCENARIO_FORMATS };

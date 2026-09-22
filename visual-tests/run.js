@@ -12,7 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const { connect, openPage } = require('./driver');
 const { wrap } = require('./probe');
-const { FORMATS, SCENARIOS } = require('./scenarios');
+const { FORMATS, SCENARIOS, SCENARIO_FORMATS } = require('./scenarios');
 
 const APP_URL = process.env.PPVIEW_URL || 'http://localhost:3111/ppview';
 const APP_ORIGIN = new URL(APP_URL).origin;
@@ -46,9 +46,22 @@ async function run() {
 
   // Flatten to a work queue so every worker stays busy regardless of how much
   // each individual scenario costs.
+  // A scenario with no entry would quietly fall back to every fixture, which is
+  // the cost this table exists to stop paying. Name it or it does not run.
+  const undeclared = Object.keys(SCENARIOS).filter(k => !(k in SCENARIO_FORMATS));
+  if (undeclared.length) {
+    console.error(`scenarios missing from SCENARIO_FORMATS: ${undeclared.join(', ')}`);
+    process.exit(2);
+  }
+
   const jobs = [];
   for (const format of formats) {
     for (const [scenario, body] of Object.entries(SCENARIOS)) {
+      // A scenario names the fixtures it is a claim about; see SCENARIO_FORMATS.
+      // Every page load costs 2.6s of WebGL context and first draw, so running a
+      // scene-wide scenario against seven fixtures bought nothing seven times.
+      const wanted = SCENARIO_FORMATS[scenario];
+      if (wanted && !wanted.includes(format.name)) continue;
       jobs.push({ format, scenario, body });
     }
   }
@@ -58,32 +71,59 @@ async function run() {
   const timings = [];
   let next = 0;
 
+  // A renderer that has stopped drawing does not recover on the next goto.
+  //
+  // Long runs degrade: one page reaches a state where the software rasteriser
+  // produces nothing, and because a worker reuses its tab for every job, the
+  // failure cascades — one run lost fourteen of twenty-six scenarios from
+  // srs/detail onwards, while each of them passed on its own. That is the suite
+  // reporting an environment fault as fourteen regressions, which is worse than
+  // useless. A fresh tab is a fresh context, so the job is retried in one.
+  const POISONED = /never drew any geometry/;
+
   const worker = async (id) => {
-    const cdp = await connect(9222, await openPage(9222));
+    let cdp = await connect(9222, await openPage(9222));
+    const runJob = async ({ format, scenario, body }, key) => {
+      // Fresh state per scenario: localStorage carries colour scheme,
+      // lighting and panel positions, so scenarios would otherwise
+      // contaminate each other.
+      await cdp.clearStorage(APP_ORIGIN);
+      await cdp.goto(format.url ?? APP_URL);
+      await cdp.dropFiles(format.files);
+
+      const result = await cdp.evaluate(wrap(body));
+      await cdp.screenshot(path.join(SHOTS, `${format.name}-${scenario}.png`));
+
+      const bad = cdp.logs.filter(l =>
+        l.level === 'exception' || l.level === 'error' || /mismatch|failed/i.test(l.text));
+      if (bad.length) errors.push(`${key}: ${bad.map(b => b.text).join(' | ').slice(0, 200)}`);
+      return result;
+    };
+
     try {
       for (;;) {
         const index = next++;
         if (index >= jobs.length) return;
-        const { format, scenario, body } = jobs[index];
-        const key = `${format.name}/${scenario}`;
+        const job = jobs[index];
+        const key = `${job.format.name}/${job.scenario}`;
         const started = Date.now();
         try {
-          // Fresh state per scenario: localStorage carries colour scheme,
-          // lighting and panel positions, so scenarios would otherwise
-          // contaminate each other.
-          await cdp.clearStorage(APP_ORIGIN);
-          await cdp.goto(format.url ?? APP_URL);
-          await cdp.dropFiles(format.files);
-
-          results[key] = await cdp.evaluate(wrap(body));
-          await cdp.screenshot(path.join(SHOTS, `${format.name}-${scenario}.png`));
-
-          const bad = cdp.logs.filter(l =>
-            l.level === 'exception' || l.level === 'error' || /mismatch|failed/i.test(l.text));
-          if (bad.length) errors.push(`${key}: ${bad.map(b => b.text).join(' | ').slice(0, 200)}`);
+          results[key] = await runJob(job, key);
         } catch (e) {
-          errors.push(`${key}: ${e.message}`);
-          results[key] = { error: e.message };
+          if (POISONED.test(e.message)) {
+            console.log(`  [w${id}] ${key} — renderer stopped drawing; retrying in a fresh tab`);
+            try { cdp.close(); } catch (_) {}
+            cdp = await connect(9222, await openPage(9222));
+            try {
+              results[key] = await runJob(job, key);
+            } catch (again) {
+              errors.push(`${key}: ${again.message}`);
+              results[key] = { error: again.message };
+            }
+          } else {
+            errors.push(`${key}: ${e.message}`);
+            results[key] = { error: e.message };
+          }
         }
         const ms = Date.now() - started;
         timings.push({ key, ms });
@@ -162,8 +202,16 @@ function compare(current, baseline) {
       console.log('\nconsole problems recorded while capturing:');
       errors.forEach(e => console.log('  ! ' + e));
     }
-    // Merge, so --only --update refreshes one format without dropping the rest.
-    const previous = fs.existsSync(BASELINE) ? JSON.parse(fs.readFileSync(BASELINE, 'utf8')) : {};
+    // Merge only for --only, so refreshing one format does not drop the rest.
+    //
+    // A full run replaces outright. Merging there leaves behind the jobs that no
+    // longer exist — when the scenario/format table shrank, twenty-four stale
+    // entries stayed in the baseline and every run afterwards reported them as
+    // "→ undefined" diffs. Worse, a scenario quietly dropped from the table
+    // would keep its baseline entry and look like it was still being checked.
+    const previous = ONLY && fs.existsSync(BASELINE)
+      ? JSON.parse(fs.readFileSync(BASELINE, 'utf8'))
+      : {};
     fs.writeFileSync(BASELINE, JSON.stringify({ ...previous, ...results }, null, 2) + '\n');
     console.log(`\nbaseline written: ${Object.keys(results).length} scenarios`);
     process.exit(0);
