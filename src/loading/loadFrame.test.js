@@ -71,9 +71,14 @@ describe('loadFrame', () => {
     expect(scene.calls.positions).toHaveLength(2);
   });
 
-  it('attaches a type and a rotation matrix to every particle', async () => {
-    // Every renderer needs both, and the topology is the only place the mapping
-    // exists — so it happens once, here, not per renderer.
+  it('attaches a type to every particle, and keeps the orientation vectors', async () => {
+    // Type comes from the topology, which is the only place the mapping exists.
+    //
+    // Orientation is deliberately *not* turned into a matrix here. Only patch
+    // cones and raspberry beads read one, and rotationMatrixOf derives it from
+    // these vectors — building one per particle per frame cost 102 ms of the
+    // 454 ms spent loading a 400,000-particle frame, almost all of it for
+    // particles that never used it.
     const scene = sceneOf();
     await loadFrame({
       file: trajectoryFile(), index: [0, secondFrameAt], frameNumber: 0,
@@ -81,7 +86,9 @@ describe('loadFrame', () => {
     });
     scene.calls.positions.forEach(p => {
       expect(p).toHaveProperty('typeIndex');
-      expect(p).toHaveProperty('rotationMatrix');
+      expect(p.a1).toBeDefined();
+      expect(p.a3).toBeDefined();
+      expect(p.rotationMatrix).toBeUndefined();
     });
   });
 

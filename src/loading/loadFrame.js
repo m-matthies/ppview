@@ -1,6 +1,5 @@
-import * as THREE from 'three';
 import { parseConfiguration } from '../utils/trajectoryLoader';
-import { applyPeriodicBoundary, computeRotationMatrix } from '../utils/geometryUtils';
+import { applyPeriodicBoundary } from '../utils/geometryUtils';
 import { getParticleType } from '../formats/parsers/particleType';
 import { convertMGLToPPViewFormat } from '../utils/mglParser';
 import { LoadError } from './staleness';
@@ -40,12 +39,11 @@ function mglFrame(file, frameNumber, scene) {
 function decorate(positions, boxSize, topData) {
   return applyPeriodicBoundary(positions, boxSize).map((position, index) => {
     const { typeIndex, particleType } = getParticleType(index, topData);
-    return {
-      ...position,
-      typeIndex,
-      particleType,
-      rotationMatrix: computeRotationMatrix(position, THREE),
-    };
+    // No rotation matrix. Only patch cones and raspberry beads ever read one,
+    // and rotationMatrixOf derives it from the a1/a3 this object already
+    // carries — so it is computed by the two layers that use it, for the
+    // instances they draw, instead of for every particle of every frame.
+    return { ...position, typeIndex, particleType };
   });
 }
 

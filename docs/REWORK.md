@@ -522,6 +522,28 @@ by eye. Writing that test caught a real defect: the scanner treated a newline as
 ordinary whitespace, so a row of three columns read on into the next row and the
 frame came out with half its particles. Numbers now stop at a line boundary.
 
+**The rotation matrix left the load path.** Measuring `decorate`'s 143 ms found
+`getParticleType` at 1 ms and `computeRotationMatrix` at 120 — so the assumption
+that type lookup was the cost was simply wrong. The function allocated five
+objects per particle (three `Vector3`s, a `Matrix3`, and a clone of its
+elements); rewriting it in scalar arithmetic took it to 102 ms, which showed the
+allocation was not the cost either.
+
+The useful observation was structural: **only patch cones and raspberry beads
+ever read a rotation matrix**, and both already loop over their own instances. So
+`rotationMatrixOf` derives it from the `a1`/`a3` the frame already carries, for
+the instances those two layers draw, and `decorate` builds none. A sphere is
+rotationally symmetric; the majority of particles in a large system were paying
+for an orientation nothing would read.
+
+| at 400,000 particles | before | after |
+|---|---|---|
+| whole frame | 454 ms | **340 ms** |
+| per 100k | 113 ms | **85 ms** |
+
+Cumulatively the frame is down from 148 ms per 100k to 85 — about 850 ms at a
+million, from roughly 1.5 s.
+
 **Not yet wired in.** `loadFrame` still uses the four-pass path, because fourteen
 modules read `positions[i].x` and the accessor in `rendering/frame.js` is the
 migration those callers move behind. Landing the parser without them would mean

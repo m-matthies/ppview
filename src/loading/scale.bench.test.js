@@ -144,14 +144,24 @@ bench('per-frame JS cost by particle count', () => {
     const wrapped = time('applyPeriodicBoundary',
       () => applyPeriodicBoundary(config.positions, config.boxSize));
     const positions = wrapped.value;
-    const decorated = time('decorate (types + rotation)', () => positions.map((position, index) => {
+    // What decorate is actually made of. Type assignment comes from the
+    // topology and cannot change between frames; the rotation is derived from
+    // a1/a3 and could be computed where it is used.
+    const types = time('  of which getParticleType', () => {
+      for (let i = 0; i < n; i++) getParticleType(i, topData);
+    });
+    const rotations = time('  of which computeRotationMatrix', () => {
+      for (let i = 0; i < n; i++) computeRotationMatrix(positions[i], THREE);
+    });
+    const spread = time('  of which the object spread', () => positions.map(p => ({ ...p })));
+
+    const decorated = time('decorate (types only now)', () => positions.map((position, index) => {
       const { typeIndex, particleType } = getParticleType(index, topData);
-      return { ...position, typeIndex, particleType,
-               rotationMatrix: computeRotationMatrix(position, THREE) };
+      return { ...position, typeIndex, particleType };
     }));
 
     console.log(`\n  at ${n.toLocaleString()} particles:`);
-    for (const stage of [split, parsed, wrapped, com, decorated]) {
+    for (const stage of [split, parsed, wrapped, com, decorated, types, rotations, spread]) {
       console.log(`  ${stage.ms.toFixed(0).padStart(6)} ms  ${stage.label}`);
     }
     expect(decorated.value).toHaveLength(n);
