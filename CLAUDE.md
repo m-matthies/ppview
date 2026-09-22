@@ -1007,23 +1007,46 @@ effect translates `hiddenClusters` into `clusteringStore.hiddenParticles`, which
 is what the renderers read.
 
 ### Cluster colours
-**Colour encodes cluster size, not cluster identity.** The distinct cluster sizes
-are ranked ascending and the palette is indexed by that rank, so two clusters of
-the same size always share a colour and the palette walks in size order. A
-cluster's *index* is an artefact of the order DBSCAN happened to walk the
-particles: colouring by it said nothing about the structure. This also matches the
-histogram, which already treats an exact size as the unit you select by — and the
-histogram bars are painted in the same colours, so it doubles as the legend.
+**A cluster's colour comes from its lowest-numbered particle**
+(`utils/clusterIdentity.js`): clusters are ranked by that anchor and the palette
+is indexed by the rank. It is a property of membership and nothing else — no
+history, no current frame, no second opinion — so the pane, the scene and the
+time view all compute the same answer and none of them can disagree.
+
+It replaced **colour by size rank**, which is a good rule for a single frame and a
+bad one across a trajectory: sizes change, so a cluster changes colour as it
+grows and shrinks. Measured on two clusters of eight particles — two
+near-identical reds at one frame, a green and a red a few frames later, the same
+two clusters throughout. A cluster you cannot recognise from frame to frame
+cannot be followed, which is what the time view is for.
+
+Patching that with a *second* source made it worse: colouring by lineage where
+one was known and falling back to size rank where it was not meant a cluster
+changed colour the moment a time view was computed, and again whenever the lookup
+missed — a cluster the pane drew near-black had a green band in the picture. One
+rule, no fallback.
+
+A cluster keeps its colour while it keeps its lowest-numbered particle, which
+survives the growing, shrinking and exchange that size rank does not. Ranking
+rather than using the particle number directly matters: five blobs of eight would
+otherwise land on palette entries 0, 8, 4, 0, 8 — two collisions out of five.
+
+**The histogram was the last thing still coloured by size**, which meant its bars
+disagreed with the swatches beside them, with the scene and with the time view —
+the inconsistency that made the colours look arbitrary. A bar now carries a
+cluster's colour only where it stands for **exactly one**; where it covers
+several it takes a neutral tone and claims nothing, because five clusters of
+eight particles have five colours and no single one.
 
 The bar colour arrives as a `--bar-color` custom property rather than an inline
 `background`, because an inline background would outrank the class rule that
 paints a *selected* bar accent-blue.
 
-**Lightness separates clusters that share a size.** Hue alone made a system of
-uniformly sized clusters render in one colour, which is exactly the problem
-per-cluster colours were introduced to fix. Each cluster is nudged by its
-position among the clusters of its size, in steps of 7.5 lightness points
-cycling every five. Steps that cycle, not a range spread across the group: a
+**Lightness separates clusters past the end of the palette.** With twelve
+colours and more clusters than that, the rank wraps; each wrap shifts the
+lightness so the thirteenth cluster is not indistinguishable from the first.
+`colourForRank` is the single function that does this, used by the pane and by
+the time view. Steps that cycle, not a range spread across the group: a
 hundred clusters of one size would put a fraction of a point between neighbours
 and look uniform again. The steps are centred on however many shades the group
 actually uses, so a lone cluster gets the base colour exactly — otherwise it

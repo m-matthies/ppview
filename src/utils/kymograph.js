@@ -100,25 +100,6 @@ export function assignLineages(clusters, particleCount, previous, nextLineage) {
   return { lineageOf, nextLineage: next };
 }
 
-/**
- * Lineages in the order they first appear, as a lineage -> slot map.
- *
- * The palette is indexed by this slot rather than by the raw lineage id, so the
- * first few clusters get the first few palette entries however many lineages the
- * run went on to create. Indexing by the id directly meant a long run with many
- * short-lived clusters walked the palette and wrapped, giving two live clusters
- * the same colour while entries sat unused.
- */
-export function lineageSlots(columns) {
-  const slots = new Map();
-  for (const column of columns) {
-    for (const lineage of column) {
-      if (lineage !== NOISE && !slots.has(lineage)) slots.set(lineage, slots.size);
-    }
-  }
-  return slots;
-}
-
 /** Which column of a computed run holds a given trajectory frame. */
 export function columnForFrame(data, frame) {
   if (!data?.frames?.length) return 0;
@@ -127,30 +108,27 @@ export function columnForFrame(data, frame) {
 }
 
 /**
- * A cluster's colour from its lineage: one colour per cluster, for all time.
+ * Lineage -> rank, by the anchor of its membership when it first appears.
  *
- * This is what makes a cluster trackable at all. Everywhere else the app colours
- * a cluster by its size, which is the right call for a single frame — but sizes
- * change from frame to frame, so the cluster you picked is a different colour
- * two frames later, in the pane and in the scene both. Measured on two clusters
- * of eight: two near-identical reds at one frame, a green and a red at another,
- * the same clusters throughout. Nothing then connects a band to a selection.
- *
- * Once a time view exists there is a stable identity to colour by, so the whole
- * app uses it: the pane's swatches, the particles in the scene and the bands
- * all agree, and none of them change as the trajectory plays.
- *
- * @returns (particleIndex) => hex, or null when that particle is in no cluster
+ * The same rule the pane colours by (`utils/clusterIdentity.js`), applied to a
+ * lineage rather than to one frame's cluster, so a band and the cluster it
+ * stands for are the same colour. Taken at the lineage's first appearance so the
+ * rank is a property of the lineage and does not drift as membership churns.
  */
-export function lineageColourer(data, palette, frame) {
-  if (!data?.columns?.length || !palette?.length) return null;
-  const slots = lineageSlots(data.columns);
-  const column = data.columns[columnForFrame(data, frame)] ?? data.columns[0];
-  return (particle) => {
-    const lineage = column[particle];
-    if (lineage === undefined || lineage === NOISE) return null;
-    return palette[(slots.get(lineage) ?? 0) % palette.length];
-  };
+export function lineageRanks(columns) {
+  const anchors = new Map();
+  for (const column of columns) {
+    for (let particle = 0; particle < column.length; particle++) {
+      const lineage = column[particle];
+      if (lineage === NOISE || anchors.has(lineage)) continue;
+      anchors.set(lineage, particle);
+    }
+  }
+  return new Map(
+    [...anchors.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .map(([lineage], rank) => [lineage, rank]),
+  );
 }
 
 // ---------------------------------------------------------------- bands

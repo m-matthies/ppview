@@ -1,76 +1,66 @@
 import { useCallback, useMemo } from 'react';
-import { getParticleColors, lightnessLadder } from '../../colors';
+import { getParticleColors } from '../../colors';
+import { anchorRanks, colourForRank } from '../../utils/clusterIdentity';
 
 /**
  * What colour each cluster is drawn in.
  *
- * Hue encodes cluster **size**; lightness separates clusters that share one.
+ * **Its lowest-numbered particle decides**, via `utils/clusterIdentity.js`. That
+ * is a property of the cluster's membership and nothing else: no history, no
+ * current frame, no second opinion, so the pane, the scene and the time view all
+ * compute the same answer and none of them can disagree.
  *
- * A cluster's index is an artefact of the order DBSCAN happened to walk the
- * particles — it says nothing about the structure, so colouring by it made two
- * clusters of the same size look unrelated and told you nothing readable off the
- * scene. Ranking the distinct sizes and indexing the palette by that rank means
- * same size always means same colour, and the palette walks in size order. It
- * also matches the histogram, which already treats an exact size as the unit you
- * select by.
+ * Hue used to encode cluster **size**, with lightness separating clusters that
+ * shared one. That is a good rule for a single frame and a bad one across a
+ * trajectory, because sizes change: measured on two clusters of eight particles,
+ * two near-identical reds at one frame and a green and a red a few frames later,
+ * the same two clusters throughout. A cluster you cannot recognise from frame to
+ * frame cannot be followed, which is what the time view is for.
  *
- * On its own that made a system of uniformly sized clusters render in a single
- * colour — the very problem per-cluster colours were introduced to fix. So each
- * cluster is also nudged in lightness by its position among the clusters of its
- * size. Hue answers "how big"; the shade says "not the same one".
- */
+ * Patching that with a second source made it worse. Colouring by lineage where
+ * one was known and falling back to size rank where it was not meant a cluster
+ * changed colour the moment a time view was computed, and again whenever the
+ * lookup missed — a cluster the pane drew near-black had a green band in the
+ * picture.
 
-// Five shades, cycling. A hundred clusters of one size would put a fraction of a
-// point between neighbours and look uniform again, and five is already more than
-// anyone reads off a scene.
-const LIGHTNESS_STEPS = 5;
+ */
 
 export default function useClusterColours({ clusters, colorScheme, fileClusters, colorOverrides }) {
   const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
 
-  const sizeRanks = useMemo(() => {
-    const sizes = [...new Set(clusters.map(c => c.length))].sort((a, b) => a - b);
-    return new Map(sizes.map((size, rank) => [size, rank]));
-  }, [clusters]);
+  /**
+   * Colour comes from the cluster's lowest-numbered particle, not its size.
+   *
+   * Size rank is right for one frame and wrong across a trajectory: sizes
+   * change, so a cluster changes colour as it grows and shrinks, and there is
+   * then nothing to recognise it by. See `utils/clusterIdentity.js`.
+   */
+  const ranks = useMemo(() => anchorRanks(clusters), [clusters]);
 
   /**
    * The base colour for a size, with no nudge — what the histogram bar for that
    * size is painted in, since a bar stands for the whole group.
    */
-  const colorForSize = useCallback(
-    (size) => palette[(sizeRanks.get(size) ?? 0) % palette.length],
-    [palette, sizeRanks],
+  /** A cluster's own colour: its anchor's rank, wrapped through the palette. */
+  const colorForCluster = useCallback(
+    (index) => colourForRank(palette, ranks.get(index) ?? 0),
+    [palette, ranks],
   );
-
-  /** Each cluster's position among those of its own size, and how many share it. */
-  const sizeGroups = useMemo(() => {
-    const counts = new Map();
-    clusters.forEach(c => counts.set(c.length, (counts.get(c.length) ?? 0) + 1));
-    const seen = new Map();
-    return clusters.map(cluster => {
-      const ordinal = seen.get(cluster.length) ?? 0;
-      seen.set(cluster.length, ordinal + 1);
-      return { ordinal, count: counts.get(cluster.length) ?? 1 };
-    });
-  }, [clusters]);
 
   /**
    * A cluster's colour: an explicit override, then the file's own colour, then
-   * the size ladder.
+   * its anchor rank.
    *
-   * lightnessLadder centres the ladder on the palette colour where there is room
-   * and slides it to fit where there is not, so a group of one gets the base
-   * colour exactly — matching the histogram bar meant to be its legend — and a
-   * base near black or white still yields five distinct shades.
+   * Clusters past the end of the palette are separated by lightness instead of
+   * hue, so a system with more clusters than colours still tells them apart —
+   * `lightnessLadder` slides to fit, so a base near black or white still yields
+   * distinct shades rather than collapsing onto the edge.
    */
   const clusterColorAt = useCallback((index) => {
     const explicit = colorOverrides[index] ?? fileClusters?.[index]?.color;
     if (explicit) return explicit;
-    const { ordinal, count } = sizeGroups[index] ?? { ordinal: 0, count: 1 };
-    const rungs = Math.min(count, LIGHTNESS_STEPS);
-    const ladder = lightnessLadder(colorForSize(clusters[index]?.length), rungs);
-    return ladder[ordinal % rungs];
-  }, [colorOverrides, fileClusters, colorForSize, clusters, sizeGroups]);
+    return colourForRank(palette, ranks.get(index) ?? 0);
+  }, [colorOverrides, fileClusters, ranks, palette]);
 
-  return { colorForSize, clusterColorAt };
+  return { colorForCluster, clusterColorAt };
 }

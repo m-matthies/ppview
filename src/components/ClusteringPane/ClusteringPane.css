@@ -309,9 +309,11 @@
     min-height: 0;
 }
 
-/* A bar carries the colour the clusters of that size are drawn in, so the
-   histogram is also the legend for the scene. `--bar-color` comes from the
-   component; the fallback covers a bar with no clusters behind it.
+/* A bar carries a cluster's colour only where it stands for exactly one of them,
+   since clusters are coloured by identity and not by size — a bar covering five
+   clusters has five colours and no single one. `--bar-color` comes from the
+   component; the neutral fallback is what a bar covering several gets, so the
+   histogram never claims to be a legend it cannot be.
 
    Blue still means selected, as everywhere else in the app — which is why the
    colour arrives as a custom property rather than an inline background, since

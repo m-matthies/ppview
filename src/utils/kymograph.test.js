@@ -1,5 +1,5 @@
 import {
-  pickIndices, assignLineages, lineageSlots, NOISE, lineageColourer, columnForFrame,
+  pickIndices, assignLineages, lineageRanks, NOISE, columnForFrame,
   cohortOf, cohortFrames,
   bandSizes, bandOrder, stackFrames, particleTrace,
 } from './kymograph';
@@ -88,18 +88,27 @@ describe('assignLineages', () => {
   });
 });
 
-describe('lineageSlots', () => {
-  // Indexed by first appearance, not by the raw id: a long run creates many
-  // short-lived lineages, and indexing the palette by id walked past its end and
-  // gave two live clusters the same colour.
-  test('numbers lineages from zero in the order they appear', () => {
-    const slots = lineageSlots([Int32Array.from([7, 7, 0]), Int32Array.from([7, 9, 0])]);
-    expect(slots.get(7)).toBe(0);
-    expect(slots.get(9)).toBe(1);
+describe('lineageRanks', () => {
+  // The same rule the pane colours by, applied to a lineage: rank by the
+  // lowest-numbered particle it held when it first appeared. Taken at first
+  // appearance so the rank belongs to the lineage and does not drift.
+  test('ranks lineages by their anchor', () => {
+    const ranks = lineageRanks([Int32Array.from([0, 0, 7, 7]), Int32Array.from([9, 9, 7, 7])]);
+    // By anchor value, not by which appeared first — the pane ranks clusters the
+    // same way, and the two have to agree.
+    expect(ranks.get(9)).toBe(0);   // anchor 0
+    expect(ranks.get(7)).toBe(1);   // anchor 2
   });
 
   test('noise is not a lineage', () => {
-    expect(lineageSlots([Int32Array.from([0, 0])]).has(NOISE)).toBe(false);
+    expect(lineageRanks([Int32Array.from([0, 0])]).has(NOISE)).toBe(false);
+  });
+
+  test('a lineage keeps its rank as its membership changes', () => {
+    const before = lineageRanks([Int32Array.from([1, 1, 2, 2])]);
+    const after = lineageRanks([Int32Array.from([1, 1, 2, 2]), Int32Array.from([1, 2, 2, 2])]);
+    expect(after.get(1)).toBe(before.get(1));
+    expect(after.get(2)).toBe(before.get(2));
   });
 });
 
@@ -152,32 +161,6 @@ describe('bands', () => {
   test('and is null while the particle is in no cluster', () => {
     const order = bandOrder(columns);
     expect(particleTrace(columns, stackFrames(columns, order, 6), 5)[0]).toBeNull();
-  });
-});
-
-describe('lineageColourer', () => {
-  // Deleted once by an over-eager cleanup, which webpack only warns about — the
-  // app compiled and then threw on render. Worth a test of its own.
-  const data = { columns: [Int32Array.from([5, 5, 0])], frames: [0], particleCount: 3 };
-
-  test('gives a cluster a colour from its lineage', () => {
-    const colour = lineageColourer(data, ['#123456'], 0);
-    expect(colour(0)).toBe('#123456');
-  });
-
-  test('and nothing for a particle in no cluster', () => {
-    expect(lineageColourer(data, ['#123456'], 0)(2)).toBeNull();
-  });
-
-  test('the same cluster gets the same colour at every frame', () => {
-    const twoFrames = {
-      columns: [Int32Array.from([5, 5, 9]), Int32Array.from([5, 9, 9])],
-      frames: [0, 1],
-      particleCount: 3,
-    };
-    const palette = ['#111111', '#222222'];
-    expect(lineageColourer(twoFrames, palette, 0)(0))
-      .toBe(lineageColourer(twoFrames, palette, 1)(0));
   });
 });
 

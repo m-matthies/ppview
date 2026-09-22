@@ -104,81 +104,109 @@ const LOADERS = ['mgl', 'oxdna'];
 const ANY_ONE = ['lorenzo'];
 
 const SCENARIOS = {
-  // The clustering over time, drawn as one band per cluster.
+  // The clustering over time: what became of one cluster's particles.
   //
   // Runs against the one fixture where a cluster actually changes: two blobs of
-  // eight and a particle that walks between them. What it has to prove is that
-  // the picture is built, that a cluster keeps one colour — the pane's colour —
-  // for the whole run, and that a band can be pinned and followed.
+  // eight and a particle that walks between them. DBSCAN walks particles in
+  // order, so the first cluster listed is the blob holding particle 0 — the one
+  // that loses it.
   kymograph: `
     await settle();
     byLabel('Clustering').click();
     await waitFor(() => document.querySelector('.cluster-item'), 15000);
     await settle();
 
+    const paneColoursNow = () => [...document.querySelectorAll('.cluster-swatch')]
+      .map(i => i.value).sort().join(',');
+
+    // A cluster's colour must not move: not when it is selected, not when the
+    // frame changes, and not when a time view is computed. All three moved it
+    // before — selecting a near-black cluster in the pane gave it a green band,
+    // because the colour came from one source with a silent fallback to another.
+    const coloursAtStart = paneColoursNow();
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    await settle();
+    assert(paneColoursNow() === coloursAtStart,
+      'selecting a cluster must not change its colour');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
+    await settle();
+    assert(paneColoursNow() === coloursAtStart,
+      'nor must changing the frame');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    await settle();
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    await settle();
+
     const byText = (t) => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === t);
     assert(byText('Clusters over time'), 'the pane must offer the time view');
     byText('Clusters over time').click();
-    assert(await waitFor(() => document.querySelector('.kymograph-canvas'), 30000),
-      'the time view must appear');
+    await waitFor(() => document.querySelector('.kymograph-panel'), 30000);
+
+    // Nothing is drawn until a cluster is chosen: the picture is one cluster's
+    // history, not the whole system's, and which one has to be picked first.
+    assert(!document.querySelector('.kymograph-canvas'),
+      'no picture before a cluster is selected');
+    assert(document.querySelector('.kymograph-empty'), 'and it says so');
+
+    document.querySelector('.cluster-item input[type=checkbox]').click();
+    assert(await waitFor(() => document.querySelector('.kymograph-canvas'), 20000),
+      'selecting a cluster must draw it');
     await settle();
 
     const canvas = document.querySelector('.kymograph-canvas');
     const hex2 = (n) => n.toString(16).padStart(2, '0');
-    const shown = () => {
-      const c = document.createElement('canvas');
-      c.width = canvas.width; c.height = canvas.height;
-      c.getContext('2d').drawImage(canvas, 0, 0);
-      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-      const seen = new Set();
-      for (let i = 0; i < d.length; i += 4) {
-        seen.add('#' + hex2(d[i]) + hex2(d[i+1]) + hex2(d[i+2]));
-      }
-      return seen;
-    };
-    const paneColours = () => [...document.querySelectorAll('.cluster-swatch')]
-      .map(i => i.value).sort();
-
     const out = { size: canvas.width + 'x' + canvas.height };
     assert(canvas.width > 1 && canvas.height > 1, 'the picture must have been drawn');
 
-    // A cluster's colour must be the pane's, and must not change as the
-    // trajectory plays. Colouring by size rank — right for one frame — gave
-    // these two clusters two near-identical reds at frame 0, both being size 8,
-    // and a green and a red at the last frame: the same clusters, recoloured by
-    // scrubbing, with nothing to match a band to a selection.
+    // Axes, so the height and the width mean something stated rather than
+    // guessed. The y scale tops out at the cohort, which is this cluster's size.
+    const ticksY = [...document.querySelectorAll('.kymograph-ticks-y span')].map(t => t.textContent);
+    const ticksX = [...document.querySelectorAll('.kymograph-ticks-x span')].map(t => t.textContent);
+    out.ticksY = ticksY.join(',');
+    out.ticksX = ticksX.join(',');
+    assert(document.querySelector('.kymograph-axis-y').textContent === 'Particles',
+      'the vertical axis is labelled');
+    assert(document.querySelector('.kymograph-axis-x').textContent === 'Frame',
+      'and so is the horizontal one');
+    assert(ticksY[0] === '8', 'the scale tops out at the eight particles being followed');
+    assert(ticksY[ticksY.length - 1] === '0', 'and starts at zero');
+    assert(ticksX[0] === '0' && ticksX[ticksX.length - 1] === '5',
+      'the frame axis spans the trajectory');
+
+    const paneColours = () => [...document.querySelectorAll('.cluster-swatch')]
+      .map(i => i.value).sort();
     const paneStart = paneColours();
     out.paneColours = paneStart.join(',');
-    assert(paneStart.length > 0, 'the pane lists clusters');
-    const first = shown();
-    assert(paneStart.every(c => first.has(c)),
-      'every cluster colour in the pane must be a colour in the picture');
+    assert(paneStart.join(',') === coloursAtStart,
+      'and computing a time view must not change them either');
 
-    // Which cluster colours are actually drawn — independent of how a muted
-    // band happens to be tinted.
-    const clustersShown = () => { const s = shown(); return paneStart.filter(c => s.has(c)); };
-
+    // The histogram, the list and the picture must agree. The histogram was the
+    // last thing still coloured by size, so its bars disagreed with the swatches
+    // beside them, with the scene and with the bands. A bar standing for exactly
+    // one cluster now carries that cluster's colour; this fixture has two
+    // clusters of different sizes at the last frame, so both bars do.
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     await settle();
-    assert(paneColours().join(',') === out.paneColours,
-      'a cluster must keep its colour as the trajectory plays');
-    assert(clustersShown().length === paneStart.length, 'and so must the bands');
+    // Normalised, not compared as strings: the palette is hsl() and a colour
+    // input reports hex, so the raw values differ while the colours match. A
+    // canvas context is the shortest honest way to compare two CSS colours.
+    const normalise = (colour) => {
+      const ctx = document.createElement('canvas').getContext('2d');
+      ctx.fillStyle = colour;
+      return ctx.fillStyle;
+    };
+    const barColours = [...document.querySelectorAll('.histogram-bar')]
+      .map(b => b.style.getPropertyValue('--bar-color'))
+      .filter(Boolean).map(normalise).sort();
+    out.barColours = barColours.join(',');
+    assert(barColours.length === 2, 'each bar stands for one cluster, so each has a colour');
+    assert(barColours.join(',') === paneColours().map(normalise).sort().join(','),
+      'and those are the colours the list gives those clusters');
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
     await settle();
 
-    // Pinning a band follows that cluster: a lineage is stable, so this holds
-    // whatever the pane does afterwards and whatever frame is on screen.
-    const plot = document.querySelector('.kymograph-plot');
-    const box = plot.getBoundingClientRect();
-    // The lower band, which is the cluster that *loses* a particle. Following
-    // the one that gains would give a cohort that stays together — true, but it
-    // is the dispersal that this view exists to show.
-    plot.dispatchEvent(new MouseEvent('click', {
-      clientX: box.left + 8, clientY: box.top + box.height * 0.7,
-      ctrlKey: true, bubbles: true }));
-    // Following a cluster switches to its cohort: the particles that made it up,
-    // and where each of them is at every frame. Read a single column, because
-    // the picture spans the whole run — the question is what one frame shows.
+    // Read a single column: the picture spans the whole run, so the question is
+    // what one frame shows.
     const columnColours = (fraction) => {
       const c = document.createElement('canvas');
       c.width = canvas.width; c.height = canvas.height;
@@ -191,15 +219,29 @@ const SCENARIOS = {
       }
       return paneStart.filter(col => seen.has(col));
     };
+    const picture = () => {
+      const c = document.createElement('canvas');
+      c.width = canvas.width; c.height = canvas.height;
+      c.getContext('2d').drawImage(canvas, 0, 0);
+      const d = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
+      const seen = new Set();
+      for (let i = 0; i < d.length; i += 4) {
+        seen.add('#' + hex2(d[i]) + hex2(d[i+1]) + hex2(d[i+2]));
+      }
+      return [...seen].sort().join(',');
+    };
 
-    assert(await waitFor(() => columnColours(0.02).length === 1, 4000),
-      'at the frame it was picked, the cohort is all still in its own cluster');
+    // At the frame it was picked they are all still in their own cluster...
+    assert(columnColours(0.02).length === 1,
+      'at the frame it was picked, the cohort is all in its own cluster');
     const followed = columnColours(0.02)[0];
     out.followed = followed;
+    assert(paneStart.includes(followed),
+      'and that colour is the one the pane gives the cluster');
 
     // ...and by the end one of them has left for the other cluster. This is the
-    // whole question, and the band view alone could not answer it: a cluster can
-    // hold a steady count and have exchanged every member.
+    // whole question, and a band of cluster size could not answer it: a cluster
+    // can hold a steady count and have exchanged every member.
     out.fate = columnColours(0.98).join(',');
     assert(columnColours(0.98).length === 2,
       'and by the end it has split, showing where its particles went');
@@ -208,12 +250,15 @@ const SCENARIOS = {
 
     // Latched at the frame it was picked: scrubbing must not redefine who the
     // cohort is, or it would agree with whatever is on screen and answer nothing.
-    const picture = () => [...shown()].sort().join(',');
+    // The pane's colours must hold too — colouring by size rank gave these two
+    // clusters two near-identical reds at one frame and a green and a red at
+    // another, the same clusters throughout.
     const beforeSeek = picture();
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true }));
     await settle();
-    assert(picture() === beforeSeek,
-      'the cohort must not change when the frame does');
+    assert(picture() === beforeSeek, 'the cohort must not change when the frame does');
+    assert(paneColours().join(',') === out.paneColours,
+      'and a cluster must keep its colour as the trajectory plays');
 
     // A plain click seeks.
     const readout = () => [...document.querySelectorAll('input[type=range]')]
@@ -221,10 +266,12 @@ const SCENARIOS = {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
     await settle();
     const startFrame = readout();
+    const plot = document.querySelector('.kymograph-plot');
+    const box = plot.getBoundingClientRect();
     plot.dispatchEvent(new MouseEvent('click', {
       clientX: box.left + box.width - 4, clientY: box.top + box.height / 2, bubbles: true }));
     assert(await waitFor(() => readout() !== startFrame, 4000),
-      'clicking a band must go to that frame');
+      'clicking the picture must go to that frame');
     out.seeked = readout();
     return out;
   `,
@@ -414,7 +461,11 @@ const SCENARIOS = {
     // did not: the panel owned the state and the effect that published it, so
     // unmounting it left the scene clustered with nothing listening.
     clusterBoxes()[0].click(); await settle();
-    document.querySelector('.cluster-item input[type=checkbox]').click();
+    // The *second* cluster, not the first. Cluster colour now comes from the
+    // cluster's lowest-numbered particle, and for the first cluster that lands
+    // on the same palette entry as its particles' type — so switching the View
+    // would change nothing and the check below would pass whatever happened.
+    [...document.querySelectorAll('.cluster-item input[type=checkbox]')][1].click();
     await settle();
     const restrictedNow = measure();
     byLabel('Clustering').click(); await settle();

@@ -5,9 +5,10 @@ import { useUIStore } from '../../store/uiStore';
 import { goToFrame } from '../../store/commands';
 import { getParticleColors } from '../../colors';
 import {
-  lineageSlots, NOISE, bandOrder, stackFrames, particleTrace, columnForFrame,
+  lineageRanks, NOISE, bandOrder, stackFrames, particleTrace, columnForFrame,
   cohortOf, cohortFrames,
 } from '../../utils/kymograph';
+import { colourForRank } from '../../utils/clusterIdentity';
 import { CloseIcon } from '../Icons';
 import './ClusterKymograph.css';
 
@@ -52,13 +53,16 @@ function ClusterKymograph({
     return { order, frames: stackFrames(data.columns, order, data.particleCount) };
   }, [data]);
 
-  const slots = useMemo(
-    () => (data?.columns ? lineageSlots(data.columns) : null),
+  // The same rule the pane colours by, so a band and the cluster it stands for
+  // are the same colour — one function, not two sources with a fallback between
+  // them, which is what let a cluster the pane drew near-black have a green band.
+  const ranks = useMemo(
+    () => (data?.columns ? lineageRanks(data.columns) : null),
     [data],
   );
   const colourOf = useCallback(
-    (lineage) => palette[(slots?.get(lineage) ?? 0) % palette.length],
-    [palette, slots],
+    (lineage) => colourForRank(palette, ranks?.get(lineage) ?? 0),
+    [palette, ranks],
   );
 
   const currentColumn = useMemo(
@@ -231,7 +235,23 @@ function ClusterKymograph({
     goToFrame(cell.frame);
   };
 
-  const clusterCount = stack?.order.length ?? 0;
+  // What the full height stands for: the cohort when one is being followed,
+  // otherwise every particle in the structure.
+  const yMax = cohort ? cohort.members.length : (data?.particleCount ?? 0);
+
+  /** Three ticks is enough to read a scale and few enough to stay legible. */
+  const yTicks = useMemo(() => {
+    if (!yMax) return [];
+    return [yMax, Math.round(yMax / 2), 0]
+      .filter((v, i, all) => all.indexOf(v) === i);
+  }, [yMax]);
+
+  const xTicks = useMemo(() => {
+    if (!data?.frames?.length) return [];
+    const { frames } = data;
+    const picks = [0, Math.floor((frames.length - 1) / 2), frames.length - 1];
+    return picks.filter((v, i, all) => all.indexOf(v) === i).map(i => frames[i]);
+  }, [data]);
 
   return (
     <DraggablePanel
@@ -256,9 +276,28 @@ function ClusterKymograph({
         <div className="panel-section kymograph-body">
           {data?.error && <p className="kymograph-note">{data.error}</p>}
 
-          {!data?.error && data?.columns?.length > 0 && (
+          {/*
+            Nothing selected, nothing to draw. Showing every cluster invited the
+            picture to be read as the whole system's history, which it is not —
+            it is one cluster's, and which one has to be chosen first.
+          */}
+          {!data?.error && data?.columns?.length > 0 && !cohort && (
+            <p className="kymograph-note kymograph-empty">
+              Select a cluster in the clustering pane to follow it here — the
+              picture then shows what became of the particles that made it up.
+            </p>
+          )}
+
+          {!data?.error && data?.columns?.length > 0 && cohort && (
             <>
-              <div
+              <div className="kymograph-chart">
+                <span className="kymograph-axis-title kymograph-axis-y">Particles</span>
+                <div className="kymograph-ticks kymograph-ticks-y">
+                  {yTicks.map(value => (
+                    <span className="num" key={value}>{value}</span>
+                  ))}
+                </div>
+                <div
                 className="kymograph-plot"
                 ref={plotRef}
                 onClick={onPlotClick}
@@ -270,6 +309,13 @@ function ClusterKymograph({
                 {playhead !== null && (
                   <span className="kymograph-playhead" style={{ left: `${playhead}%` }} />
                 )}
+                </div>
+                <div className="kymograph-ticks kymograph-ticks-x">
+                  {xTicks.map(frame => (
+                    <span className="num" key={frame}>{frame}</span>
+                  ))}
+                </div>
+                <span className="kymograph-axis-title kymograph-axis-x">Frame</span>
               </div>
 
               <div className="kymograph-readout">
@@ -295,15 +341,6 @@ function ClusterKymograph({
                       : 'Point at a band to read off a cluster, or follow one to see where its particles go.'}
                   </span>
                 )}
-              </div>
-
-              <div className="kymograph-axis">
-                <span className="num">frame {data.frames[0]}</span>
-                <span>
-                  {clusterCount} cluster{clusterCount === 1 ? '' : 's'} across{' '}
-                  {data.frames.length} frames
-                </span>
-                <span className="num">{data.frames[data.frames.length - 1]}</span>
               </div>
 
               <p className="kymograph-note">

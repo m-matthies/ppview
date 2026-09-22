@@ -62,12 +62,71 @@
     pointer-events: none;
 }
 
-.kymograph-axis {
+/* The plot with its axes: a gutter for the y scale, a strip for the x one.
+   A grid rather than absolute positioning, so the plot keeps whatever height it
+   is dragged to and the ticks follow it. */
+.kymograph-chart {
+    display: grid;
+    grid-template-columns: auto auto 1fr;
+    grid-template-rows: 1fr auto auto;
+    align-items: stretch;
+    gap: var(--space-2);
+}
+
+.kymograph-chart .kymograph-plot {
+    grid-column: 3;
+    grid-row: 1;
+}
+
+.kymograph-ticks {
     display: flex;
-    justify-content: space-between;
-    gap: var(--space-3);
     font-size: var(--text-xs);
     color: var(--ink-dim);
+}
+
+/* Ends aligned with the ends of the axis, so a tick sits where its value is
+   rather than where the text happens to start. */
+.kymograph-ticks-y {
+    grid-column: 2;
+    grid-row: 1;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: flex-end;
+    padding: 2px 0;
+}
+
+.kymograph-ticks-x {
+    grid-column: 3;
+    grid-row: 2;
+    justify-content: space-between;
+    padding: 0 2px;
+}
+
+.kymograph-axis-title {
+    font-size: var(--text-xs);
+    color: var(--ink-dim);
+    align-self: center;
+    justify-self: center;
+}
+
+.kymograph-axis-y {
+    grid-column: 1;
+    grid-row: 1;
+    /* Read bottom-to-top, the usual way round for a vertical axis. */
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+}
+
+.kymograph-axis-x {
+    grid-column: 3;
+    grid-row: 3;
+}
+
+/* Before a cluster is chosen there is nothing to draw, so the panel says what
+   to do rather than showing a picture of everything at once. */
+.kymograph-empty {
+    padding: var(--space-5) var(--space-4);
+    text-align: center;
 }
 
 .kymograph-note {
