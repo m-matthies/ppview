@@ -1,0 +1,15 @@
+[package]
+name = "ppview-core"
+version = "0.1.0"
+edition = "2021"
+description = "Frame parsing and DBSCAN for PPView, compiled to WebAssembly."
+
+[lib]
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+# No unwinding in the browser, and it keeps the module small.
+panic = "abort"

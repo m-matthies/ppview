@@ -32,6 +32,12 @@ import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
 import { resetClusterIdentity } from "./utils/clusterIdentity";
+import { loadWasmCore } from "./wasm/wasmCore";
+
+// Start fetching the compiled core immediately: it is 26 KB and the first
+// frame cannot be read until a file is dropped, so it is always ready in time.
+// Nothing waits on it — every caller falls back to the JavaScript path.
+loadWasmCore();
 
 function App() {
   // Subscribed to values, not to stores. A bare useParticleStore() re-rendered

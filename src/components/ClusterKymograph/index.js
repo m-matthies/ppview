@@ -8,7 +8,7 @@ import {
   NOISE, bandOrder, stackFrames, particleTrace, columnForFrame,
   cohortOf, cohortFrames,
 } from '../../utils/kymograph';
-import { colourForSlot, slotForCluster } from '../../utils/clusterIdentity';
+import { colourForSlot, createIdentity } from '../../utils/clusterIdentity';
 import { CloseIcon } from '../Icons';
 import './ClusterKymograph.css';
 
@@ -63,9 +63,12 @@ function ClusterKymograph({
    */
   const slots = useMemo(() => {
     if (!data?.columns?.length) return null;
-    // Resolved once per computation, not per draw: `slotForCluster` registers
-    // what it sees, so calling it while painting would rewrite the registry on
-    // every repaint and make the colours depend on how often the canvas redrew.
+    // Its own register, and resolved once per computation rather than per draw.
+    // Walking the trajectory through the pane's register rewrote it — every
+    // frame in one go, left at the last — so the scene's colours changed the
+    // moment this picture finished; and assigning while painting would make them
+    // depend on how often the canvas happened to redraw.
+    const identity = createIdentity();
     return data.columns.map((column) => {
       const members = new Map();
       for (let particle = 0; particle < column.length; particle++) {
@@ -74,8 +77,9 @@ function ClusterKymograph({
         if (!members.has(lineage)) members.set(lineage, []);
         members.get(lineage).push(particle);
       }
-      return new Map([...members].map(([lineage, cluster]) =>
-        [lineage, slotForCluster(cluster)]));
+      const lineages = [...members.keys()];
+      const slots = identity.assign(lineages.map(lineage => members.get(lineage)));
+      return new Map(lineages.map((lineage, i) => [lineage, slots[i]]));
     });
   }, [data]);
 

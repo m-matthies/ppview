@@ -36,63 +36,105 @@ import { lightnessLadder } from '../colors';
 /** How many shades a wrapped palette entry is split into. */
 const LIGHTNESS_STEPS = 5;
 
-// Particle -> the slot of the cluster it was last seen in, and the next free
-// slot. Deliberately outside React: it has to survive re-renders, outlive any
-// one component and be shared by the pane and the time view, and it is reset
-// explicitly when a different structure is loaded.
-let slotOfParticle = new Map();
-let nextSlot = 0;
+/**
+ * A register of which cluster is which, over one sequence of frames.
+ *
+ * Not a global, because there can be more than one sequence in play: the pane
+ * follows the frames someone scrubs through, while the time view walks the whole
+ * trajectory in one go. Sharing a register between them meant computing a time
+ * view rewrote the pane's — it ran every frame through the same state and left
+ * it at the last one — so the scene's colours changed the moment the picture
+ * finished.
+ */
+export function createIdentity() {
+  let slotOfParticle = new Map();
+
+  return {
+    reset() {
+      slotOfParticle = new Map();
+    },
+
+    /**
+     * The slot for every cluster of one frame, claimed in one pass.
+     *
+     * A cluster keeps the slot most of its particles already had, so it survives
+     * growth, shrinkage, exchange, renumbering and losing any one member. A
+     * cluster sharing nothing with the frame before is new.
+     *
+     * **Slots are recycled.** They used to be handed out from a counter that
+     * only went up, and over a trajectory clusters form and dissolve constantly:
+     * the counter climbed, ran past the twelve-colour palette, and the lightness
+     * variants cycle every five — so after about sixty distinct clusters the
+     * colours began repeating exactly. That is colours breaking part-way through
+     * playing a trajectory. Allocating the lowest free slot instead bounds them
+     * by how many clusters are on screen at once, which is the most colours
+     * anyone needs to tell apart.
+     *
+     * One imprecision remains, left because the alternative is worse: when a
+     * cluster splits, both halves carry the same history, so both keep the
+     * colour. Deciding which half is the real continuation is not something
+     * membership can answer.
+     */
+    assign(clusters) {
+      const claims = clusters.map((cluster, index) => {
+        const counts = new Map();
+        for (const particle of cluster) {
+          const slot = slotOfParticle.get(particle);
+          if (slot !== undefined) counts.set(slot, (counts.get(slot) ?? 0) + 1);
+        }
+        let slot = -1;
+        let overlap = 0;
+        // Ties break on the lower slot, so the result does not depend on the
+        // order a Map happens to iterate in.
+        for (const [candidate, count] of counts) {
+          if (count > overlap || (count === overlap && candidate < slot)) {
+            slot = candidate;
+            overlap = count;
+          }
+        }
+        return { index, slot, overlap };
+      });
+
+      // Strongest claim first, so the cluster that inherited most of a slot is
+      // the one that keeps it.
+      const order = [...claims].sort((a, b) => b.overlap - a.overlap || a.index - b.index);
+      const result = new Array(clusters.length).fill(-1);
+      const taken = new Set();
+      for (const claim of order) {
+        if (claim.overlap > 0 && !taken.has(claim.slot)) {
+          taken.add(claim.slot);
+          result[claim.index] = claim.slot;
+        }
+      }
+
+      let candidate = 0;
+      for (let index = 0; index < clusters.length; index++) {
+        if (result[index] !== -1) continue;
+        while (taken.has(candidate)) candidate++;
+        taken.add(candidate);
+        result[index] = candidate;
+      }
+
+      // Rebuilt, not added to: a particle that has left every cluster should
+      // stop counting towards one, or a cluster could inherit a slot from
+      // members it lost frames ago.
+      slotOfParticle = new Map();
+      clusters.forEach((cluster, index) => {
+        for (const particle of cluster) slotOfParticle.set(particle, result[index]);
+      });
+      return result;
+    },
+  };
+}
+
+// The pane's register: the frames someone is actually looking at.
+const paneIdentity = createIdentity();
 
 /** A new structure means new particles; the old slots mean nothing. */
-export function resetClusterIdentity() {
-  slotOfParticle = new Map();
-  nextSlot = 0;
-}
+export const resetClusterIdentity = () => paneIdentity.reset();
 
-/** For tests, and for anyone wondering how many distinct clusters were seen. */
-export const clusterIdentityCount = () => nextSlot;
-
-/**
- * The slot a cluster holds — the one that most of its particles already had.
- *
- * Overlap, not one nominated particle. Ranking by the lowest-numbered member was
- * the previous attempt and it moved: a cluster that loses that particular
- * particle is still the same cluster, and in the one fixture where a particle
- * changes cluster it is precisely the lowest-numbered one, so the cluster it
- * left changed colour at that frame.
- *
- * Every member is then registered to the slot, so the next frame finds it again
- * however the membership has churned — the cluster keeps its colour as long as
- * it keeps *any* of its particles, which is what makes it the same cluster at
- * all. A cluster sharing nothing with anything seen before is new, and takes the
- * next free slot.
- *
- * One known imprecision, left because the alternative is worse: when a cluster
- * splits, both halves carry the same history, so both keep the colour. Telling
- * them apart would mean deciding which half is the "real" continuation, and the
- * time view already shows a split for what it is.
- */
-export function slotForCluster(cluster) {
-  const counts = new Map();
-  for (const particle of cluster) {
-    const slot = slotOfParticle.get(particle);
-    if (slot !== undefined) counts.set(slot, (counts.get(slot) ?? 0) + 1);
-  }
-
-  let slot = -1;
-  let best = 0;
-  // Ties break on the lower slot so the result does not depend on Map order.
-  for (const [candidate, count] of counts) {
-    if (count > best || (count === best && candidate < slot)) {
-      slot = candidate;
-      best = count;
-    }
-  }
-  if (slot === -1) slot = nextSlot++;
-
-  for (const particle of cluster) slotOfParticle.set(particle, slot);
-  return slot;
-}
+/** Every cluster's slot for the frame on screen. */
+export const assignSlots = (clusters) => paneIdentity.assign(clusters);
 
 /**
  * The colour for a slot — the one function, so nothing can disagree.
@@ -112,9 +154,4 @@ export function colourForSlot(palette, slot) {
   // lightnessLadder always returns hex, and returns the entry untouched when
   // asked for a single rung.
   return lightnessLadder(base, rungs)[wrap % rungs];
-}
-
-/** A cluster's colour, from its membership and nothing else. */
-export function colourForCluster(palette, cluster) {
-  return colourForSlot(palette, slotForCluster(cluster));
 }

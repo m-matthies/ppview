@@ -24,7 +24,8 @@
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build -f",
     "fixtures": "node visual-tests/make-fixtures.js",
-    "test:visual": "node visual-tests/serve-and-run.js"
+    "test:visual": "node visual-tests/serve-and-run.js",
+    "build:wasm": "cd wasm && cargo build --target wasm32-unknown-unknown --release && cp target/wasm32-unknown-unknown/release/ppview_core.wasm ../public/wasm/"
   },
   "eslintConfig": {
     "extends": [

@@ -283,6 +283,11 @@ const SCENARIOS = {
     // capture whatever happened to be on screen the instant the scenario began,
     // which is sometimes a frame mid-redraw.
     await settle();
+    // The compiled core is the default path, and silence when it fails to load
+    // would mean never noticing it had: the fallback is correct but four times
+    // slower on a frame and twenty on clustering.
+    assert(await waitFor(() => window.__ppviewCore === 'wasm', 10000),
+      'the WebAssembly core must be the path in use');
     const out = { loaded: measure() };
     byLabel('Simulation box').click(); await settle();
     out.boxOn = measure();
@@ -505,6 +510,23 @@ const SCENARIOS = {
     // Reopen and leave the panel as the other scenarios expect to find it.
     byLabel('Clustering').click(); await settle();
     out.restored = measure();
+
+    // Colours must survive playing the trajectory. They did not: slots came from
+    // a counter that only went up, so as clusters formed and dissolved it ran
+    // past the palette and the colours started repeating part-way through — and
+    // computing a time view walked every frame through the same register, so the
+    // scene changed colour the moment the picture finished.
+    const swatches = () => [...document.querySelectorAll('.cluster-swatch')]
+      .map(i => i.value).join(',');
+    const coloursBeforePlaying = swatches();
+    for (let i = 0; i < 12; i++) {
+      document.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+      await settle();
+      assert(swatches() === coloursBeforePlaying,
+        'a cluster must keep its colour all the way through the trajectory');
+    }
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true }));
+    await settle();
 
     // Filtering by size removes whole clusters and never breaks one. This is
     // the control people reach for "neighbours needed" to get: that one is a

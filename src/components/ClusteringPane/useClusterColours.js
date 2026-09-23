@@ -1,6 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { getParticleColors } from '../../colors';
-import { colourForCluster } from '../../utils/clusterIdentity';
+import { assignSlots, colourForSlot } from '../../utils/clusterIdentity';
 
 /**
  * What colour each cluster is drawn in.
@@ -20,6 +20,19 @@ export default function useClusterColours({ clusters, colorScheme, fileClusters,
   const palette = useMemo(() => getParticleColors(colorScheme, 12), [colorScheme]);
 
   /**
+   * Every cluster's slot, claimed once and in cluster order.
+   *
+   * Claiming them is order-dependent, so it happens once, here, for every
+   * cluster at once — before anything reads a colour. Calling it from the colour
+   * function instead meant the claim order was the *render* order: the histogram
+   * renders before the list and asks only about sizes held by exactly one
+   * cluster, so it claimed a scattered subset first and the list took what was
+   * left. The colours were whatever that interleaving produced, and wrong on the
+   * first render of a scene.
+   */
+  const slots = useMemo(() => assignSlots(clusters), [clusters]);
+
+  /**
    * A cluster's colour: an explicit override, then the file's own colour, then
    * its identity.
    *
@@ -29,9 +42,8 @@ export default function useClusterColours({ clusters, colorScheme, fileClusters,
   const clusterColorAt = useCallback((index) => {
     const explicit = colorOverrides[index] ?? fileClusters?.[index]?.color;
     if (explicit) return explicit;
-    const cluster = clusters[index];
-    return cluster ? colourForCluster(palette, cluster) : palette[0];
-  }, [colorOverrides, fileClusters, clusters, palette]);
+    return colourForSlot(palette, slots[index] ?? 0);
+  }, [colorOverrides, fileClusters, slots, palette]);
 
   return { clusterColorAt };
 }

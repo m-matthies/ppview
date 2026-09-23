@@ -1,5 +1,6 @@
 import { calcCOMFromBuffer } from '../utils/geometryUtils';
 import { parseFrameBuffers, createFrameBuffers } from './parseFrameBuffers';
+import { wasmParseFrame, wasmReady } from '../wasm/wasmCore';
 import { createFrameCache } from './frameCache';
 import { getParticleType } from '../formats/parsers/particleType';
 import { convertMGLToPPViewFormat } from '../utils/mglParser';
@@ -144,9 +145,19 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   // to the end of the file.
   const start = index[frameNumber];
   const end = frameNumber + 1 < index.length ? index[frameNumber + 1] : file.size;
-  const content = await file.slice(start, end).text();
+  const slice = file.slice(start, end);
 
-  const frame = parseFrameBuffers(content, buffers);
+  // Bytes for the compiled path, text for the JavaScript one. The bytes are
+  // what came off disk, so nothing is decoded on the way in — though that turns
+  // out to be nearly free anyway, since V8 keeps an ASCII string one byte per
+  // character. The win is in the scan.
+  let frame;
+  if (wasmReady()) {
+    frame = wasmParseFrame(new Uint8Array(await slice.arrayBuffer()), buffers);
+  }
+  if (!frame) {
+    frame = parseFrameBuffers(await slice.text(), buffers);
+  }
   if (!frame || frame.count === 0) throw new LoadError('That frame could not be read.');
   centreAndWrap(frame);
   cache.put(frameNumber, frame);

@@ -583,6 +583,43 @@ from the table aborts the run rather than quietly fanning out to all seven.
 - `settle()` must not await `requestAnimationFrame`: it never fires in a
   background tab, which is a trap if anyone re-enables workers.
 
+## The compiled core (`wasm/`, `src/wasm/wasmCore.js`)
+
+Frame parsing and DBSCAN are built from Rust to WebAssembly and are the **default
+path**. Both are flat loops over numbers, which is what WebAssembly is good at:
+
+| | JavaScript | Rust |
+|---|---|---|
+| parse a 400,000-particle frame | 160 ms | **37 ms** |
+| DBSCAN, 10,000 particles | 252 ms | **14 ms** |
+| DBSCAN, 20,000 particles | 981 ms | **44 ms** |
+| DBSCAN, 50,000 particles | 6,230 ms | **274 ms** |
+
+Against the *original* clustering — before the grid — 20,000 particles went from
+59.8s to 44 ms.
+
+**The JavaScript implementations stay, and stay the reference.** The module is
+fetched and can fail: an old browser, a blocked request, a jsdom test with no
+`fetch`. Every entry point falls back, and `src/wasm/wasmCore.test.js`
+instantiates the very `.wasm` the browser loads and checks the two agree —
+coordinate by coordinate for parsing, and for clustering both the membership and
+the *order* of the clusters, since a cluster's index is what the pane selects by.
+
+**No `wasm-bindgen`.** Everything crossing the boundary is a block of bytes in or
+a block of `f32`/`i32` out, so the generated glue would buy nothing and cost a
+bundler integration that Create React App cannot be given without ejecting.
+
+`npm run build:wasm` rebuilds it; `public/wasm/ppview_core.wasm` is **committed**,
+the same way `build/` is, so a checkout without a Rust toolchain still runs.
+`window.__ppviewCore` reports which path is live, and the `load` scenario asserts
+it is `wasm` — silence when the module fails to load would mean never noticing.
+
+One measurement worth keeping: the UTF-8 to JS string decode costs **2 ms** of a
+21.6 MB frame, not the large share expected, because V8 keeps an ASCII string one
+byte per character. Parsing raw bytes in JavaScript was only ~11% faster. The win
+is in the scan, which is why it is worth compiling and why byte-level JavaScript
+was not.
+
 ## Performance Patterns
 
 - **Instanced rendering**: `THREE.InstancedMesh` for particles, patches, repulsion site beads, springs, and all four nucleotide mesh types
@@ -1037,11 +1074,30 @@ is what the renderers read.
 
 ### Cluster colours
 **A cluster keeps the colour slot most of its particles already had**
-(`utils/clusterIdentity.js#slotForCluster`). Identity by *overlap*: it survives
-growth, shrinkage, exchange, DBSCAN's renumbering and the loss of any one
-member, and it is computed from membership alone — so the pane, the scene and the
-time view all get the same answer without consulting each other, which is the
-only way they cannot disagree.
+(`utils/clusterIdentity.js`). Identity by *overlap*: it survives growth,
+shrinkage, exchange, DBSCAN's renumbering and the loss of any one member.
+
+Two things about how it is called matter as much as the rule:
+
+- **Slots are recycled.** They used to come from a counter that only went up,
+  and over a trajectory clusters form and dissolve constantly — it climbed past
+  the twelve-colour palette, and the lightness variants cycle every five, so
+  after about sixty distinct clusters the colours repeated exactly. That is
+  colours breaking part-way through playing a trajectory. The lowest free slot is
+  allocated instead, which bounds them by how many clusters are on screen at
+  once.
+- **Each sequence of frames gets its own register** (`createIdentity`). The pane
+  follows the frames someone scrubs through; the time view walks the whole
+  trajectory in one go. Sharing one register meant computing a picture ran every
+  frame through the pane's state and left it at the last, so the scene changed
+  colour the moment the picture finished.
+
+**Claiming is order-dependent, so it happens once per frame for every cluster at
+once** — `assignSlots(clusters)`, read by the colour function rather than called
+from it. Registering as a side effect of asking for a colour made the claim order
+the *render* order: the histogram renders before the list and asks only about
+sizes held by exactly one cluster, so it claimed a scattered subset first and the
+list took what was left.
 
 Five things were tried before it and all five moved:
 
@@ -1052,6 +1108,8 @@ Five things were tried before it and all five moved:
 | lineage, falling back to size rank | a time view was computed, or a lookup missed |
 | rank over the current clusters' anchors | any other cluster appeared or vanished |
 | the lowest-numbered member itself | that particular particle left |
+| overlap, with slots from a counter | the counter ran past the palette mid-trajectory |
+| overlap, with one shared register | a time view was computed |
 
 The last is not hypothetical: in the `migrate` fixture the particle that changes
 cluster *is* the lowest-numbered one, so the cluster it left changed colour at

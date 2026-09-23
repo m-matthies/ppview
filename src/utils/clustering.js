@@ -1,3 +1,5 @@
+import { wasmDbscan } from '../wasm/wasmCore';
+
 /**
  * Cluster analysis, kept away from the pane that displays it.
  *
@@ -167,6 +169,12 @@ function buildGrid(points, radius, boxSize) {
  * `maxMinimumImageRadius(boxSize)`.
  */
 export function dbscan(points, epsilon, minPoints, boxSize = null) {
+  // The Rust core when it is loaded, this when it is not. Both implement the
+  // same algorithm and are checked against each other in `wasmCore.test.js`;
+  // this one remains the reference, and the only one that runs under jsdom.
+  const compiled = wasmDbscan(points, epsilon, minPoints, boxSize);
+  if (compiled) return compiled;
+
   const clusters = [];
   const visited = new Set();
   const assigned = new Set();

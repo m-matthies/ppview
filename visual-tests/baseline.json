@@ -3,9 +3,9 @@
     "loaded": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1405,
       "mean": 241.77,
-      "tintR": 94.8,
+      "tintR": 94.7,
       "tintG": 94.1,
       "tintB": 104.8,
       "cx": 574.2,
@@ -14,10 +14,10 @@
     "boxOn": {
       "coloured": 410,
       "neutral": 0,
-      "edges": 2505,
+      "edges": 2497,
       "mean": 241.7,
       "tintR": 94.9,
-      "tintG": 94.2,
+      "tintG": 94.3,
       "tintB": 105.2,
       "cx": 574.2,
       "cy": 500.7
@@ -25,7 +25,7 @@
     "planesOff": {
       "coloured": 418,
       "neutral": 0,
-      "edges": 516,
+      "edges": 515,
       "mean": 244.06,
       "tintR": 94.1,
       "tintG": 93.3,
@@ -36,10 +36,10 @@
     "axesOff": {
       "coloured": 396,
       "neutral": 0,
-      "edges": 1355,
+      "edges": 1356,
       "mean": 241.78,
-      "tintR": 96.4,
-      "tintG": 94.9,
+      "tintR": 96.3,
+      "tintG": 94.8,
       "tintB": 106.7,
       "cx": 571.6,
       "cy": 491.9
@@ -50,7 +50,7 @@
       "edges": 1404,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94,
+      "tintG": 94.1,
       "tintB": 104.8,
       "cx": 574.2,
       "cy": 500.7
@@ -61,12 +61,12 @@
       "edges": 1404,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94,
+      "tintG": 94.1,
       "tintB": 104.8,
       "cx": 574.2,
       "cy": 500.7
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "mgl/playback": {
     "first": {
@@ -75,7 +75,7 @@
       "edges": 1404,
       "mean": 241.77,
       "tintR": 94.7,
-      "tintG": 94.1,
+      "tintG": 94,
       "tintB": 104.8,
       "cx": 574.2,
       "cy": 500.7
@@ -85,20 +85,20 @@
       "neutral": 0,
       "edges": 1483,
       "mean": 241.68,
-      "tintR": 96,
+      "tintR": 95.9,
       "tintG": 96.1,
-      "tintB": 101.3,
+      "tintB": 101.2,
       "cx": 582.2,
       "cy": 355.2
     },
     "third": {
       "coloured": 485,
       "neutral": 0,
-      "edges": 1402,
+      "edges": 1399,
       "mean": 241.69,
       "tintR": 92.1,
       "tintG": 98.3,
-      "tintB": 99.5,
+      "tintB": 99.4,
       "cx": 567.5,
       "cy": 297.4
     },
@@ -108,7 +108,7 @@
     "loaded": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1407,
+      "edges": 1408,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
@@ -121,9 +121,9 @@
       "neutral": 1,
       "edges": 2495,
       "mean": 241.75,
-      "tintR": 133.8,
-      "tintG": 154.1,
-      "tintB": 125,
+      "tintR": 133.9,
+      "tintG": 154.2,
+      "tintB": 125.1,
       "cx": 485.6,
       "cy": 480.1
     },
@@ -132,7 +132,7 @@
       "neutral": 1,
       "edges": 522,
       "mean": 244.12,
-      "tintR": 131.6,
+      "tintR": 131.5,
       "tintG": 151.6,
       "tintB": 124,
       "cx": 488.8,
@@ -143,18 +143,18 @@
       "neutral": 1,
       "edges": 1358,
       "mean": 241.84,
-      "tintR": 137,
-      "tintG": 157.3,
-      "tintB": 127.9,
+      "tintR": 137.1,
+      "tintG": 157.4,
+      "tintB": 128,
       "cx": 479.9,
       "cy": 470.5
     },
     "patchesOn": {
       "coloured": 428,
       "neutral": 3,
-      "edges": 1433,
+      "edges": 1431,
       "mean": 241.82,
-      "tintR": 133.6,
+      "tintR": 133.7,
       "tintG": 154.2,
       "tintB": 125.1,
       "cx": 485.4,
@@ -165,22 +165,22 @@
       "neutral": 1,
       "edges": 1406,
       "mean": 241.83,
-      "tintR": 133.9,
+      "tintR": 134,
       "tintG": 154.3,
       "tintB": 125.2,
       "cx": 485.6,
       "cy": 480.1
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "raspberry/detail": {
     "detailLow": {
       "coloured": 395,
       "neutral": 4,
-      "edges": 1406,
+      "edges": 1407,
       "mean": 241.83,
-      "tintR": 134.1,
-      "tintG": 154.8,
+      "tintR": 134,
+      "tintG": 154.7,
       "tintB": 125.4,
       "cx": 485.2,
       "cy": 480.7
@@ -188,7 +188,7 @@
     "detailUltra": {
       "coloured": 409,
       "neutral": 2,
-      "edges": 1405,
+      "edges": 1408,
       "mean": 241.82,
       "tintR": 133.8,
       "tintG": 154.3,
@@ -199,20 +199,20 @@
     "detailMedium": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1407,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
-      "tintB": 125.2,
+      "tintB": 125.3,
       "cx": 485.6,
       "cy": 480.1
     },
     "radiusLarge": {
       "coloured": 1224,
       "neutral": 3,
-      "edges": 1922,
+      "edges": 1925,
       "mean": 241.52,
-      "tintR": 135.2,
+      "tintR": 135.3,
       "tintG": 156.8,
       "tintB": 126.7,
       "cx": 481.6,
@@ -221,11 +221,11 @@
     "radiusDefault": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1405,
+      "edges": 1407,
       "mean": 241.83,
       "tintR": 134,
       "tintG": 154.4,
-      "tintB": 125.2,
+      "tintB": 125.3,
       "cx": 485.6,
       "cy": 480.1
     },
@@ -235,10 +235,10 @@
     "open": {
       "coloured": 408,
       "neutral": 1,
-      "edges": 1407,
+      "edges": 1408,
       "mean": 241.83,
-      "tintR": 134,
-      "tintG": 154.4,
+      "tintR": 134.1,
+      "tintG": 154.5,
       "tintB": 125.3,
       "cx": 485.6,
       "cy": 480.1
@@ -272,7 +272,7 @@
       "mean": 241.96,
       "tintR": 157.7,
       "tintG": 107,
-      "tintB": 104.1,
+      "tintB": 104.2,
       "cx": 530.8,
       "cy": 679
     },
@@ -285,10 +285,10 @@
     "loaded": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1264,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 158.6,
+      "tintG": 158.7,
       "tintB": 133.1,
       "cx": 490.2,
       "cy": 533.4
@@ -300,27 +300,27 @@
       "mean": 241.85,
       "tintR": 160.9,
       "tintG": 158.5,
-      "tintB": 132.9,
+      "tintB": 133,
       "cx": 490.2,
       "cy": 533.4
     },
     "planesOff": {
-      "coloured": 183,
+      "coloured": 184,
       "neutral": 0,
-      "edges": 377,
+      "edges": 379,
       "mean": 244.24,
-      "tintR": 154.9,
-      "tintG": 151.9,
-      "tintB": 130,
+      "tintR": 155.5,
+      "tintG": 152.5,
+      "tintB": 130.5,
       "cx": 497.3,
-      "cy": 545.2
+      "cy": 543.7
     },
     "axesOff": {
       "coloured": 162,
       "neutral": 0,
       "edges": 1216,
       "mean": 241.94,
-      "tintR": 170.8,
+      "tintR": 170.9,
       "tintG": 166.2,
       "tintB": 140.3,
       "cx": 476.6,
@@ -329,32 +329,32 @@
     "patchesOn": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1264,
+      "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133,
+      "tintR": 161.2,
+      "tintG": 158.7,
+      "tintB": 133.1,
       "cx": 490.2,
       "cy": 533.4
     },
     "restored": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1264,
+      "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133,
+      "tintR": 161.2,
+      "tintG": 158.7,
+      "tintB": 133.1,
       "cx": 490.2,
       "cy": 533.4
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "oxdna/playback": {
     "first": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1264,
       "mean": 241.92,
       "tintR": 161.1,
       "tintG": 158.6,
@@ -367,9 +367,9 @@
       "neutral": 1,
       "edges": 1247,
       "mean": 241.92,
-      "tintR": 164.6,
-      "tintG": 157.8,
-      "tintB": 132.2,
+      "tintR": 164.7,
+      "tintG": 157.9,
+      "tintB": 132.3,
       "cx": 490.4,
       "cy": 525.5
     },
@@ -378,9 +378,9 @@
       "neutral": 2,
       "edges": 1254,
       "mean": 241.93,
-      "tintR": 160,
-      "tintG": 156.9,
-      "tintB": 133.2,
+      "tintR": 160.1,
+      "tintG": 157,
+      "tintB": 133.3,
       "cx": 494.7,
       "cy": 533
     },
@@ -392,20 +392,20 @@
       "neutral": 1,
       "edges": 1261,
       "mean": 241.93,
-      "tintR": 161.8,
-      "tintG": 158.7,
-      "tintB": 133.4,
+      "tintR": 161.9,
+      "tintG": 158.8,
+      "tintB": 133.5,
       "cx": 491.2,
       "cy": 533.6
     },
     "detailUltra": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1265,
+      "edges": 1266,
       "mean": 241.92,
-      "tintR": 160.5,
-      "tintG": 158.4,
-      "tintB": 132.8,
+      "tintR": 160.6,
+      "tintG": 158.5,
+      "tintB": 132.9,
       "cx": 490.2,
       "cy": 538.3
     },
@@ -414,19 +414,19 @@
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133.1,
+      "tintR": 161.2,
+      "tintG": 158.8,
+      "tintB": 133.2,
       "cx": 490.2,
       "cy": 533.4
     },
     "radiusLarge": {
       "coloured": 445,
-      "neutral": 5,
-      "edges": 1494,
+      "neutral": 6,
+      "edges": 1495,
       "mean": 241.84,
       "tintR": 163.7,
-      "tintG": 156.6,
+      "tintG": 156.7,
       "tintB": 131.6,
       "cx": 486,
       "cy": 508.3
@@ -436,9 +436,9 @@
       "neutral": 0,
       "edges": 1265,
       "mean": 241.92,
-      "tintR": 161.1,
-      "tintG": 158.6,
-      "tintB": 133.1,
+      "tintR": 161.2,
+      "tintG": 158.8,
+      "tintB": 133.2,
       "cx": 490.2,
       "cy": 533.4
     },
@@ -448,7 +448,7 @@
     "open": {
       "coloured": 176,
       "neutral": 0,
-      "edges": 1266,
+      "edges": 1265,
       "mean": 241.92,
       "tintR": 161.1,
       "tintG": 158.6,
@@ -501,7 +501,7 @@
       "edges": 1414,
       "mean": 241.85,
       "tintR": 142.1,
-      "tintG": 161.6,
+      "tintG": 161.5,
       "tintB": 147.1,
       "cx": 487.2,
       "cy": 496.1
@@ -509,9 +509,9 @@
     "boxOn": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 2506,
+      "edges": 2507,
       "mean": 241.77,
-      "tintR": 142,
+      "tintR": 141.9,
       "tintG": 161.3,
       "tintB": 146.9,
       "cx": 487.2,
@@ -520,18 +520,18 @@
     "planesOff": {
       "coloured": 420,
       "neutral": 12,
-      "edges": 525,
+      "edges": 526,
       "mean": 244.14,
       "tintR": 140,
-      "tintG": 158.7,
-      "tintB": 145.6,
+      "tintG": 158.8,
+      "tintB": 145.7,
       "cx": 490.3,
       "cy": 501.3
     },
     "axesOff": {
       "coloured": 398,
       "neutral": 12,
-      "edges": 1368,
+      "edges": 1365,
       "mean": 241.86,
       "tintR": 145.4,
       "tintG": 164.7,
@@ -542,10 +542,10 @@
     "patchesOn": {
       "coloured": 426,
       "neutral": 17,
-      "edges": 1456,
+      "edges": 1459,
       "mean": 241.83,
       "tintR": 142.9,
-      "tintG": 158.1,
+      "tintG": 158,
       "tintB": 144.5,
       "cx": 485.9,
       "cy": 494.6
@@ -553,25 +553,25 @@
     "restored": {
       "coloured": 412,
       "neutral": 12,
-      "edges": 1413,
-      "mean": 241.84,
+      "edges": 1416,
+      "mean": 241.85,
       "tintR": 142.1,
       "tintG": 161.5,
       "tintB": 147.1,
       "cx": 487.2,
       "cy": 496.1
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "srs/detail": {
     "detailLow": {
       "coloured": 400,
       "neutral": 12,
-      "edges": 1413,
+      "edges": 1411,
       "mean": 241.85,
       "tintR": 142.9,
       "tintG": 161.9,
-      "tintB": 147.2,
+      "tintB": 147.3,
       "cx": 487.4,
       "cy": 496.4
     },
@@ -598,14 +598,14 @@
       "cy": 496.1
     },
     "radiusLarge": {
-      "coloured": 1233,
+      "coloured": 1232,
       "neutral": 0,
-      "edges": 1858,
+      "edges": 1855,
       "mean": 241.59,
       "tintR": 142.6,
-      "tintG": 165.7,
-      "tintB": 151.2,
-      "cx": 486.3,
+      "tintG": 165.6,
+      "tintB": 151.1,
+      "cx": 486.1,
       "cy": 498.3
     },
     "radiusDefault": {
@@ -623,15 +623,15 @@
   },
   "srs/clustering": {
     "open": {
-      "coloured": 411,
+      "coloured": 412,
       "neutral": 12,
-      "edges": 1412,
+      "edges": 1416,
       "mean": 241.84,
       "tintR": 142.1,
-      "tintG": 161.4,
-      "tintB": 147,
-      "cx": 487.1,
-      "cy": 495.5
+      "tintG": 161.5,
+      "tintB": 147.1,
+      "cx": 487.2,
+      "cy": 496.1
     },
     "hiddenAll": {
       "coloured": 14,
@@ -674,19 +674,19 @@
       "neutral": 0,
       "edges": 1414,
       "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.8,
-      "tintB": 126.7,
+      "tintR": 141.3,
+      "tintG": 152.7,
+      "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
     "boxOn": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 2509,
+      "edges": 2506,
       "mean": 241.76,
-      "tintR": 141.1,
-      "tintG": 152.4,
+      "tintR": 141.2,
+      "tintG": 152.5,
       "tintB": 126.4,
       "cx": 487.4,
       "cy": 496.6
@@ -694,9 +694,9 @@
     "planesOff": {
       "coloured": 428,
       "neutral": 0,
-      "edges": 523,
+      "edges": 525,
       "mean": 244.13,
-      "tintR": 139.4,
+      "tintR": 139.3,
       "tintG": 150.4,
       "tintB": 125.8,
       "cx": 490.6,
@@ -705,9 +705,9 @@
     "axesOff": {
       "coloured": 405,
       "neutral": 0,
-      "edges": 1365,
+      "edges": 1362,
       "mean": 241.84,
-      "tintR": 144.6,
+      "tintR": 144.5,
       "tintG": 155.5,
       "tintB": 129.3,
       "cx": 481.9,
@@ -716,9 +716,9 @@
     "patchesOn": {
       "coloured": 419,
       "neutral": 16,
-      "edges": 1444,
+      "edges": 1445,
       "mean": 241.82,
-      "tintR": 145,
+      "tintR": 145.1,
       "tintG": 146.4,
       "tintB": 124.1,
       "cx": 488.4,
@@ -727,24 +727,24 @@
     "restored": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1411,
+      "edges": 1412,
       "mean": 241.83,
-      "tintR": 141.3,
+      "tintR": 141.4,
       "tintG": 152.7,
       "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "lorenzo/detail": {
     "detailLow": {
       "coloured": 406,
       "neutral": 1,
-      "edges": 1412,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.9,
-      "tintG": 153,
+      "tintG": 152.9,
       "tintB": 127.1,
       "cx": 487,
       "cy": 497.6
@@ -752,22 +752,22 @@
     "detailUltra": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1412,
+      "edges": 1413,
       "mean": 241.83,
       "tintR": 141,
-      "tintG": 152.3,
-      "tintB": 126.2,
+      "tintG": 152.2,
+      "tintB": 126.1,
       "cx": 487.4,
       "cy": 496.6
     },
     "detailMedium": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1415,
       "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.7,
-      "tintB": 126.7,
+      "tintR": 141.3,
+      "tintG": 152.6,
+      "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
@@ -778,18 +778,18 @@
       "mean": 241.54,
       "tintR": 142.9,
       "tintG": 155.8,
-      "tintB": 129.1,
+      "tintB": 129.2,
       "cx": 486.6,
       "cy": 499.3
     },
     "radiusDefault": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1414,
+      "edges": 1415,
       "mean": 241.83,
-      "tintR": 141.4,
-      "tintG": 152.7,
-      "tintB": 126.7,
+      "tintR": 141.3,
+      "tintG": 152.6,
+      "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
@@ -799,11 +799,11 @@
     "open": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1412,
+      "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.7,
+      "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
@@ -846,7 +846,7 @@
     "open": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -901,7 +901,7 @@
     "afterReset": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -912,10 +912,10 @@
     "clusterColoursWhileClosed": {
       "coloured": 169,
       "neutral": 0,
-      "edges": 1118,
+      "edges": 1115,
       "mean": 241.93,
-      "tintR": 106.4,
-      "tintG": 182.3,
+      "tintR": 106.5,
+      "tintG": 182.4,
       "tintB": 133.7,
       "cx": 512.9,
       "cy": 714.9
@@ -923,18 +923,18 @@
     "typeColoursWhileClosed": {
       "coloured": 169,
       "neutral": 0,
-      "edges": 1115,
+      "edges": 1114,
       "mean": 241.92,
-      "tintR": 176.1,
-      "tintG": 111.6,
-      "tintB": 112.4,
+      "tintR": 176.2,
+      "tintG": 111.7,
+      "tintB": 112.5,
       "cx": 512.9,
       "cy": 714.9
     },
     "afterClear": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -945,7 +945,7 @@
     "restored": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.3,
       "tintG": 152.7,
@@ -953,7 +953,7 @@
       "cx": 487.4,
       "cy": 496.6
     },
-    "__assertions": 14
+    "__assertions": 26
   },
   "lorenzo/selection": {
     "__assertions": 6
@@ -962,29 +962,29 @@
     "legendsOn": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.7,
+      "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
     "light_Depth": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1415,
+      "edges": 1413,
       "mean": 241.83,
-      "tintR": 141.4,
+      "tintR": 141.3,
       "tintG": 152.7,
-      "tintB": 126.7,
+      "tintB": 126.6,
       "cx": 487.4,
       "cy": 496.6
     },
     "light_Publication": {
       "coloured": 416,
       "neutral": 0,
-      "edges": 1426,
+      "edges": 1425,
       "mean": 242.67,
       "tintR": 147.8,
       "tintG": 159.6,
@@ -995,13 +995,13 @@
     "light_Relief": {
       "coloured": 356,
       "neutral": 67,
-      "edges": 1064,
+      "edges": 1063,
       "mean": 240.22,
-      "tintR": 137.5,
-      "tintG": 146.1,
+      "tintR": 137.4,
+      "tintG": 146.2,
       "tintB": 122,
       "cx": 489.4,
-      "cy": 503.5
+      "cy": 503.4
     },
     "light_Flat": {
       "coloured": 430,
@@ -1042,7 +1042,7 @@
     "before": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.4,
       "tintG": 152.7,
@@ -1053,22 +1053,22 @@
     "overlayActive": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1269,
-      "mean": 241.83,
+      "edges": 1273,
+      "mean": 241.84,
       "tintR": 113.2,
-      "tintG": 116.3,
-      "tintB": 114.7,
+      "tintG": 137.7,
+      "tintB": 114.8,
       "cx": 506.6,
       "cy": 563.5
     },
     "fileClusters": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1269,
-      "mean": 241.83,
+      "edges": 1273,
+      "mean": 241.84,
       "tintR": 113.2,
-      "tintG": 116.3,
-      "tintB": 114.7,
+      "tintG": 137.7,
+      "tintB": 114.8,
       "cx": 506.6,
       "cy": 563.5
     },
@@ -1077,7 +1077,7 @@
       "neutral": 0,
       "edges": 1279,
       "mean": 241.86,
-      "tintR": 154.6,
+      "tintR": 154.7,
       "tintG": 136.2,
       "tintB": 120.5,
       "cx": 506.5,
@@ -1086,10 +1086,10 @@
     "oneClusterHidden": {
       "coloured": 279,
       "neutral": 1,
-      "edges": 1216,
-      "mean": 241.85,
-      "tintR": 95.7,
-      "tintG": 128.9,
+      "edges": 1220,
+      "mean": 241.86,
+      "tintR": 95.6,
+      "tintG": 154.6,
       "tintB": 111.4,
       "cx": 508.4,
       "cy": 544.6
@@ -1097,29 +1097,29 @@
     "clusterRestored": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1269,
-      "mean": 241.83,
+      "edges": 1273,
+      "mean": 241.84,
       "tintR": 113.2,
-      "tintG": 116.3,
-      "tintB": 114.7,
+      "tintG": 137.7,
+      "tintB": 114.8,
       "cx": 506.6,
       "cy": 563.5
     },
     "recoloured": {
       "coloured": 334,
       "neutral": 1,
-      "edges": 1267,
-      "mean": 241.82,
+      "edges": 1271,
+      "mean": 241.83,
       "tintR": 85.1,
-      "tintG": 144.3,
-      "tintB": 98.7,
+      "tintG": 165.8,
+      "tintB": 98.8,
       "cx": 506.6,
       "cy": 563.5
     },
     "secondOverlay": {
       "coloured": 586,
       "neutral": 0,
-      "edges": 1489,
+      "edges": 1492,
       "mean": 241.72,
       "tintR": 129.7,
       "tintG": 118.7,
@@ -1130,7 +1130,7 @@
     "computedClusters": {
       "coloured": 419,
       "neutral": 0,
-      "edges": 1413,
+      "edges": 1414,
       "mean": 241.83,
       "tintR": 141.4,
       "tintG": 152.7,
@@ -1144,10 +1144,10 @@
     "loaded": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1422,
+      "edges": 1419,
       "mean": 241.83,
       "tintR": 149.2,
-      "tintG": 144.9,
+      "tintG": 145,
       "tintB": 124.4,
       "cx": 487.7,
       "cy": 495.9
@@ -1155,22 +1155,22 @@
     "boxOn": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 2514,
+      "edges": 2512,
       "mean": 241.76,
       "tintR": 149,
-      "tintG": 144.6,
-      "tintB": 124.2,
+      "tintG": 144.8,
+      "tintB": 124.3,
       "cx": 487.7,
       "cy": 495.9
     },
     "planesOff": {
       "coloured": 421,
       "neutral": 5,
-      "edges": 530,
+      "edges": 534,
       "mean": 244.12,
       "tintR": 147,
       "tintG": 142.7,
-      "tintB": 123.6,
+      "tintB": 123.5,
       "cx": 490.9,
       "cy": 501.7
     },
@@ -1190,24 +1190,24 @@
       "neutral": 19,
       "edges": 1457,
       "mean": 241.81,
-      "tintR": 149.3,
-      "tintG": 140.6,
-      "tintB": 126.4,
+      "tintR": 149.4,
+      "tintG": 140.7,
+      "tintB": 126.5,
       "cx": 487.2,
       "cy": 493.8
     },
     "restored": {
       "coloured": 412,
       "neutral": 5,
-      "edges": 1419,
+      "edges": 1420,
       "mean": 241.83,
-      "tintR": 149.1,
+      "tintR": 149.2,
       "tintG": 144.9,
       "tintB": 124.4,
       "cx": 487.7,
       "cy": 495.9
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "migrate/kymograph": {
     "size": "1501x920",
@@ -1224,9 +1224,9 @@
     "loaded": {
       "coloured": 123,
       "neutral": 0,
-      "edges": 1089,
+      "edges": 1088,
       "mean": 241.93,
-      "tintR": 165.2,
+      "tintR": 165.3,
       "tintG": 105.6,
       "tintB": 105.4,
       "cx": 516,
@@ -1235,32 +1235,32 @@
     "boxOn": {
       "coloured": 123,
       "neutral": 0,
-      "edges": 2187,
+      "edges": 2180,
       "mean": 241.86,
-      "tintR": 165.2,
-      "tintG": 105.8,
-      "tintB": 105.5,
+      "tintR": 164.9,
+      "tintG": 105.6,
+      "tintB": 105.4,
       "cx": 516,
       "cy": 527.2
     },
     "planesOff": {
       "coloured": 130,
       "neutral": 0,
-      "edges": 198,
+      "edges": 197,
       "mean": 244.25,
       "tintR": 154.6,
       "tintG": 98.6,
-      "tintB": 101.5,
+      "tintB": 101.6,
       "cx": 524.5,
       "cy": 544.4
     },
     "axesOff": {
       "coloured": 109,
       "neutral": 0,
-      "edges": 1038,
+      "edges": 1041,
       "mean": 241.95,
-      "tintR": 180,
-      "tintG": 109.8,
+      "tintR": 180.1,
+      "tintG": 109.9,
       "tintB": 112.5,
       "cx": 499.1,
       "cy": 498.5
@@ -1270,7 +1270,7 @@
       "neutral": 0,
       "edges": 1088,
       "mean": 241.93,
-      "tintR": 165.2,
+      "tintR": 165.1,
       "tintG": 105.6,
       "tintB": 105.4,
       "cx": 516,
@@ -1281,13 +1281,13 @@
       "neutral": 0,
       "edges": 1088,
       "mean": 241.93,
-      "tintR": 165.2,
+      "tintR": 165.1,
       "tintG": 105.6,
       "tintB": 105.4,
       "cx": 516,
       "cy": 527.2
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "impostor/load": {
     "loaded": {
@@ -1304,11 +1304,11 @@
     "boxOn": {
       "coloured": 427,
       "neutral": 0,
-      "edges": 2497,
+      "edges": 2492,
       "mean": 241.76,
-      "tintR": 140.5,
-      "tintG": 151.8,
-      "tintB": 126,
+      "tintR": 140.6,
+      "tintG": 151.9,
+      "tintB": 126.1,
       "cx": 487.2,
       "cy": 497.2
     },
@@ -1328,7 +1328,7 @@
       "neutral": 0,
       "edges": 1355,
       "mean": 241.84,
-      "tintR": 143.8,
+      "tintR": 143.9,
       "tintG": 154.8,
       "tintB": 128.8,
       "cx": 481.7,
@@ -1339,7 +1339,7 @@
       "neutral": 16,
       "edges": 1439,
       "mean": 241.81,
-      "tintR": 144.5,
+      "tintR": 144.4,
       "tintG": 146,
       "tintB": 123.8,
       "cx": 488.2,
@@ -1352,43 +1352,43 @@
       "mean": 241.83,
       "tintR": 140.8,
       "tintG": 152.2,
-      "tintB": 126.2,
+      "tintB": 126.3,
       "cx": 487.2,
       "cy": 497.2
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "impostor/detail": {
     "detailLow": {
       "coloured": 427,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1404,
       "mean": 241.83,
       "tintR": 140.8,
-      "tintG": 152.2,
-      "tintB": 126.3,
+      "tintG": 152.1,
+      "tintB": 126.2,
       "cx": 487.2,
       "cy": 497.2
     },
     "detailUltra": {
       "coloured": 427,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1404,
       "mean": 241.83,
       "tintR": 140.8,
-      "tintG": 152.2,
-      "tintB": 126.3,
+      "tintG": 152.1,
+      "tintB": 126.2,
       "cx": 487.2,
       "cy": 497.2
     },
     "detailMedium": {
       "coloured": 427,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1404,
       "mean": 241.83,
       "tintR": 140.8,
-      "tintG": 152.2,
-      "tintB": 126.3,
+      "tintG": 152.1,
+      "tintB": 126.2,
       "cx": 487.2,
       "cy": 497.2
     },
@@ -1406,11 +1406,11 @@
     "radiusDefault": {
       "coloured": 427,
       "neutral": 0,
-      "edges": 1403,
+      "edges": 1404,
       "mean": 241.83,
       "tintR": 140.8,
-      "tintG": 152.2,
-      "tintB": 126.3,
+      "tintG": 152.1,
+      "tintB": 126.2,
       "cx": 487.2,
       "cy": 497.2
     },
@@ -1420,9 +1420,9 @@
     "open": {
       "coloured": 427,
       "neutral": 0,
-      "edges": 1404,
+      "edges": 1403,
       "mean": 241.83,
-      "tintR": 140.7,
+      "tintR": 140.8,
       "tintG": 152.1,
       "tintB": 126.2,
       "cx": 487.2,
@@ -1473,17 +1473,17 @@
       "edges": 1258,
       "mean": 241.92,
       "tintR": 160.7,
-      "tintG": 158.7,
-      "tintB": 133.3,
+      "tintG": 158.6,
+      "tintB": 133.2,
       "cx": 491.5,
       "cy": 534.1
     },
     "boxOn": {
       "coloured": 180,
       "neutral": 1,
-      "edges": 2351,
+      "edges": 2354,
       "mean": 241.85,
-      "tintR": 160.4,
+      "tintR": 160.5,
       "tintG": 158.5,
       "tintB": 133.1,
       "cx": 491.5,
@@ -1495,7 +1495,7 @@
       "edges": 372,
       "mean": 244.24,
       "tintR": 155.4,
-      "tintG": 153.1,
+      "tintG": 153.2,
       "tintB": 130.8,
       "cx": 498.4,
       "cy": 544.2
@@ -1503,37 +1503,37 @@
     "axesOff": {
       "coloured": 166,
       "neutral": 1,
-      "edges": 1209,
+      "edges": 1208,
       "mean": 241.94,
-      "tintR": 170.2,
-      "tintG": 166.1,
-      "tintB": 140.4,
+      "tintR": 170.1,
+      "tintG": 165.9,
+      "tintB": 140.3,
       "cx": 478.4,
       "cy": 515.8
     },
     "patchesOn": {
       "coloured": 180,
       "neutral": 1,
-      "edges": 1257,
+      "edges": 1258,
       "mean": 241.92,
-      "tintR": 160.7,
-      "tintG": 158.7,
-      "tintB": 133.3,
+      "tintR": 160.8,
+      "tintG": 158.8,
+      "tintB": 133.4,
       "cx": 491.5,
       "cy": 534.1
     },
     "restored": {
       "coloured": 180,
       "neutral": 1,
-      "edges": 1257,
+      "edges": 1258,
       "mean": 241.92,
-      "tintR": 160.7,
-      "tintG": 158.7,
-      "tintB": 133.3,
+      "tintR": 160.8,
+      "tintG": 158.8,
+      "tintB": 133.4,
       "cx": 491.5,
       "cy": 534.1
     },
-    "__assertions": 0
+    "__assertions": 1
   },
   "impostor-oxdna/detail": {
     "detailLow": {
@@ -1542,17 +1542,17 @@
       "edges": 1257,
       "mean": 241.92,
       "tintR": 161.1,
-      "tintG": 159,
-      "tintB": 133.6,
+      "tintG": 159.1,
+      "tintB": 133.5,
       "cx": 491.5,
       "cy": 534.1
     },
     "detailUltra": {
       "coloured": 181,
       "neutral": 1,
-      "edges": 1259,
+      "edges": 1258,
       "mean": 241.92,
-      "tintR": 160.5,
+      "tintR": 160.6,
       "tintG": 158.7,
       "tintB": 133.3,
       "cx": 491.6,
@@ -1561,18 +1561,18 @@
     "detailMedium": {
       "coloured": 180,
       "neutral": 1,
-      "edges": 1258,
+      "edges": 1257,
       "mean": 241.92,
       "tintR": 160.8,
-      "tintG": 158.7,
-      "tintB": 133.3,
+      "tintG": 158.8,
+      "tintB": 133.4,
       "cx": 491.5,
       "cy": 534.1
     },
     "radiusLarge": {
       "coloured": 454,
       "neutral": 4,
-      "edges": 1499,
+      "edges": 1498,
       "mean": 241.83,
       "tintR": 162.1,
       "tintG": 154.9,
@@ -1583,11 +1583,11 @@
     "radiusDefault": {
       "coloured": 180,
       "neutral": 1,
-      "edges": 1258,
+      "edges": 1257,
       "mean": 241.92,
       "tintR": 160.8,
-      "tintG": 158.7,
-      "tintB": 133.3,
+      "tintG": 158.8,
+      "tintB": 133.4,
       "cx": 491.5,
       "cy": 534.1
     },
@@ -1600,21 +1600,21 @@
     "loaded": {
       "coloured": 414,
       "neutral": 1,
-      "edges": 1404,
+      "edges": 1406,
       "mean": 241.82,
-      "tintR": 133.7,
-      "tintG": 153.3,
-      "tintB": 124.4,
+      "tintR": 133.8,
+      "tintG": 153.4,
+      "tintB": 124.5,
       "cx": 486.4,
       "cy": 480.8
     },
     "boxOn": {
       "coloured": 414,
       "neutral": 1,
-      "edges": 2492,
+      "edges": 2494,
       "mean": 241.75,
-      "tintR": 133.6,
-      "tintG": 153.1,
+      "tintR": 133.5,
+      "tintG": 153,
       "tintB": 124.2,
       "cx": 486.4,
       "cy": 480.8
@@ -1622,7 +1622,7 @@
     "planesOff": {
       "coloured": 423,
       "neutral": 1,
-      "edges": 517,
+      "edges": 519,
       "mean": 244.12,
       "tintR": 131.8,
       "tintG": 150.8,
@@ -1631,20 +1631,20 @@
       "cy": 486.9
     },
     "axesOff": {
-      "coloured": 401,
+      "coloured": 400,
       "neutral": 1,
-      "edges": 1358,
+      "edges": 1357,
       "mean": 241.84,
       "tintR": 136.7,
-      "tintG": 156.2,
+      "tintG": 156.1,
       "tintB": 127,
-      "cx": 480.8,
-      "cy": 471
+      "cx": 480.7,
+      "cy": 471.4
     },
     "patchesOn": {
       "coloured": 432,
       "neutral": 3,
-      "edges": 1434,
+      "edges": 1435,
       "mean": 241.81,
       "tintR": 133.4,
       "tintG": 153.3,
@@ -1653,6 +1653,20 @@
       "cy": 482.3
     },
     "restored": {
+      "coloured": 415,
+      "neutral": 1,
+      "edges": 1405,
+      "mean": 241.82,
+      "tintR": 133.8,
+      "tintG": 153.4,
+      "tintB": 124.5,
+      "cx": 486.4,
+      "cy": 480.5
+    },
+    "__assertions": 1
+  },
+  "impostor-raspberry/detail": {
+    "detailLow": {
       "coloured": 414,
       "neutral": 1,
       "edges": 1405,
@@ -1663,24 +1677,10 @@
       "cx": 486.4,
       "cy": 480.8
     },
-    "__assertions": 0
-  },
-  "impostor-raspberry/detail": {
-    "detailLow": {
-      "coloured": 414,
-      "neutral": 1,
-      "edges": 1406,
-      "mean": 241.82,
-      "tintR": 133.7,
-      "tintG": 153.3,
-      "tintB": 124.4,
-      "cx": 486.4,
-      "cy": 480.8
-    },
     "detailUltra": {
       "coloured": 414,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1405,
       "mean": 241.82,
       "tintR": 133.7,
       "tintG": 153.3,
@@ -1691,7 +1691,7 @@
     "detailMedium": {
       "coloured": 414,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1405,
       "mean": 241.82,
       "tintR": 133.7,
       "tintG": 153.3,
@@ -1700,20 +1700,20 @@
       "cy": 480.8
     },
     "radiusLarge": {
-      "coloured": 1241,
+      "coloured": 1242,
       "neutral": 1,
       "edges": 1911,
       "mean": 241.51,
       "tintR": 135,
       "tintG": 156.3,
-      "tintB": 126.4,
-      "cx": 482.2,
+      "tintB": 126.5,
+      "cx": 482.4,
       "cy": 482.6
     },
     "radiusDefault": {
       "coloured": 414,
       "neutral": 1,
-      "edges": 1406,
+      "edges": 1405,
       "mean": 241.82,
       "tintR": 133.7,
       "tintG": 153.3,
