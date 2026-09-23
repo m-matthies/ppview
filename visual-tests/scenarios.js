@@ -505,6 +505,23 @@ const SCENARIOS = {
     // Reopen and leave the panel as the other scenarios expect to find it.
     byLabel('Clustering').click(); await settle();
     out.restored = measure();
+
+    // Filtering by size removes whole clusters and never breaks one. This is
+    // the control people reach for "neighbours needed" to get: that one is a
+    // density, so raising it pulls clusters apart at a thin waist, which was
+    // reported as DBSCAN failing.
+    const clusterCount = () => document.querySelectorAll('.cluster-item').length;
+    const sizeSlider = document.querySelector('#minsize-slider');
+    assert(sizeSlider, 'the pane offers a minimum cluster size');
+    const before = clusterCount();
+    setNative(sizeSlider, '9');          // every fixture cluster holds eight
+    assert(await waitFor(() => clusterCount() === 0, 8000),
+      'raising it past every cluster leaves none');
+    setNative(sizeSlider, '1');
+    assert(await waitFor(() => clusterCount() === before, 8000),
+      'and lowering it brings exactly the same clusters back');
+    await settle();
+
     return out;
   `,
 

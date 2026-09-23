@@ -950,6 +950,35 @@ through two images at once, which invents clusters rather than merely blurring
 them. Every MD code caps its interaction cutoff the same way. The epsilon slider
 also stops there, and says so when the box is what limits it.
 
+**The region query uses a uniform grid, not a scan of every point.** A neighbour
+has to be within epsilon and cells are epsilon across, so only the 27 cells
+around a point can hold one. Same results — `clustering.test.js` compares against
+a brute-force DBSCAN on random structures rather than trusting the reasoning —
+and the difference is not small:
+
+| particles | before | after |
+|---|---|---|
+| 1,000 | 147 ms | 7 ms |
+| 4,000 | 2.4 s | 46 ms |
+| 10,000 | 14.8 s | 241 ms |
+| 20,000 | 59.8 s | 947 ms |
+
+The grid is stored as counts turned into offsets and one flat index array, the
+way a sparse matrix is: a million particles would otherwise mean a million small
+arrays, and the allocation costs more than the search saves. Cells wrap when the
+box is periodic, and the per-axis neighbour list is deduplicated because a box
+only two or three cells across would otherwise visit a cell twice and count its
+points twice. A zero span — a flat structure, or a box carrying a zero dimension
+— gets one cell on that axis rather than a division by zero.
+
+**Neighbours needed and minimum cluster size are different questions.**
+`minPoints` is a density: raising it stops particles being core points, so a
+cluster held together through a thin waist comes apart. That is textbook DBSCAN
+and it is *not* what someone means by "only show me clusters of at least N".
+`useClusterSource` therefore filters by size **after** clustering, as a separate
+control — so raising it can only ever remove whole clusters, never break one.
+Both behaviours are pinned by a dumbbell fixture in `clustering.test.js`.
+
 **Core, border and noise are the textbook definitions.** `minPoints` **counts the
 point itself**, so `minPoints: 3` means three particles within epsilon including
 this one. The control is labelled **Neighbours needed**, not "Min Points", because

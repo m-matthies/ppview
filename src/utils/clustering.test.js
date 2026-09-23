@@ -203,3 +203,115 @@ describe('minPoints is a density, not a minimum cluster size', () => {
     expect(dbscan(blob, 1.2, 13, box)).toEqual([]);
   });
 });
+
+describe('the grid finds exactly what an exhaustive search would', () => {
+  // The region query stopped reading every point. That is only safe if the
+  // neighbourhoods are identical, so this compares against a brute-force DBSCAN
+  // rather than trusting the reasoning about cell sizes.
+  const brute = (points, epsilon, minPoints, boxSize) => {
+    const image = (d, l) => (l > 0 ? d - l * Math.round(d / l) : d);
+    const [lx = 0, ly = 0, lz = 0] = boxSize || [];
+    const radius = Math.min(epsilon, maxMinimumImageRadius(boxSize));
+    const r2 = radius * radius;
+    const near = (i) => points.reduce((out, q, j) => {
+      const dx = image(points[i].x - q.x, lx);
+      const dy = image(points[i].y - q.y, ly);
+      const dz = image(points[i].z - q.z, lz);
+      return dx * dx + dy * dy + dz * dz <= r2 ? [...out, j] : out;
+    }, []);
+
+    const clusters = [];
+    const visited = new Set();
+    const assigned = new Set();
+    for (let i = 0; i < points.length; i++) {
+      if (visited.has(i)) continue;
+      visited.add(i);
+      const seeds = near(i);
+      if (seeds.length < minPoints) continue;
+      const cluster = [i];
+      assigned.add(i);
+      const queue = [...seeds];
+      const queued = new Set(queue);
+      for (let k = 0; k < queue.length; k++) {
+        const index = queue[k];
+        if (!visited.has(index)) {
+          visited.add(index);
+          const neighbours = near(index);
+          if (neighbours.length >= minPoints) {
+            for (const candidate of neighbours) {
+              if (!queued.has(candidate)) { queued.add(candidate); queue.push(candidate); }
+            }
+          }
+        }
+        if (!assigned.has(index)) { cluster.push(index); assigned.add(index); }
+      }
+      clusters.push(cluster);
+    }
+    return clusters;
+  };
+
+  const random = (seed, count, box) => {
+    let s = seed;
+    const next = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
+    return Array.from({ length: count }, () => ({
+      x: next() * box, y: next() * box, z: next() * box,
+    }));
+  };
+
+  test.each([
+    ['dense, periodic', 300, 12, 1.5, 3, [12, 12, 12]],
+    ['sparse, periodic', 300, 40, 2.0, 3, [40, 40, 40]],
+    ['a box only a few cells across', 200, 6, 2.0, 4, [6, 6, 6]],
+    ['no box at all', 200, 20, 2.0, 3, null],
+    ['a high neighbour count', 300, 15, 2.0, 8, [15, 15, 15]],
+  ])('agrees on %s', (_label, count, box, epsilon, minPoints, boxSize) => {
+    const points = random(count * 7 + 1, count, box);
+    const sort = (cs) => cs.map(c => [...c].sort((a, b) => a - b))
+      .sort((a, b) => a[0] - b[0]);
+    expect(sort(dbscan(points, epsilon, minPoints, boxSize)))
+      .toEqual(sort(brute(points, epsilon, minPoints, boxSize)));
+  });
+});
+
+describe('minPoints and minimum size are different questions', () => {
+  // Reported as DBSCAN failing: raising the neighbour count disconnects
+  // clusters that were joined. It is correct — and it is why a separate size
+  // filter exists, since that is the question people are actually asking.
+  //
+  // Two dense lobes joined by a thin bridge: a dumbbell. The bridge particles
+  // have few neighbours, so they stop being core points first.
+  const dumbbell = () => {
+    const lobe = (cx) => Array.from({ length: 12 }, (_, i) => ({
+      x: cx + (i % 3) * 0.4, y: (Math.floor(i / 3) % 2) * 0.4, z: Math.floor(i / 6) * 0.4,
+    }));
+    const bridge = [1.6, 2.4, 3.2, 4.0].map(x => ({ x, y: 0, z: 0 }));
+    return [...lobe(0), ...bridge, ...lobe(4.8)];
+  };
+
+  test('a low neighbour count holds the two lobes together', () => {
+    const clusters = dbscan(dumbbell(), 1.0, 3, [40, 40, 40]);
+    expect(clusters).toHaveLength(1);
+    expect(clusters[0]).toHaveLength(28);
+  });
+
+  test('raising it breaks the bridge and splits them — correct, and surprising', () => {
+    const clusters = dbscan(dumbbell(), 1.0, 6, [40, 40, 40]);
+    expect(clusters.length).toBeGreaterThan(1);
+  });
+
+  // Which is why the pane filters by size instead: it runs on the result, so it
+  // can only remove whole clusters, never break one.
+  test('filtering by size removes small clusters and leaves the rest whole', () => {
+    // The dumbbell, plus a far-off trio that clusters on its own.
+    const points = [...dumbbell(), ...[20, 20.4, 20.8].map(x => ({ x, y: 20, z: 20 }))];
+    const clusters = dbscan(points, 1.0, 3, [40, 40, 40]);
+    expect(clusters.map(c => c.length).sort((a, b) => a - b)).toEqual([3, 28]);
+
+    const kept = clusters.filter(c => c.length >= 10);
+    expect(kept).toHaveLength(1);
+    // The survivor is exactly as it came out of DBSCAN — nothing was split to
+    // make it fit, which is the whole difference from raising minPoints.
+    expect(clusters).toContainEqual(kept[0]);
+    expect(kept[0]).toHaveLength(28);
+  });
+});

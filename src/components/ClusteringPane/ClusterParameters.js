@@ -8,7 +8,10 @@ import React from 'react';
  * convention stops being meaningful, because a particle comes back into range as
  * its own neighbour from the other side.
  */
-function ClusterParameters({ epsilon, onEpsilonChange, epsilonLimit, minPoints, onMinPointsChange, disabled }) {
+function ClusterParameters({
+  epsilon, onEpsilonChange, epsilonLimit, minPoints, onMinPointsChange,
+  minClusterSize, onMinClusterSizeChange, disabled,
+}) {
   return (
   <div className={`clustering-controls ${disabled ? 'is-disabled' : ''}`}>
     <div className="parameter-control">
@@ -54,8 +57,38 @@ function ClusterParameters({ epsilon, onEpsilonChange, epsilonLimit, minPoints, 
       <span className="checkbox-hint">
         How many particles must lie within the epsilon distance of a particle —
         counting itself — for it to be dense enough to build a cluster around.
-        This is a density, not a minimum cluster size: a large, loosely packed
-        cluster can dissolve while a small tight one survives.
+        This is a density, not a minimum cluster size: raising it can pull a
+        cluster apart at a thin waist. To hide small clusters without
+        disturbing the others, use the size below.
+      </span>
+    </div>
+
+    <div className="parameter-control">
+      <label htmlFor="minsize-slider">
+        Smallest cluster to keep: {minClusterSize === 1 ? 'all' : minClusterSize}
+      </label>
+      <input
+        id="minsize-slider"
+        type="range"
+        min="1"
+        max="50"
+        step="1"
+        value={minClusterSize}
+        onChange={(e) => onMinClusterSizeChange(parseInt(e.target.value, 10))}
+        className="parameter-slider"
+      />
+      {/*
+        The question people reach for "neighbours needed" to ask, and it is a
+        different one: that is a density threshold, so raising it stops
+        particles being core points and a cluster held together through a thin
+        waist comes apart. Reported as DBSCAN failing, and it is not — but
+        nothing in the controls said the two were different questions. This one
+        runs after the clustering, so it can only ever remove whole clusters.
+      */}
+      <span className="checkbox-hint">
+        Clusters smaller than this are discarded. Applied after the clustering,
+        so raising it never breaks a cluster apart — it only stops small ones
+        being shown.
       </span>
     </div>
   </div>

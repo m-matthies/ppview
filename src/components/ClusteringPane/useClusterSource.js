@@ -36,6 +36,8 @@ export default function useClusterSource() {
   const [clusterSourceId, setClusterSourceId] = useState(null);   // null = DBSCAN
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
+  // 1 keeps everything, which is the old behaviour and the default.
+  const [minClusterSize, setMinClusterSize] = useState(1);
 
   // Only a cluster overlay has clusters to list; a scalar-property overlay
   // colours particles without any grouping to show here.
@@ -111,11 +113,33 @@ export default function useClusterSource() {
     };
   }, [clusteringIsInUse, positions, epsilon, minPoints, currentBoxSize, setBusyMessage]);
 
+  /**
+   * Clusters too small to care about, dropped — *after* clustering, not during.
+   *
+   * Raising "neighbours needed" looks like it should do this and does something
+   * quite different: it is a density threshold, so it stops particles being
+   * core points, and a cluster that was held together through a thin waist comes
+   * apart. Reported as DBSCAN failing, and it is not — but "set the minimum size
+   * larger and clusters that were joined fall apart" is a reasonable thing to be
+   * confused by, because nothing in the control said the two were different
+   * questions.
+   *
+   * This is the other question, asked separately: cluster first, then discard
+   * what is too small to be worth showing. Raising it can never break a cluster
+   * apart, because the clustering has already happened.
+   */
+  const keptClusters = useMemo(
+    () => (minClusterSize > 1
+      ? computedClusters.filter(cluster => cluster.length >= minClusterSize)
+      : computedClusters),
+    [computedClusters, minClusterSize],
+  );
+
   // A loaded file replaces the computed clusters while it is present, so the
   // rest of the pane does not need to care where they came from.
   const clusters = useMemo(
-    () => (fileClusters ? fileClusters.map(c => c.indices) : computedClusters),
-    [fileClusters, computedClusters],
+    () => (fileClusters ? fileClusters.map(c => c.indices) : keptClusters),
+    [fileClusters, keptClusters],
   );
 
   /**
@@ -161,5 +185,7 @@ export default function useClusterSource() {
     epsilonLimit,
     minPoints,
     setMinPoints,
+    minClusterSize,
+    setMinClusterSize,
   };
 }
