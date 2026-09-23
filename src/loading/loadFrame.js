@@ -1,6 +1,6 @@
 import { calcCOMFromBuffer } from '../utils/geometryUtils';
-import { parseFrameBuffers, createFrameBuffers } from './parseFrameBuffers';
-import { wasmParseFrame, wasmReady } from '../wasm/wasmCore';
+import { createFrameBuffers } from './frameBuffers';
+import { parseFrame, loadWasmCore } from '../wasm/wasmCore';
 import { createFrameCache } from './frameCache';
 import { getParticleType } from '../formats/parsers/particleType';
 import { convertMGLToPPViewFormat } from '../utils/mglParser';
@@ -147,17 +147,17 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   const end = frameNumber + 1 < index.length ? index[frameNumber + 1] : file.size;
   const slice = file.slice(start, end);
 
-  // Bytes for the compiled path, text for the JavaScript one. The bytes are
-  // what came off disk, so nothing is decoded on the way in — though that turns
-  // out to be nearly free anyway, since V8 keeps an ASCII string one byte per
-  // character. The win is in the scan.
-  let frame;
-  if (wasmReady()) {
-    frame = wasmParseFrame(new Uint8Array(await slice.arrayBuffer()), buffers);
+  // Waited for rather than assumed: reading a frame is the first thing that
+  // needs the core, and the alternative is failing somewhere further in with a
+  // message about something else.
+  if (!(await loadWasmCore())) {
+    throw new LoadError(
+      'The WebAssembly core did not load, so trajectories cannot be read.',
+    );
   }
-  if (!frame) {
-    frame = parseFrameBuffers(await slice.text(), buffers);
-  }
+
+  // Bytes, as they came off disk: nothing is decoded on the way in.
+  const frame = parseFrame(new Uint8Array(await slice.arrayBuffer()), buffers);
   if (!frame || frame.count === 0) throw new LoadError('That frame could not be read.');
   centreAndWrap(frame);
   cache.put(frameNumber, frame);

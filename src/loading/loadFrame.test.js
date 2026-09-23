@@ -23,7 +23,12 @@ const secondFrameAt = FRAMES.indexOf('t = 500');
 
 const trajectoryFile = (text = FRAMES) => ({
   size: text.length,
-  slice: (start, end) => ({ text: async () => text.slice(start, end) }),
+  // The frame is read as bytes now, the way it comes off disk — the compiled
+  // core is handed the buffer rather than a decoded string.
+  slice: (start, end) => ({
+    text: async () => text.slice(start, end),
+    arrayBuffer: async () => new TextEncoder().encode(text.slice(start, end)).buffer,
+  }),
 });
 
 // Two particle types, so getParticleType has something to map onto.

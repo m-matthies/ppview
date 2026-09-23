@@ -19,9 +19,19 @@ export function useIframeBridge({ handleFilesReceived, makeOutputFiles, notify }
   const setShowParticleLegend = useUIStore(state => state.setShowParticleLegend);
   const setShowClusteringPane = useUIStore(state => state.setShowClusteringPane);
 
-  // Message handler for iframe communication
+  /**
+   * Messages from the embedding page.
+   *
+   * The window is a shared channel: React DevTools, browser extensions and any
+   * other script on the page all post to it. Logging every one of them, and
+   * warning `undefined is not a recognized message` for each, filled the console
+   * with traffic this viewer has nothing to do with — and buried anything worth
+   * seeing. A message without a `message` field is not addressed to us, so it is
+   * passed over in silence; only one that looks like ours and asks for something
+   * unknown is worth a word.
+   */
   const handleMessage = useCallback((data) => {
-    console.log('PPView received message:', data);
+    if (!data || typeof data.message !== 'string') return;
 
     if (data.message === 'drop') {
       handleFilesReceived(data.files);
@@ -78,8 +88,7 @@ export function useIframeBridge({ handleFilesReceived, makeOutputFiles, notify }
       return;
     }
     else {
-      console.log(data.message, "is not a recognized message");
-      return;
+      console.warn(`PPView: ignoring unknown message "${data.message}"`);
     }
   }, [handleFilesReceived, makeOutputFiles, notify, setIsControlsVisible, setIsDragDropEnabled, setShowBackdropPlanes, setShowClusteringPane, setShowCoordinateAxis, setShowParticleLegend, setShowPatchLegend, setShowSimulationBox]);
 

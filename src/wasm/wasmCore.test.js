@@ -1,116 +1,116 @@
-import fs from 'fs';
-import path from 'path';
-import { __setCore, wasmDbscan, wasmParseFrame, wasmReady } from './wasmCore';
-import { dbscan } from '../utils/clustering';
-import { parseFrameBuffers, createFrameBuffers } from '../loading/parseFrameBuffers';
+import { parseFrame, dbscan, wasmReady, __setCore } from './wasmCore';
+import { createFrameBuffers } from '../loading/frameBuffers';
 
-// Instantiated straight from the file rather than over fetch: this is the same
-// module the browser loads, so agreeing here is agreeing there.
-const wasmPath = path.join(__dirname, '../../public/wasm/ppview_core.wasm');
-let exports_ = null;
+// The core is instantiated once for every test file by `setupTests.js`, from
+// the same .wasm the browser fetches — so passing here is passing there.
 
-beforeAll(async () => {
-  const bytes = fs.readFileSync(wasmPath);
-  const { instance } = await WebAssembly.instantiate(bytes, {});
-  exports_ = instance.exports;
-});
-
-beforeEach(() => __setCore(exports_));
-afterEach(() => __setCore(null));
-
-const frameText = (rows) => [
+const frame = (rows) => new TextEncoder().encode([
   't = 1500',
   'b = 60 60 60',
   'E = -1.5 -0.5 -1',
   ...rows,
-].join('\n') + '\n';
+].join('\n') + '\n');
 
-const randomPoints = (seed, count, box) => {
-  let s = seed;
-  const next = () => { s = (s * 1664525 + 1013904223) % 4294967296; return s / 4294967296; };
-  return Array.from({ length: count }, () => ({
-    x: next() * box, y: next() * box, z: next() * box,
-  }));
-};
+const read = (rows) => parseFrame(frame(rows), createFrameBuffers());
 
-describe('the compiled core', () => {
-  test('is only used when it has loaded', () => {
-    expect(wasmReady()).toBe(true);
-    __setCore(null);
-    expect(wasmReady()).toBe(false);
-    expect(wasmDbscan([{ x: 0, y: 0, z: 0 }], 1, 1, null)).toBeNull();
+describe('parsing a frame', () => {
+  test('reads the header', () => {
+    const out = read(['1 2 3 1 0 0 0 0 1 0 0 0 0 0 0']);
+    expect(out.time).toBeCloseTo(1500);
+    expect(Array.from(out.boxSize)).toEqual([60, 60, 60]);
+    expect(Array.from(out.energy)).toEqual([-1.5, -0.5, -1]);
   });
-});
 
-describe('parsing agrees with the JavaScript parser', () => {
-  const cases = [
-    ['positions and orientation', [
+  test('reads positions and orientation', () => {
+    const out = read([
       '1.5 2.25 3.125 1 0 0 0 0 1 0 0 0 0 0 0',
       '-4.5 -0.25 60.5 0 1 0 0 0 1 0 0 0 0 0 0',
-    ]],
-    ['positions only, as MGL-style rows have', ['1.5 2.25 3.125', '4 5 6']],
-    ['negative and exponent forms', ['-1.5e2 2.25E-1 +3 1 0 0 0 0 1 0 0 0 0 0 0']],
-    ['a short row, which must not eat the next one', ['1 2 3', '4 5 6', '7 8 9']],
-  ];
+    ]);
+    expect(out.count).toBe(2);
+    expect(out.hasOrientation).toBe(true);
+    expect(Array.from(out.positions.slice(0, 6)))
+      .toEqual([1.5, 2.25, 3.125, -4.5, -0.25, 60.5]);
+    expect(Array.from(out.a1.slice(0, 6))).toEqual([1, 0, 0, 0, 1, 0]);
+    expect(Array.from(out.a3.slice(0, 6))).toEqual([0, 0, 1, 0, 0, 1]);
+  });
 
-  test.each(cases)('%s', (_label, rows) => {
-    const text = frameText(rows);
-    const fromJs = parseFrameBuffers(text, createFrameBuffers());
-    const fromWasm = wasmParseFrame(new TextEncoder().encode(text), createFrameBuffers());
+  test('a format carrying no orientation says so', () => {
+    const out = read(['1.5 2.25 3.125', '4 5 6']);
+    expect(out.count).toBe(2);
+    expect(out.hasOrientation).toBe(false);
+    expect(Array.from(out.positions.slice(0, 6))).toEqual([1.5, 2.25, 3.125, 4, 5, 6]);
+  });
 
-    expect(fromWasm.count).toBe(fromJs.count);
-    expect(fromWasm.time).toBeCloseTo(fromJs.time, 3);
-    expect(Array.from(fromWasm.boxSize)).toEqual(Array.from(fromJs.boxSize));
-    expect(Array.from(fromWasm.energy)).toEqual(Array.from(fromJs.energy));
-    expect(fromWasm.hasOrientation).toBe(fromJs.hasOrientation);
+  // The trap the scanner is written around: a number must never be read across
+  // a line break, or a row of three columns consumes the first value of the next
+  // and the frame comes out with half the particles it should.
+  test('a short row does not eat the next one', () => {
+    const out = read(['1 2 3', '4 5 6', '7 8 9']);
+    expect(out.count).toBe(3);
+    expect(Array.from(out.positions.slice(0, 9))).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  });
 
-    const values = fromJs.count * 3;
-    for (let i = 0; i < values; i++) {
-      expect(fromWasm.positions[i]).toBeCloseTo(fromJs.positions[i], 3);
-      if (fromJs.hasOrientation) {
-        expect(fromWasm.a1[i]).toBeCloseTo(fromJs.a1[i], 3);
-        expect(fromWasm.a3[i]).toBeCloseTo(fromJs.a3[i], 3);
-      }
+  test('signs and exponents', () => {
+    const out = read(['-1.5e2 2.25E-1 +3 1 0 0 0 0 1 0 0 0 0 0 0']);
+    expect(out.positions[0]).toBeCloseTo(-150, 3);
+    expect(out.positions[1]).toBeCloseTo(0.225, 4);
+    expect(out.positions[2]).toBeCloseTo(3, 4);
+  });
+
+  test('a large frame, every coordinate', () => {
+    const rows = Array.from({ length: 2000 }, (_, i) =>
+      `${(i * 0.017).toFixed(6)} ${(i * 0.031).toFixed(6)} ${(i * 0.043).toFixed(6)} 1 0 0 0 0 1 0 0 0 0 0 0`);
+    const out = read(rows);
+    expect(out.count).toBe(2000);
+    for (let i = 0; i < 2000; i++) {
+      expect(out.positions[i * 3]).toBeCloseTo(i * 0.017, 3);
+      expect(out.positions[i * 3 + 2]).toBeCloseTo(i * 0.043, 3);
     }
   });
 
-  test('a large frame, coordinate by coordinate', () => {
-    const rows = Array.from({ length: 2000 }, (_, i) =>
-      `${(i * 0.017).toFixed(6)} ${(i * 0.031).toFixed(6)} ${(i * 0.043).toFixed(6)} 1 0 0 0 0 1 0 0 0 0 0 0`);
-    const text = frameText(rows);
-    const fromJs = parseFrameBuffers(text, createFrameBuffers());
-    const fromWasm = wasmParseFrame(new TextEncoder().encode(text), createFrameBuffers());
-    expect(fromWasm.count).toBe(2000);
-    for (let i = 0; i < 6000; i++) {
-      expect(fromWasm.positions[i]).toBeCloseTo(fromJs.positions[i], 3);
-    }
+  test('the buffers are reused, so a smaller frame does not reallocate', () => {
+    const buffers = createFrameBuffers();
+    const big = parseFrame(frame(Array.from({ length: 50 }, () => '1 2 3')), buffers);
+    const positions = big.positions;
+    const small = parseFrame(frame(['9 8 7']), buffers);
+    expect(small.positions).toBe(positions);
+    expect(small.count).toBe(1);
   });
 });
 
-describe('clustering agrees with the JavaScript implementation', () => {
-  const sorted = (clusters) => clusters
-    .map(c => [...c].sort((a, b) => a - b))
-    .sort((a, b) => a[0] - b[0]);
+describe('clustering through the core', () => {
+  test('finds separated groups and calls the rest noise', () => {
+    const points = [
+      { x: 0, y: 0, z: 0 }, { x: 0.3, y: 0, z: 0 }, { x: 0, y: 0.3, z: 0 },
+      { x: 20, y: 20, z: 20 }, { x: 20.3, y: 20, z: 20 }, { x: 20, y: 20.3, z: 20 },
+      { x: 40, y: 0, z: 0 },
+    ];
+    const clusters = dbscan(points, 1.0, 3, [60, 60, 60]);
+    expect(clusters.map(c => c.length)).toEqual([3, 3]);
+    expect(clusters[0]).toEqual([0, 1, 2]);
+    expect(clusters[1]).toEqual([3, 4, 5]);
+  });
 
-  // Cluster *order* matters as much as membership: the pane selects by index.
-  const jsOnly = (points, epsilon, minPoints, box) => {
+  test('no points is no clusters, not a crash', () => {
+    expect(dbscan([], 1, 3, [10, 10, 10])).toEqual([]);
+  });
+});
+
+describe('without the core there is nothing to fall back to', () => {
+  afterEach(() => {
+    // Put it back for the rest of the file; setupTests runs once per file.
+    // eslint-disable-next-line global-require
+    const fs = require('fs');
+    // eslint-disable-next-line global-require
+    const path = require('path');
+    const bytes = fs.readFileSync(path.join(__dirname, '../../public/wasm/ppview_core.wasm'));
+    return WebAssembly.instantiate(bytes, {}).then(({ instance }) => __setCore(instance.exports));
+  });
+
+  test('it says so plainly rather than failing somewhere further in', () => {
     __setCore(null);
-    try { return dbscan(points, epsilon, minPoints, box); } finally { __setCore(exports_); }
-  };
-
-  test.each([
-    ['dense, periodic', 400, 12, 1.5, 3, [12, 12, 12]],
-    ['sparse, periodic', 400, 40, 2.0, 3, [40, 40, 40]],
-    ['a box only a few cells across', 200, 6, 2.0, 4, [6, 6, 6]],
-    ['no box at all', 250, 20, 2.0, 3, null],
-    ['a high neighbour count', 400, 15, 2.0, 8, [15, 15, 15]],
-    ['everything noise', 100, 100, 0.5, 5, [100, 100, 100]],
-  ])('agrees on %s', (_label, count, box, epsilon, minPoints, boxSize) => {
-    const points = randomPoints(count * 13 + 5, count, box);
-    const fromJs = jsOnly(points, epsilon, minPoints, boxSize);
-    const fromWasm = wasmDbscan(points, epsilon, minPoints, boxSize);
-    expect(sorted(fromWasm)).toEqual(sorted(fromJs));
-    // And in the same order, since a cluster's index is what gets selected.
-    expect(fromWasm.map(c => c.length)).toEqual(fromJs.map(c => c.length));
+    expect(wasmReady()).toBe(false);
+    expect(() => dbscan([{ x: 0, y: 0, z: 0 }], 1, 1, null))
+      .toThrow(/WebAssembly core did not load/);
   });
 });

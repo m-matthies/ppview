@@ -1,20 +1,22 @@
 /**
- * The Rust core, and the decision about whether to use it.
+ * The Rust core: frame parsing and DBSCAN.
  *
- * Two things crossed the boundary worth compiling: reading a frame out of the
- * trajectory text, and DBSCAN. Both are flat loops over numbers, which is what
- * WebAssembly is good at and what JavaScript's number representation makes
- * awkward.
+ * There is one implementation of each, and it is this one. There used to be two
+ * — a JavaScript version alongside, kept as a fallback and as the reference —
+ * and carrying both was not worth it: every change had to be made twice, in two
+ * languages, and kept in step by a test suite comparing them. The Rust is four
+ * times faster on a frame and twenty on clustering, so the JavaScript was never
+ * going to be the one that ran.
  *
- * **No wasm-bindgen.** Everything passed here is a block of bytes going in or a
- * block of f32/i32 coming out, so the generated glue would buy nothing and cost
- * a bundler integration — and Create React App cannot be given a webpack config
- * without ejecting. The module is fetched and instantiated directly instead.
+ * What is lost is the graceful degradation. A browser without WebAssembly, or a
+ * blocked request, now means the viewer cannot read a trajectory — so the load
+ * path waits for the module and says so plainly if it never arrives, rather than
+ * failing somewhere further in.
  *
- * **The JavaScript implementations stay, and stay tested.** This loads
- * asynchronously and can fail: an old browser, a blocked fetch, a jsdom test
- * with no `fetch` at all. Every entry point here falls back, and `wasmCore.test.js`
- * checks the two agree rather than assuming it.
+ * **No wasm-bindgen.** Everything crossing the boundary is a block of bytes
+ * going in or a block of f32/i32 coming out, so the generated glue would buy
+ * nothing and cost a bundler integration that Create React App cannot be given
+ * without ejecting. The module is fetched and instantiated directly.
  */
 
 let core = null;
@@ -87,23 +89,43 @@ export function loadWasmCore() {
 
 export const wasmReady = () => core !== null;
 
-/** For tests, which need to run both paths deliberately. */
-export const __setCore = (next) => { core = next; };
+/**
+ * The core, or a plain explanation of why there is nothing to run.
+ *
+ * Callers reach this only after `loadWasmCore` has resolved, so in practice it
+ * throws when the module genuinely could not be fetched or compiled.
+ */
+function requireCore() {
+  if (!core) {
+    throw new Error(
+      'The WebAssembly core did not load, so trajectories cannot be read. '
+      + 'Check that /wasm/ppview_core.wasm is being served.',
+    );
+  }
+  return core;
+}
+
+/** Tests instantiate the module from disk and inject it; see `setupTests.js`. */
+export const __setCore = (next) => {
+  core = next;
+  loading = Promise.resolve(next !== null);
+};
 
 /**
  * Reads a frame from raw bytes.
  *
  * Bytes, not a string: the file is read as an ArrayBuffer and handed over as it
- * came off disk, so nothing is decoded on the way. Returns null when the module
- * is not loaded, so the caller can take the JavaScript path.
+ * came off disk, so nothing is decoded on the way — which turns out to be nearly
+ * free anyway, since V8 keeps an ASCII string one byte per character. The win is
+ * in the scan.
  */
-export function wasmParseFrame(bytes, buffers) {
-  if (!core) return null;
+export function parseFrame(bytes, buffers) {
+  core = requireCore();
   const ptr = core.alloc(bytes.length);
   try {
     view(Uint8Array, ptr, bytes.length).set(bytes);
     const count = core.parse_frame(ptr, bytes.length);
-    if (count === 0) return null;
+    if (count === 0) return null;      // an empty or unreadable frame
 
     const meta = view(Float32Array, core.frame_meta(), 9);
     const hasOrientation = meta[8] === 1;
@@ -139,12 +161,12 @@ export function wasmParseFrame(bytes, buffers) {
  *
  * The Rust side returns one label per particle and the clusters are rebuilt
  * here: cluster order is the order they were created, which is what the pane
- * selects by, and membership order within a cluster is ascending. Nothing reads
- * that order — it is the set that matters — and ascending is the one order two
- * implementations can agree on without carrying it across the boundary.
+ * selects by, and membership within a cluster comes out ascending. Nothing reads
+ * that order — it is the set that matters.
  */
-export function wasmDbscan(points, epsilon, minPoints, boxSize) {
-  if (!core || points.length === 0) return null;
+export function dbscan(points, epsilon, minPoints, boxSize) {
+  if (points.length === 0) return [];
+  core = requireCore();
   const count = points.length;
   const ptr = core.alloc_f32(count * 3);
   try {

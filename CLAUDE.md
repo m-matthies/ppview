@@ -598,19 +598,27 @@ path**. Both are flat loops over numbers, which is what WebAssembly is good at:
 Against the *original* clustering — before the grid — 20,000 particles went from
 59.8s to 44 ms.
 
-**The JavaScript implementations stay, and stay the reference.** The module is
-fetched and can fail: an old browser, a blocked request, a jsdom test with no
-`fetch`. Every entry point falls back, and `src/wasm/wasmCore.test.js`
-instantiates the very `.wasm` the browser loads and checks the two agree —
-coordinate by coordinate for parsing, and for clustering both the membership and
-the *order* of the clusters, since a cluster's index is what the pane selects by.
+**There is one implementation of each, and it is this one.** There used to be a
+JavaScript version alongside, kept as a fallback and as the reference; carrying
+both was not worth it — the same algorithms in two languages, kept in step by a
+suite that compared them, when one was always the one that ran. What is lost is
+graceful degradation: a browser without WebAssembly, or a blocked request, now
+means the viewer cannot read a trajectory, so `loadFrame` waits for the module
+and says so plainly rather than failing further in.
+
+`src/setupTests.js` instantiates the `.wasm` from disk and injects it, because
+jsdom has no `fetch` — so a test of parsing or clustering is a test of the module
+the browser runs, not of a stand-in.
 
 **No `wasm-bindgen`.** Everything crossing the boundary is a block of bytes in or
 a block of `f32`/`i32` out, so the generated glue would buy nothing and cost a
 bundler integration that Create React App cannot be given without ejecting.
 
-`npm run build:wasm` rebuilds it; `public/wasm/ppview_core.wasm` is **committed**,
-the same way `build/` is, so a checkout without a Rust toolchain still runs.
+`npm run build` and `npm start` rebuild it first (`prebuild`/`prestart`), so it
+cannot drift from the crate. `public/wasm/ppview_core.wasm` is **committed**, the
+same way `build/` is — the tests read it from there, and it is what gets
+deployed. A Rust toolchain is now a requirement for building, not an optional
+extra.
 `window.__ppviewCore` reports which path is live, and the `load` scenario asserts
 it is `wasm` — silence when the module fails to load would mean never noticing.
 

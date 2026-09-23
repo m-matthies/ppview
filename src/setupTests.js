@@ -18,3 +18,27 @@ if (typeof global.ReadableStream === 'undefined') {
   // eslint-disable-next-line global-require
   global.ReadableStream = require('stream/web').ReadableStream;
 }
+
+/**
+ * Hands the tests the same compiled core the browser gets.
+ *
+ * There is one implementation of frame parsing and clustering, and it is
+ * WebAssembly — so a test of either is a test of that module, not of a
+ * JavaScript stand-in that would have to be kept in step with it. jsdom has no
+ * `fetch`, so it is read from disk and injected rather than fetched the way the
+ * app fetches it.
+ *
+ * If this is what fails, `npm run build:wasm` has not been run.
+ */
+// eslint-disable-next-line import/first
+import fs from 'fs';
+// eslint-disable-next-line import/first
+import path from 'path';
+// eslint-disable-next-line import/first
+import { __setCore } from './wasm/wasmCore';
+
+beforeAll(async () => {
+  const wasm = path.join(__dirname, '../public/wasm/ppview_core.wasm');
+  const { instance } = await WebAssembly.instantiate(fs.readFileSync(wasm), {});
+  __setCore(instance.exports);
+});

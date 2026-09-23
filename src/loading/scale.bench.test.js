@@ -10,7 +10,8 @@
  * two orders of magnitude, in Node, where nothing else competes for the thread.
  */
 import { loadFrame } from './loadFrame';
-import { parseFrameBuffers, createFrameBuffers } from './parseFrameBuffers';
+import { createFrameBuffers } from './frameBuffers';
+import { parseFrame } from '../wasm/wasmCore';
 import { parseConfiguration } from '../utils/trajectoryLoader';
 import { applyPeriodicBoundary, computeRotationMatrix, calcCOM, calcCOMFromBuffer } from '../utils/geometryUtils';
 import { getParticleType } from '../formats/parsers/particleType';
@@ -166,8 +167,9 @@ bench('per-frame JS cost by particle count', () => {
       return { label, ms: samples[2], value };
     };
 
-    const scan = time('parseFrameBuffers (scan into typed arrays)',
-      () => parseFrameBuffers(text, buffers));
+    const bytes = new TextEncoder().encode(text);
+    const scan = time('parseFrame (compiled, into typed arrays)',
+      () => parseFrame(bytes, buffers));
     const frame = scan.value;
     const com = time('  centre of mass from the buffer',
       () => calcCOMFromBuffer(frame.positions, frame.count, frame.boxSize));
