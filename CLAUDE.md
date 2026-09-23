@@ -1007,29 +1007,37 @@ effect translates `hiddenClusters` into `clusteringStore.hiddenParticles`, which
 is what the renderers read.
 
 ### Cluster colours
-**A cluster's colour comes from its lowest-numbered particle**
-(`utils/clusterIdentity.js`): clusters are ranked by that anchor and the palette
-is indexed by the rank. It is a property of membership and nothing else — no
-history, no current frame, no second opinion — so the pane, the scene and the
-time view all compute the same answer and none of them can disagree.
+**A cluster keeps the colour slot most of its particles already had**
+(`utils/clusterIdentity.js#slotForCluster`). Identity by *overlap*: it survives
+growth, shrinkage, exchange, DBSCAN's renumbering and the loss of any one
+member, and it is computed from membership alone — so the pane, the scene and the
+time view all get the same answer without consulting each other, which is the
+only way they cannot disagree.
 
-It replaced **colour by size rank**, which is a good rule for a single frame and a
-bad one across a trajectory: sizes change, so a cluster changes colour as it
-grows and shrinks. Measured on two clusters of eight particles — two
-near-identical reds at one frame, a green and a red a few frames later, the same
-two clusters throughout. A cluster you cannot recognise from frame to frame
-cannot be followed, which is what the time view is for.
+Five things were tried before it and all five moved:
 
-Patching that with a *second* source made it worse: colouring by lineage where
-one was known and falling back to size rank where it was not meant a cluster
-changed colour the moment a time view was computed, and again whenever the lookup
-missed — a cluster the pane drew near-black had a green band in the picture. One
-rule, no fallback.
+| tried | moved when |
+|---|---|
+| size rank | a cluster grew or shrank |
+| cluster index | every frame — DBSCAN renumbers |
+| lineage, falling back to size rank | a time view was computed, or a lookup missed |
+| rank over the current clusters' anchors | any other cluster appeared or vanished |
+| the lowest-numbered member itself | that particular particle left |
 
-A cluster keeps its colour while it keeps its lowest-numbered particle, which
-survives the growing, shrinking and exchange that size rank does not. Ranking
-rather than using the particle number directly matters: five blobs of eight would
-otherwise land on palette entries 0, 8, 4, 0, 8 — two collisions out of five.
+The last is not hypothetical: in the `migrate` fixture the particle that changes
+cluster *is* the lowest-numbered one, so the cluster it left changed colour at
+that frame.
+
+One imprecision remains, left deliberately: when a cluster **splits**, both
+halves carry the same history and so keep the colour. Telling them apart would
+mean deciding which half is the real continuation, and the time view already
+shows a split for what it is.
+
+`colourForSlot` always returns `#rrggbb`, including for the first palette-worth
+of clusters. The golden-angle generator produces `hsl(...)` and a swatch is an
+`<input type="color">`, which accepts nothing else — returning the raw entry left
+every swatch black on any browser whose sanitiser is not Chrome's, which is also
+why the visual suite could not see it.
 
 **The histogram was the last thing still coloured by size**, which meant its bars
 disagreed with the swatches beside them, with the scene and with the time view —
@@ -1043,9 +1051,9 @@ The bar colour arrives as a `--bar-color` custom property rather than an inline
 paints a *selected* bar accent-blue.
 
 **Lightness separates clusters past the end of the palette.** With twelve
-colours and more clusters than that, the rank wraps; each wrap shifts the
+colours and more clusters than that, the slot wraps; each wrap shifts the
 lightness so the thirteenth cluster is not indistinguishable from the first.
-`colourForRank` is the single function that does this, used by the pane and by
+`colourForSlot` is the single function that does this, used by the pane and by
 the time view. Steps that cycle, not a range spread across the group: a
 hundred clusters of one size would put a fraction of a point between neighbours
 and look uniform again. The steps are centred on however many shades the group

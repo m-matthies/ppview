@@ -1,5 +1,5 @@
 import {
-  pickIndices, assignLineages, lineageRanks, NOISE, columnForFrame,
+  pickIndices, assignLineages, NOISE, columnForFrame,
   cohortOf, cohortFrames,
   bandSizes, bandOrder, stackFrames, particleTrace,
 } from './kymograph';
@@ -85,30 +85,6 @@ describe('assignLineages', () => {
     const a = assignLineages([[0, 2], [1, 3]], 4, first.lineageOf, first.nextLineage);
     const b = assignLineages([[0, 2], [1, 3]], 4, first.lineageOf, first.nextLineage);
     expect(Array.from(a.lineageOf)).toEqual(Array.from(b.lineageOf));
-  });
-});
-
-describe('lineageRanks', () => {
-  // The same rule the pane colours by, applied to a lineage: rank by the
-  // lowest-numbered particle it held when it first appeared. Taken at first
-  // appearance so the rank belongs to the lineage and does not drift.
-  test('ranks lineages by their anchor', () => {
-    const ranks = lineageRanks([Int32Array.from([0, 0, 7, 7]), Int32Array.from([9, 9, 7, 7])]);
-    // By anchor value, not by which appeared first — the pane ranks clusters the
-    // same way, and the two have to agree.
-    expect(ranks.get(9)).toBe(0);   // anchor 0
-    expect(ranks.get(7)).toBe(1);   // anchor 2
-  });
-
-  test('noise is not a lineage', () => {
-    expect(lineageRanks([Int32Array.from([0, 0])]).has(NOISE)).toBe(false);
-  });
-
-  test('a lineage keeps its rank as its membership changes', () => {
-    const before = lineageRanks([Int32Array.from([1, 1, 2, 2])]);
-    const after = lineageRanks([Int32Array.from([1, 1, 2, 2]), Int32Array.from([1, 2, 2, 2])]);
-    expect(after.get(1)).toBe(before.get(1));
-    expect(after.get(2)).toBe(before.get(2));
   });
 });
 

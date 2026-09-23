@@ -5,10 +5,10 @@ import { useUIStore } from '../../store/uiStore';
 import { goToFrame } from '../../store/commands';
 import { getParticleColors } from '../../colors';
 import {
-  lineageRanks, NOISE, bandOrder, stackFrames, particleTrace, columnForFrame,
+  NOISE, bandOrder, stackFrames, particleTrace, columnForFrame,
   cohortOf, cohortFrames,
 } from '../../utils/kymograph';
-import { colourForRank } from '../../utils/clusterIdentity';
+import { colourForSlot, slotForCluster } from '../../utils/clusterIdentity';
 import { CloseIcon } from '../Icons';
 import './ClusterKymograph.css';
 
@@ -53,16 +53,35 @@ function ClusterKymograph({
     return { order, frames: stackFrames(data.columns, order, data.particleCount) };
   }, [data]);
 
-  // The same rule the pane colours by, so a band and the cluster it stands for
-  // are the same colour — one function, not two sources with a fallback between
-  // them, which is what let a cluster the pane drew near-black have a green band.
-  const ranks = useMemo(
-    () => (data?.columns ? lineageRanks(data.columns) : null),
-    [data],
-  );
+  /**
+   * A lineage's colour in a given column, from that column's membership.
+   *
+   * The same question the pane asks of the same frame, so the two cannot give
+   * different answers — one function over one input, not two sources with a
+   * fallback between them, which is what let a cluster the pane drew near-black
+   * have a green band.
+   */
+  const slots = useMemo(() => {
+    if (!data?.columns?.length) return null;
+    // Resolved once per computation, not per draw: `slotForCluster` registers
+    // what it sees, so calling it while painting would rewrite the registry on
+    // every repaint and make the colours depend on how often the canvas redrew.
+    return data.columns.map((column) => {
+      const members = new Map();
+      for (let particle = 0; particle < column.length; particle++) {
+        const lineage = column[particle];
+        if (lineage === NOISE) continue;
+        if (!members.has(lineage)) members.set(lineage, []);
+        members.get(lineage).push(particle);
+      }
+      return new Map([...members].map(([lineage, cluster]) =>
+        [lineage, slotForCluster(cluster)]));
+    });
+  }, [data]);
+
   const colourOf = useCallback(
-    (lineage) => colourForRank(palette, ranks?.get(lineage) ?? 0),
-    [palette, ranks],
+    (lineage, column) => colourForSlot(palette, slots?.[column]?.get(lineage) ?? 0),
+    [palette, slots],
   );
 
   const currentColumn = useMemo(
@@ -134,7 +153,11 @@ function ClusterKymograph({
     const observer = new ResizeObserver(() => setPlotSize(plot.clientHeight));
     observer.observe(plot);
     return () => observer.disconnect();
-  }, [data]);
+    // `cohort`, not just `data`: the plot is only mounted once there is one, which
+    // is one or two renders after the data arrives. Keyed on `data` alone the
+    // effect ran while plotRef was still null and never ran again, so dragging
+    // the resize handle stretched a stale canvas instead of repainting it.
+  }, [data, cohort]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -164,7 +187,7 @@ function ClusterKymograph({
           : (emphasis !== null && !emphasis.has(lineage));
         // A flat desaturated tone rather than a translucent wash: over a dark
         // panel, alpha leaves a muddy tint that still reads as a colour.
-        ctx.fillStyle = muted ? '#3f4149' : colourOf(lineage);
+        ctx.fillStyle = muted ? '#3f4149' : colourOf(lineage, frame);
         const top = Math.round(span.start * height);
         const bottom = Math.round(span.end * height);
         ctx.fillRect(Math.floor(x), top, Math.ceil(columnWidth) + 1, Math.max(1, bottom - top));
@@ -207,7 +230,7 @@ function ClusterKymograph({
     const frames = cohort ? cohort.frames : stack.frames;
     for (const [lineage, span] of frames[frame]) {
       if (y >= span.start && y <= span.end) {
-        return { frame: data.frames[frame], lineage, size: span.size, colour: colourOf(lineage) };
+        return { frame: data.frames[frame], lineage, size: span.size, colour: colourOf(lineage, frame) };
       }
     }
     return { frame: data.frames[frame], lineage: NOISE, size: 0, colour: null };
@@ -370,17 +393,14 @@ function ClusterKymograph({
                 to.
               </p>
 
-              <button className="select-button" onClick={onRecompute} disabled={running}>
-                {running ? 'Working…' : 'Recompute with the current settings'}
-              </button>
             </>
           )}
 
-          {!data && (
-            <button className="select-button" onClick={onRecompute} disabled={running}>
-              {running ? 'Working…' : 'Recompute with the current settings'}
-            </button>
-          )}
+          {/* Outside every branch: gated on a cohort it vanished whenever the
+              selection was empty, leaving the panel with no way to recompute. */}
+          <button className="select-button" onClick={onRecompute} disabled={running}>
+            {running ? 'Working…' : 'Recompute with the current settings'}
+          </button>
         </div>
       </div>
     </DraggablePanel>

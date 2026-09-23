@@ -100,35 +100,12 @@ export function assignLineages(clusters, particleCount, previous, nextLineage) {
   return { lineageOf, nextLineage: next };
 }
 
+
 /** Which column of a computed run holds a given trajectory frame. */
 export function columnForFrame(data, frame) {
   if (!data?.frames?.length) return 0;
   const nearest = data.frames.findIndex(f => f >= frame);
   return nearest === -1 ? data.frames.length - 1 : nearest;
-}
-
-/**
- * Lineage -> rank, by the anchor of its membership when it first appears.
- *
- * The same rule the pane colours by (`utils/clusterIdentity.js`), applied to a
- * lineage rather than to one frame's cluster, so a band and the cluster it
- * stands for are the same colour. Taken at the lineage's first appearance so the
- * rank is a property of the lineage and does not drift as membership churns.
- */
-export function lineageRanks(columns) {
-  const anchors = new Map();
-  for (const column of columns) {
-    for (let particle = 0; particle < column.length; particle++) {
-      const lineage = column[particle];
-      if (lineage === NOISE || anchors.has(lineage)) continue;
-      anchors.set(lineage, particle);
-    }
-  }
-  return new Map(
-    [...anchors.entries()]
-      .sort((a, b) => a[1] - b[1])
-      .map(([lineage], rank) => [lineage, rank]),
-  );
 }
 
 // ---------------------------------------------------------------- bands

@@ -31,6 +31,7 @@ import useParticleShift from "./hooks/useParticleShift";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
 import "./styles.css";
+import { resetClusterIdentity } from "./utils/clusterIdentity";
 
 function App() {
   // Subscribed to values, not to stores. A bare useParticleStore() re-rendered
@@ -183,6 +184,9 @@ function App() {
   // highlight unrelated particles or index past the end; sizes are
   // per-structure for the same reason.
   const resetScene = useCallback(() => {
+    // Cluster colours are registered against particle indices, which mean
+    // something different in another structure.
+    resetClusterIdentity();
     useUIStore.getState().setSelectedParticles([]);
     useClusteringStore.getState().resetClusters();
     useOverlayStore.getState().clearOverlays();

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 /**
  * Cluster sizes as a bar chart, and the quickest way to select by size.
@@ -22,16 +22,19 @@ function ClusterHistogram({ bins, maxBinCount, clusters, selectedClusters, clust
    * cluster it takes that cluster's colour and the legend holds; otherwise it
    * takes a neutral tone and claims nothing.
    *
-   * Colouring every bar by size was the last thing in the app still doing so,
-   * and it disagreed with the list beside it, the scene and the time view.
+   * One pass, memoised: this component re-renders on every trajectory frame
+   * while clustering is on, and the first version rebuilt an array per bar per
+   * cluster — quadratic in the clusters sharing a size, and evaluated twice for
+   * each bar.
    */
-  const barColour = (size) => {
-    const matching = clusters.reduce(
-      (found, cluster, index) => (cluster.length === size ? [...found, index] : found),
-      [],
-    );
-    return matching.length === 1 ? clusterColorAt(matching[0]) : null;
-  };
+  const soleClusterBySize = useMemo(() => {
+    const seen = new Map();
+    clusters.forEach((cluster, index) => {
+      const size = cluster.length;
+      seen.set(size, seen.has(size) ? null : index);
+    });
+    return seen;
+  }, [clusters]);
 
   return (
     <div className="clustering-histogram">
@@ -80,7 +83,9 @@ function ClusterHistogram({ bins, maxBinCount, clusters, selectedClusters, clust
                           className="histogram-bar"
                           style={{
                             height: `${finalHeight}%`,
-                            ...(barColour(bin.size) ? { '--bar-color': barColour(bin.size) } : {}),
+                            ...(soleClusterBySize.get(bin.size) != null
+                              ? { '--bar-color': clusterColorAt(soleClusterBySize.get(bin.size)) }
+                              : {}),
                           }}
                         />
                       </div>
