@@ -4,7 +4,9 @@ import { useClusteringStore, isSceneRestricted } from '../../store/clusteringSto
 import { loadWasmCore } from '../../wasm/wasmCore';
 import { useUIStore } from '../../store/uiStore';
 import { useOverlayStore } from '../../store/overlayStore';
-import { dbscan, maxMinimumImageRadius, withinSizeRange } from '../../utils/clustering';
+import {
+  dbscan, maxMinimumImageRadius, withinSizeRange, withinBand, keepsEverySize,
+} from '../../utils/clustering';
 
 /**
  * Where the pane's clusters come from: DBSCAN, or a file.
@@ -34,7 +36,9 @@ export default function useClusterSource() {
   const overlays = useOverlayStore(state => state.overlays);
   const setBusyMessage = useUIStore(state => state.setBusyMessage);
 
-  const [clusterSourceId, setClusterSourceId] = useState(null);   // null = DBSCAN
+  // null = DBSCAN. In the store, not here: the bond renderer reads it too.
+  const clusterSourceId = useClusteringStore(state => state.clusterSourceId);
+  const setClusterSourceId = useClusteringStore(state => state.setClusterSourceId);
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
   // A band, not a floor: [1, Infinity] keeps everything, which is the default.
@@ -48,7 +52,8 @@ export default function useClusterSource() {
     [overlays],
   );
   const clusterSource = clusterOverlays.find(o => o.id === clusterSourceId) || null;
-  const fileClusters = clusterSource?.clusters ?? null;
+  /** What the file or observable says, before the size band is applied. */
+  const sourceClusters = clusterSource?.clusters ?? null;
 
   /**
    * Cluster only when something uses the result.
@@ -60,7 +65,7 @@ export default function useClusterSource() {
    * unnecessary too. Selection alone changes nothing on screen unless something
    * is hidden, so it is not a reason to keep clustering either.
    */
-  const clusteringIsInUse = !fileClusters && (showClusteringPane || sceneIsRestricted);
+  const clusteringIsInUse = !sourceClusters && (showClusteringPane || sceneIsRestricted);
 
   /**
    * Clustering runs after a paint, not during render.
@@ -139,16 +144,55 @@ export default function useClusterSource() {
    * gets asked — isolating the mid-sized clusters, or looking at just the
    * stragglers, needs an upper end too.
    */
-  /** The largest cluster there is, which is where the upper bound starts. */
-  const largestCluster = useMemo(
-    () => computedClusters.reduce((most, c) => Math.max(most, c.length), 0),
-    [computedClusters],
-  );
+  /**
+   * The largest cluster there is, which is where the upper bound starts.
+   *
+   * For an observable this is taken over **every** frame, not the one on
+   * screen. The ceiling positions the upper thumb, and a ceiling read off the
+   * current frame would move it as the trajectory plays — so a band set at one
+   * frame would quietly mean something different at the next.
+   */
+  const largestCluster = useMemo(() => {
+    const observable = clusterSource?.observable;
+    if (observable) {
+      return observable.frames.reduce(
+        (most, frame) => frame.clusters.reduce((m, c) => Math.max(m, c.length), most),
+        0,
+      );
+    }
+    if (sourceClusters) {
+      return sourceClusters.reduce((most, c) => Math.max(most, c.indices.length), 0);
+    }
+    return computedClusters.reduce((most, c) => Math.max(most, c.length), 0);
+  }, [clusterSource, sourceClusters, computedClusters]);
 
   const keptClusters = useMemo(
     () => withinSizeRange(computedClusters, minClusterSize, maxClusterSize),
     [computedClusters, minClusterSize, maxClusterSize],
   );
+
+  /**
+   * The source's clusters with the size band applied.
+   *
+   * The band used to be a DBSCAN-only control, which left it doing nothing for
+   * the case that needs it most: a cluster/bond observable states hundreds of
+   * clusters per frame — 581 at the end of the run this was built for — and
+   * most of them are pairs. It is a filter over a finished clustering, so it
+   * applies to any of them equally.
+   *
+   * Filtered here rather than downstream because `fileClusters` and `clusters`
+   * are read by index against each other: `clusterColorAt` looks up
+   * `fileClusters[i].color`, and `ClusterList` its name and visibility.
+   * Filtering one and not the other shifts every entry after the first removal
+   * onto a neighbour's colour.
+   */
+  const fileClusters = useMemo(() => {
+    if (!sourceClusters) return null;
+    if (keepsEverySize(minClusterSize, maxClusterSize)) return sourceClusters;
+    return sourceClusters.filter(
+      c => withinBand(c.indices.length, minClusterSize, maxClusterSize),
+    );
+  }, [sourceClusters, minClusterSize, maxClusterSize]);
 
   // A loaded file replaces the computed clusters while it is present, so the
   // rest of the pane does not need to care where they came from.

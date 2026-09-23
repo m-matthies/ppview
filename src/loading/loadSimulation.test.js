@@ -25,6 +25,7 @@ const sceneOf = () => {
     setCurrentTime: record('time'),
     setCurrentEnergy: record('energy'),
     setConfigIndex: record('configIndex'),
+    setConfigTimes: record('configTimes'),
     setTotalConfigs: record('totalConfigs'),
     setTrajFile: record('trajFile'),
     setFormatParticleRadius: record('formatRadius'),

@@ -96,6 +96,19 @@ export function generateHistogram(clusterSizes) {
  * stragglers, needs an upper end too. `Infinity` is the open upper bound.
  */
 export function withinSizeRange(clusters, low = 1, high = Infinity) {
-  if (low <= 1 && !Number.isFinite(high)) return clusters;
-  return clusters.filter(cluster => cluster.length >= low && cluster.length <= high);
+  if (keepsEverySize(low, high)) return clusters;
+  return clusters.filter(cluster => withinBand(cluster.length, low, high));
 }
+
+/** The band itself, so the two shapes of cluster list cannot disagree. */
+export const withinBand = (size, low = 1, high = Infinity) => size >= low && size <= high;
+
+/**
+ * True when the band excludes nothing, which is the default.
+ *
+ * Callers use it to return the list they were given rather than a filtered
+ * copy: a fresh array on every render gives every memo below it a new identity,
+ * and the pane's cluster list is recomputed on every trajectory frame.
+ */
+export const keepsEverySize = (low = 1, high = Infinity) =>
+  low <= 1 && !Number.isFinite(high);

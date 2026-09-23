@@ -22,6 +22,10 @@ export const useUIStore = create((set) => ({
   
   // 3D scene toggles
   showSimulationBox: false,
+  // On by default: an observable file is dropped in order to see its bonds, and
+  // a drop that changed nothing visible would read as having failed. The toggle
+  // is only rendered when there are bonds to draw.
+  showBonds: true,
   showBackdropPlanes: true,
   showCoordinateAxis: true,
   showStats: false,
@@ -89,6 +93,7 @@ export const useUIStore = create((set) => ({
   setShowPatchLegend: (show) => set({ showPatchLegend: show }),
   setShowParticleLegend: (show) => set({ showParticleLegend: show }),
   setShowSimulationBox: (show) => set({ showSimulationBox: show }),
+  setShowBonds: (show) => set({ showBonds: show }),
   setShowBackdropPlanes: (show) => set({ showBackdropPlanes: show }),
   setShowCoordinateAxis: (show) => set({ showCoordinateAxis: show }),
   setShowStats: (show) => set({ showStats: show }),

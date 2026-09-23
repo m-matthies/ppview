@@ -13,6 +13,8 @@ export function categorizeFiles(filesWithTypes) {
     mglTrajectory: null,
     inputFile: null,
     clusterFiles: [],
+    observableFiles: [],
+    observablesConfig: null,
     unknown: []
   };
 
@@ -48,6 +50,12 @@ export function categorizeFiles(filesWithTypes) {
         break;
       case 'clusters':
         categorized.clusterFiles.push(file);
+        break;
+      case 'observable':
+        categorized.observableFiles.push(file);
+        break;
+      case 'observables-config':
+        categorized.observablesConfig = file;
         break;
 
       case 'input':

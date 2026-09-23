@@ -80,16 +80,36 @@ describe('buildTrajIndex', () => {
   ].join('\n');
 
   it('finds the byte offset of every frame', async () => {
-    const index = await buildTrajIndex(fileOf(twoFrames));
-    expect(index).toHaveLength(2);
-    expect(index[0]).toBe(0);
+    const { offsets } = await buildTrajIndex(fileOf(twoFrames));
+    expect(offsets).toHaveLength(2);
+    expect(offsets[0]).toBe(0);
     // Offsets are byte positions, so slicing from one must land on its header.
-    expect(twoFrames.slice(index[1]).startsWith('t = 100')).toBe(true);
+    expect(twoFrames.slice(offsets[1]).startsWith('t = 100')).toBe(true);
+  });
+
+  it('records the step each frame was printed at', async () => {
+    // A cluster/bond observable prints on its own interval, so lining one up
+    // with the trajectory means matching step numbers — which were previously
+    // read off the header line and thrown away.
+    const { times } = await buildTrajIndex(fileOf(twoFrames));
+    expect(times).toEqual([0, 100]);
+  });
+
+  it('reads a step written in exponential notation', async () => {
+    const { times } = await buildTrajIndex(fileOf('t = 1e7\nb = 1 1 1\nE = 0 0 0'));
+    expect(times).toEqual([1e7]);
+  });
+
+  it('gives a frame with an unreadable step a time of NaN, not zero', async () => {
+    // Zero is a real step, and a frame silently claiming it would be matched
+    // against the observable's first block.
+    const { times } = await buildTrajIndex(fileOf('t =\nb = 1 1 1\nE = 0 0 0'));
+    expect(times[0]).toBeNaN();
   });
 
   it('finds a frame header on the final line with no trailing newline', async () => {
-    const index = await buildTrajIndex(fileOf('t = 0\nb = 1 1 1\nE = 0 0 0\nt = 1'));
-    expect(index).toHaveLength(2);
+    const { offsets } = await buildTrajIndex(fileOf('t = 0\nb = 1 1 1\nE = 0 0 0\nt = 1'));
+    expect(offsets).toHaveLength(2);
   });
 
   it('gives correct byte offsets for a CRLF trajectory', async () => {
@@ -98,18 +118,18 @@ describe('buildTrajIndex', () => {
     // preceding line — file.slice() then landed mid-line and parseConfiguration
     // read a body row where it expected a header.
     const crlf = twoFrames.replace(/\n/g, '\r\n');
-    const index = await buildTrajIndex(fileOf(crlf));
-    expect(index).toHaveLength(2);
-    expect(crlf.slice(index[0]).startsWith('t = 0')).toBe(true);
-    expect(crlf.slice(index[1]).startsWith('t = 100')).toBe(true);
+    const { offsets } = await buildTrajIndex(fileOf(crlf));
+    expect(offsets).toHaveLength(2);
+    expect(crlf.slice(offsets[0]).startsWith('t = 0')).toBe(true);
+    expect(crlf.slice(offsets[1]).startsWith('t = 100')).toBe(true);
   });
 
   it('returns nothing for a file with no frames', async () => {
-    expect(await buildTrajIndex(fileOf('no markers here\nnor here'))).toEqual([]);
+    expect((await buildTrajIndex(fileOf('no markers here\nnor here'))).offsets).toEqual([]);
   });
 
   it('handles an empty file', async () => {
-    expect(await buildTrajIndex(fileOf(''))).toEqual([]);
+    expect(await buildTrajIndex(fileOf(''))).toEqual({ offsets: [], times: [] });
   });
 
   it('survives a frame header split across chunk boundaries', async () => {
@@ -127,6 +147,6 @@ describe('buildTrajIndex', () => {
         },
       }),
     };
-    expect(await buildTrajIndex(chunked)).toHaveLength(2);
+    expect((await buildTrajIndex(chunked)).offsets).toHaveLength(2);
   });
 });

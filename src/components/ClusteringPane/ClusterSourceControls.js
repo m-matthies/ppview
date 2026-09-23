@@ -14,6 +14,7 @@ function ClusterSourceControls({
   clusterSourceId, clusterOverlays, onSourceChange, onLoadFile,
   fileInputRef, onFileChosen, fileError, fileWarnings,
   hasClusters, colorByCluster, groupingName,
+  observableLabel, observableFrame, observableFrames,
 }) {
   // Clusters computed elsewhere can be loaded instead of running DBSCAN.
   return (
@@ -21,7 +22,7 @@ function ClusterSourceControls({
     <input
       ref={fileInputRef}
       type="file"
-      accept=".json,application/json"
+      accept=".json,.txt,.dat,.out,application/json,text/plain"
       style={{ display: 'none' }}
       onChange={onFileChosen}
     />
@@ -39,9 +40,22 @@ function ClusterSourceControls({
       </select>
     </label>
 
+    {/* Either a clusters.json or the output of one of the patchy cluster/bond
+        observables; which it is comes from the content, not the extension. */}
     <button className="select-button" onClick={onLoadFile}>
-      Load clusters from file
+      Load clusters or bonds from file
     </button>
+
+    {/* An observable's clusters are a property of the frame on screen, not of
+        the file as a whole, and nothing else in the pane says so. */}
+    {observableLabel && (
+      <p className="cluster-source-note">
+        <strong>{observableLabel}</strong>: clusters and bonds for frame{' '}
+        <span className="num">{observableFrame + 1}</span> of{' '}
+        <span className="num">{observableFrames}</span>. They change as the
+        trajectory plays.
+      </p>
+    )}
 
     {/* The grouping above and the colours in the scene are separate
         choices, and that is not obvious, so say it where it matters. */}

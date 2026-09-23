@@ -75,3 +75,46 @@ export function rotationMatrixOf(particle, target) {
 export function crossesPeriodicBoundary(distance, boxSize) {
   return distance > Math.min(boxSize[0], boxSize[1], boxSize[2]) / 2;
 }
+
+/**
+ * Scratch vectors for `cylinderBetween`, one set per renderer.
+ *
+ * Created once and reused across every instance: a layer drawing a hundred
+ * thousand bonds would otherwise allocate four vectors per bond per frame.
+ */
+export function cylinderScratch() {
+  return {
+    up: new THREE.Vector3(0, 1, 0),
+    v1: new THREE.Vector3(),
+    v2: new THREE.Vector3(),
+    dir: new THREE.Vector3(),
+  };
+}
+
+/**
+ * Lays a unit cylinder along the line between two particles.
+ *
+ * Written for `CylinderGeometry(1, 1, 1)`, which stands along +Y: the instance
+ * is scaled to `(thickness, distance, thickness)` and rotated onto the
+ * separation vector. Both spring bonds and observable bonds are exactly this
+ * problem, and having each solve it separately is how `Springs` came to be the
+ * one layer that did not follow the per-cluster eye control.
+ *
+ * Returns false — meaning "do not draw this instance" — for a degenerate pair,
+ * and for one that wraps a periodic boundary, which would otherwise be drawn as
+ * a straight line clear across the box.
+ */
+export function cylinderBetween(dummy, scratch, posA, posB, boxSize, thickness) {
+  centreOnBox(scratch.v1, posA, boxSize);
+  centreOnBox(scratch.v2, posB, boxSize);
+
+  scratch.dir.copy(scratch.v2).sub(scratch.v1);
+  const distance = scratch.dir.length();
+  if (distance < 1e-6 || crossesPeriodicBoundary(distance, boxSize)) return false;
+
+  scratch.dir.normalize();
+  dummy.position.copy(scratch.v1).addScaledVector(scratch.dir, distance / 2);
+  dummy.quaternion.setFromUnitVectors(scratch.up, scratch.dir);
+  dummy.scale.set(thickness, distance, thickness);
+  return true;
+}

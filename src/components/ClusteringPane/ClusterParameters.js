@@ -2,8 +2,14 @@ import React from 'react';
 import RangeSlider from './RangeSlider';
 
 /**
- * The two DBSCAN knobs, disabled while a file supplies the clusters — they
- * cannot change clusters that came from somewhere else.
+ * The two DBSCAN knobs and the size band.
+ *
+ * Only the first two are disabled while a file supplies the clusters — they
+ * cannot change clusters that came from somewhere else. **The size band is not**:
+ * it filters a finished clustering, so it means the same thing whoever produced
+ * it, and a cluster/bond observable is where it earns its keep — that run states
+ * 581 clusters at its last frame, most of them pairs. Disabling the whole block
+ * left the control greyed out for exactly the case with the most to filter.
  *
  * Epsilon stops at half the shortest box dimension: past that the minimum image
  * convention stops being meaningful, because a particle comes back into range as
@@ -11,7 +17,8 @@ import RangeSlider from './RangeSlider';
  */
 function ClusterParameters({
   epsilon, onEpsilonChange, epsilonLimit, minPoints, onMinPointsChange,
-  minClusterSize, maxClusterSize, largestCluster, onClusterSizeRangeChange, disabled,
+  minClusterSize, maxClusterSize, largestCluster, onClusterSizeRangeChange,
+  dbscanDisabled,
 }) {
   // The upper bound is open until someone moves it, so it is shown at the
   // largest cluster there is rather than at Infinity.
@@ -20,7 +27,8 @@ function ClusterParameters({
   const low = Math.min(minClusterSize, high);
   const keepsEverything = low <= 1 && high >= ceiling;
   return (
-  <div className={`clustering-controls ${disabled ? 'is-disabled' : ''}`}>
+  <div className="clustering-controls">
+    <div className={`parameter-group ${dbscanDisabled ? 'is-disabled' : ''}`}>
     <div className="parameter-control">
       <label htmlFor="epsilon-slider">
         Epsilon Distance: {Math.min(epsilon, epsilonLimit).toFixed(2)}
@@ -69,6 +77,7 @@ function ClusterParameters({
         disturbing the others, use the size below.
       </span>
     </div>
+    </div>
 
     <div className="parameter-control">
       <label htmlFor="minsize-slider">
@@ -80,7 +89,6 @@ function ClusterParameters({
         max={ceiling}
         low={low}
         high={high}
-        disabled={disabled}
         onChange={(nextLow, nextHigh) =>
           // An upper bound sitting at the largest cluster means "no upper
           // bound", so it keeps working as clusters grow.

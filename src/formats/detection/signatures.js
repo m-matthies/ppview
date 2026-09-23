@@ -1,3 +1,6 @@
+import { detectObservable } from '../observables';
+import { isObservablesConfig } from '../observables/config';
+
 /**
  * Content signatures for every supported file type.
  *
@@ -389,4 +392,30 @@ export function isClusterFile(lines, filename) {
   const mentionsParticles = /"(particles|indices|ids)"\s*:\s*\[/.test(head);
   const looksLikeClusters = /"clusters"\s*:\s*\[/.test(head) || /^\s*\[/.test(head);
   return mentionsParticles && (looksLikeClusters || /\.json$/i.test(filename));
+}
+
+/**
+ * Output from one of the patchy-particle cluster/bond observables.
+ *
+ * These arrive beside a simulation as `.txt` or `.dat`, so they have to be told
+ * apart by content — and `.dat` in particular is what the trajectory fallback
+ * claims by name, so `detectFileType` asks this before it asks about
+ * trajectories.
+ *
+ * The signatures themselves live with the parsers, in
+ * `src/formats/observables`, so a fourth observable is one entry in one table.
+ */
+export function isObservableFile(lines) {
+  return detectObservable(lines) !== null;
+}
+
+/**
+ * oxDNA's observables definition file, named by `observables_file` in the input.
+ *
+ * Worth recognising for one reason: it states `print_every`, which is the only
+ * way to line up an observable that writes no step numbers with a trajectory
+ * printed on a different interval.
+ */
+export function isObservablesConfigFile(lines) {
+  return isObservablesConfig(lines.join('\n'));
 }

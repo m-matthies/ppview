@@ -36,6 +36,19 @@ export const useOverlayStore = create((set, get) => ({
     return entry;
   },
 
+  /**
+   * Replaces fields of one overlay in place.
+   *
+   * A cluster/bond observable holds one entry per timestep, so its clusters and
+   * colours are rewritten as the trajectory moves — see
+   * `hooks/useObservableFrame`. Everything that reads an overlay therefore sees
+   * an ordinary, frame-independent one, which is what keeps the pane, the
+   * histogram and the renderers from needing a time axis of their own.
+   */
+  updateOverlay: (id, patch) => set(state => ({
+    overlays: state.overlays.map(o => (o.id === id ? { ...o, ...patch } : o)),
+  })),
+
   removeOverlay: (id) => set(state => ({
     overlays: state.overlays.filter(o => o.id !== id),
     activeOverlayId: state.activeOverlayId === id ? COMPUTED_VIEW : state.activeOverlayId,

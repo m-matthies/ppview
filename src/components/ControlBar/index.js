@@ -2,12 +2,13 @@ import React from 'react';
 import ColorSchemeSelector from '../ColorSchemeSelector';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
 import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
+import { useParticleStore } from '../../store/particleStore';
 import { clearClustering } from '../../store/commands';
 import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
   ChevronUpIcon, ChevronDownIcon, CloseIcon, AxisIcon, LightbulbIcon,
-  StepBackIcon, StepForwardIcon, ActivityIcon,
+  StepBackIcon, StepForwardIcon, ActivityIcon, BondIcon,
 } from '../Icons';
 
 /**
@@ -67,6 +68,7 @@ function ControlBar(props) {
     showSimulationBox, setShowSimulationBox,
     showCoordinateAxis, setShowCoordinateAxis,
     showBackdropPlanes, setShowBackdropPlanes,
+    showBonds, setShowBonds,
     showParticleLegend, setShowParticleLegend,
     showPatchLegend, setShowPatchLegend,
     showClusteringPane, setShowClusteringPane,
@@ -78,6 +80,9 @@ function ControlBar(props) {
   } = props;
 
   const overlays = useOverlayStore(state => state.overlays);
+  // Bonds only exist while a cluster/bond observable is the pane's source, and
+  // a toggle for something that is never there is decoration.
+  const hasBonds = useParticleStore(state => state.bonds !== null);
   const clusterCount = useClusteringStore(state => state.clusterCount);
   const sceneIsRestricted = useClusteringStore(isSceneRestricted);
   const activeOverlayId = useOverlayStore(state => state.activeOverlayId);
@@ -226,6 +231,9 @@ function ControlBar(props) {
                 <ToggleBtn checked={showSimulationBox} onChange={setShowSimulationBox} icon={<BoxIcon size={17} />} label="Simulation box" />
                 <ToggleBtn checked={showCoordinateAxis} onChange={setShowCoordinateAxis} icon={<AxisIcon size={17} />} label="Coordinate axes" />
                 <ToggleBtn checked={showBackdropPlanes} onChange={setShowBackdropPlanes} icon={<LayersIcon size={17} />} label="Backdrop planes" />
+                {hasBonds && (
+                  <ToggleBtn checked={showBonds} onChange={setShowBonds} icon={<BondIcon size={17} />} label="Bonds" />
+                )}
               </div>
 
               <div className="toggle-group" role="group" aria-label="Legends">

@@ -18,9 +18,11 @@ import { useParticleStore } from "./store/particleStore";
 import { selectParticleCount } from "./store/selectors";
 import { useUIStore } from "./store/uiStore";
 import { useClusteringStore } from "./store/clusteringStore";
+import { readObservableForScene } from "./store/commands";
 import { parseClusterFile } from "./utils/clusterFile";
 import { useOverlayStore } from "./store/overlayStore";
-import { clusterOverlayFromFile } from "./utils/overlays";
+import { clusterOverlayFromFile, bondObservableOverlay } from "./utils/overlays";
+
 import { loadSimulation } from "./loading/loadSimulation";
 import { loadFrame } from "./loading/loadFrame";
 import { classifyDrop } from "./loading/resolveFiles";
@@ -30,6 +32,7 @@ import useSceneExport from "./hooks/useSceneExport";
 import useParticleShift from "./hooks/useParticleShift";
 import useKeyboardShortcuts from "./hooks/useKeyboardShortcuts";
 import useIframeBridge from "./hooks/useIframeBridge";
+import useObservableFrame from "./hooks/useObservableFrame";
 import "./styles.css";
 import { resetClusterIdentity } from "./utils/clusterIdentity";
 import { loadWasmCore } from "./wasm/wasmCore";
@@ -62,6 +65,7 @@ function App() {
   // Setters are stable for the life of the store, so one shallow pick of them
   // never causes a render on its own.
   const { setPositions, setCurrentBoxSize, setTopData, setTrajFile, setConfigIndex,
+          setConfigTimes, setObservableConfig,
           setCurrentConfigIndex, setCurrentTime, setCurrentEnergy, setTotalConfigs,
           setParticleRadius, setFormatParticleRadius,
           resetParticleRadius } = useParticleStore(useShallow(state => ({
@@ -70,6 +74,8 @@ function App() {
     setTopData: state.setTopData,
     setTrajFile: state.setTrajFile,
     setConfigIndex: state.setConfigIndex,
+    setConfigTimes: state.setConfigTimes,
+    setObservableConfig: state.setObservableConfig,
     setCurrentConfigIndex: state.setCurrentConfigIndex,
     setCurrentTime: state.setCurrentTime,
     setCurrentEnergy: state.setCurrentEnergy,
@@ -84,19 +90,21 @@ function App() {
   // re-creating the callback that holds it.
   const sceneWriters = useMemo(() => ({
     setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
-    setConfigIndex, setTotalConfigs, setTrajFile, setFormatParticleRadius,
+    setConfigIndex, setConfigTimes, setTotalConfigs, setTrajFile, setFormatParticleRadius,
+    setObservableConfig,
   }), [setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
-       setConfigIndex, setTotalConfigs, setTrajFile, setFormatParticleRadius]);
+       setConfigIndex, setConfigTimes, setTotalConfigs, setTrajFile, setFormatParticleRadius,
+       setObservableConfig]);
 
   // Same again for the UI store: a value at a time, shallow-compared, so an
   // unrelated toggle no longer re-renders the whole application.
   const {
-    showPatchLegend, showParticleLegend, showSimulationBox, showBackdropPlanes,
+    showPatchLegend, showParticleLegend, showSimulationBox, showBackdropPlanes, showBonds,
     showCoordinateAxis, showStats, isControlsVisible, showClusteringPane,
     filesDropped, isLoading, busyMessage, sceneRef, isIframeMode,
     isDragDropEnabled, isPlaying, playbackSpeed, isSpeedPopupVisible,
     isLightingControlsModalOpen, setShowPatchLegend, setShowParticleLegend, setShowSimulationBox,
-    setShowBackdropPlanes, setShowCoordinateAxis, setShowStats, setIsControlsVisible,
+    setShowBackdropPlanes, setShowBonds, setShowCoordinateAxis, setShowStats, setIsControlsVisible,
     setShowClusteringPane, setFilesDropped, setIsLoading, setPlaybackSpeed,
     setIsSpeedPopupVisible, setIsLightingControlsModalOpen, sphereSegments, setSphereSegments,
   } = useUIStore(useShallow(state => ({
@@ -104,6 +112,7 @@ function App() {
     showParticleLegend: state.showParticleLegend,
     showSimulationBox: state.showSimulationBox,
     showBackdropPlanes: state.showBackdropPlanes,
+    showBonds: state.showBonds,
     showCoordinateAxis: state.showCoordinateAxis,
     showStats: state.showStats,
     isControlsVisible: state.isControlsVisible,
@@ -122,6 +131,7 @@ function App() {
     setShowParticleLegend: state.setShowParticleLegend,
     setShowSimulationBox: state.setShowSimulationBox,
     setShowBackdropPlanes: state.setShowBackdropPlanes,
+    setShowBonds: state.setShowBonds,
     setShowCoordinateAxis: state.setShowCoordinateAxis,
     setShowStats: state.setShowStats,
     setIsControlsVisible: state.setIsControlsVisible,
@@ -166,21 +176,67 @@ function App() {
   }, [sceneRef]);
 
 
-  // Turns cluster files into overlays. Shared by the two ways they arrive:
-  // dropped with the simulation at startup, or dropped onto a loaded scene.
-  const registerClusterOverlays = useCallback(async (clusterFiles, particleCount) => {
-    for (const file of clusterFiles) {
+  // Turns cluster files and cluster/bond observables into overlays. Shared by
+  // the two ways they arrive: dropped with the simulation at startup, or
+  // dropped onto a loaded scene.
+  //
+  // The two kinds differ only in how they are read. A `clusters.json` states one
+  // grouping; an observable states one per printed configuration, and is checked
+  // against the trajectory's frame count before it is accepted — see
+  // `parseObservableFile`. After that both are the same shape, and
+  // `useObservableFrame` keeps the observable pointed at the frame on screen.
+  const registerOverlayFiles = useCallback(async (
+    { clusterFiles = [], observableFiles = [] }, particleCount,
+  ) => {
+    const colorScheme = useUIStore.getState().currentColorScheme;
+    const { addOverlay } = useOverlayStore.getState();
+
+    const register = async (file, build) => {
       try {
-        const { clusters, warnings } = parseClusterFile(await file.text(), { particleCount });
-        useOverlayStore.getState().addOverlay(clusterOverlayFromFile({
-          name: file.name.replace(/\.json$/i, ''),
-          clusters,
-          colorScheme: useUIStore.getState().currentColorScheme,
-        }));
+        const warnings = build(await file.text());
         warnings.forEach(w => console.warn(`${file.name}:`, w));
       } catch (error) {
         console.error(`Could not use ${file.name}:`, error.message);
         notify(`${file.name} ignored: ${error.message}`);
+      }
+    };
+
+    for (const file of clusterFiles) {
+      // eslint-disable-next-line no-await-in-loop
+      await register(file, (text) => {
+        const { clusters, warnings } = parseClusterFile(text, { particleCount });
+        addOverlay(clusterOverlayFromFile({
+          name: file.name.replace(/\.json$/i, ''),
+          clusters,
+          colorScheme,
+        }));
+        return warnings;
+      });
+    }
+
+    for (const file of observableFiles) {
+      try {
+        // Not `file.text()`: these run to gigabytes — the one that prompted the
+        // streaming path is 4.79 GB, nearly nine times V8's maximum string
+        // length — and only the timesteps matching a trajectory frame are ever
+        // parsed. See `loading/readObservable`.
+        // eslint-disable-next-line no-await-in-loop
+        const observable = await readObservableForScene(file);
+        const entry = addOverlay(bondObservableOverlay({
+          name: file.name.replace(/\.[^.]+$/, ''),
+          observable,
+          colorScheme,
+        }));
+        // An observable is both a colouring and a grouping, and its bonds are
+        // drawn for whichever one the pane is working with — so point the pane
+        // at it too, or the file would load and draw nothing.
+        useClusteringStore.getState().setClusterSourceId(entry.id);
+        observable.warnings.forEach(w => console.warn(`${file.name}:`, w));
+      } catch (error) {
+        console.error(`Could not use ${file.name}:`, error.message);
+        notify(`${file.name} ignored: ${error.message}`);
+      } finally {
+        useUIStore.getState().setBusyMessage(null);
       }
     }
   }, [notify]);
@@ -197,13 +253,18 @@ function App() {
     useClusteringStore.getState().resetClusters();
     useOverlayStore.getState().clearOverlays();
     resetParticleRadius();
+    // Bonds are particle indices from a file that described the old structure.
+    useParticleStore.getState().setBonds(null);
     setTopData(null);
     setPositions([]);
     setTrajFile(null);
     setConfigIndex([]);
+    setConfigTimes([]);
+    setObservableConfig([]);
     setCurrentConfigIndex(0);
     setTotalConfigs(0);
-  }, [resetParticleRadius, setTopData, setPositions, setTrajFile, setConfigIndex,
+  }, [resetParticleRadius, setTopData, setPositions, setTrajFile, setConfigIndex, setConfigTimes,
+      setObservableConfig,
       setCurrentConfigIndex, setTotalConfigs]);
 
   const handleFilesReceived = useCallback(async (files) => {
@@ -215,7 +276,7 @@ function App() {
     const positionCount = useParticleStore.getState().positions.length;
 
     if (classifyDrop(categorized, { sceneIsLoaded: positionCount > 0 }) === 'overlays-only') {
-      await registerClusterOverlays(categorized.clusterFiles, positionCount);
+      await registerOverlayFiles(categorized, positionCount);
       useUIStore.getState().setShowClusteringPane(true);
       return;
     }
@@ -226,7 +287,14 @@ function App() {
     // Cluster files dropped with the simulation cannot be parsed yet: their
     // indices are validated against a particle count that does not exist until
     // the first frame loads. Hold the files until then.
-    setPendingClusterFiles(categorized.clusterFiles.length ? categorized.clusterFiles : null);
+    const overlayFiles = {
+      clusterFiles: categorized.clusterFiles,
+      observableFiles: categorized.observableFiles,
+    };
+    setPendingClusterFiles(
+      overlayFiles.clusterFiles.length || overlayFiles.observableFiles.length
+        ? overlayFiles : null,
+    );
 
     // Loading a second simulation must not inherit the first one's state.
     // Selection and cluster highlights are particle *indices*, so keeping them
@@ -257,7 +325,7 @@ function App() {
       notify(outcome.message);
       setFilesDropped(false);
     }
-  }, [setFilesDropped, setIsLoading, resetScene, registerClusterOverlays,
+  }, [setFilesDropped, setIsLoading, resetScene, registerOverlayFiles,
       sceneWriters, notify]);
 
   // Read the current frame whenever the trajectory or the position in it moves.
@@ -332,9 +400,9 @@ function App() {
     if (!pendingClusterFiles || particleCount === 0) return;
     const files = pendingClusterFiles;
     setPendingClusterFiles(null);
-    registerClusterOverlays(files, particleCount)
+    registerOverlayFiles(files, particleCount)
       .then(() => useUIStore.getState().setShowClusteringPane(true));
-  }, [pendingClusterFiles, particleCount, registerClusterOverlays]);
+  }, [pendingClusterFiles, particleCount, registerOverlayFiles]);
 
   /**
    * Bring the selected particles into view.
@@ -348,6 +416,10 @@ function App() {
     sceneRef.focusOn(selected);
     return true;
   }, [sceneRef]);
+
+  // Cluster/bond observables hold one entry per frame; this keeps whichever are
+  // loaded pointed at the frame on screen.
+  useObservableFrame();
 
   useKeyboardShortcuts({
     togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot,
@@ -408,6 +480,7 @@ function App() {
           showSimulationBox={showSimulationBox} setShowSimulationBox={setShowSimulationBox}
           showCoordinateAxis={showCoordinateAxis} setShowCoordinateAxis={setShowCoordinateAxis}
           showBackdropPlanes={showBackdropPlanes} setShowBackdropPlanes={setShowBackdropPlanes}
+          showBonds={showBonds} setShowBonds={setShowBonds}
           showParticleLegend={showParticleLegend} setShowParticleLegend={setShowParticleLegend}
           showPatchLegend={showPatchLegend} setShowPatchLegend={setShowPatchLegend}
           showClusteringPane={showClusteringPane} setShowClusteringPane={setShowClusteringPane}

@@ -536,3 +536,193 @@ pub extern "C" fn dbscan(
 pub extern "C" fn cluster_labels() -> *const i32 {
     labels().as_ptr()
 }
+
+// ------------------------------------------------- cluster/bond observables
+//
+// Finding the timestep blocks in a cluster/bond observable, over a file far too
+// large to hold. The one that prompted this is 4.79 GB — 8.9x V8's maximum
+// string length, so `file.text()` cannot read it at any amount of RAM — and
+// holds 21,798 timesteps against a trajectory of 217 frames.
+//
+// Only the blocks whose step matches a trajectory frame are ever parsed, so
+// this pass does not parse anything: it records where each block starts and,
+// where the format states one, which step it is. JS then slices out the
+// handful it wants and runs the ordinary parser on each. That is the same
+// division the trajectory uses — an index pass, then one block at a time — and
+// it means the three format parsers stay exactly as they are.
+//
+// Offsets are `f64`, not `i32`. This file is past 2^32 bytes, so a 32-bit
+// offset wraps a third of the way in and every block after that point is read
+// from the wrong place.
+
+/// A block starts at a line beginning with `#`, and that line states the step.
+const OBS_STEP_HEADERS: i32 = 0;
+/// Every line is a block, and no step is stated.
+const OBS_LINE_PER_STEP: i32 = 1;
+
+struct ObsScan {
+    format: i32,
+    at_line_start: bool,
+    offset: f64,
+    /// Collecting a header line that may span a chunk boundary.
+    reading_header: bool,
+    header: Vec<u8>,
+    starts: Vec<f64>,
+    steps: Vec<f64>,
+}
+
+static mut OBS: Option<ObsScan> = None;
+
+fn obs() -> Option<&'static ObsScan> {
+    unsafe { (*std::ptr::addr_of!(OBS)).as_ref() }
+}
+
+fn obs_mut() -> Option<&'static mut ObsScan> {
+    unsafe { (*std::ptr::addr_of_mut!(OBS)).as_mut() }
+}
+
+/// Reads the step out of `# step 2179700000 N 4800`.
+///
+/// `f64` rather than an integer because these run to 2.18e9, past `i32`, and
+/// because that is what crosses the boundary anyway.
+fn read_step(header: &[u8]) -> f64 {
+    let mut i = 0usize;
+    // Past "# step", or whatever precedes the first digit run.
+    while i < header.len() && !header[i].is_ascii_digit() {
+        i += 1;
+    }
+    if i >= header.len() {
+        return -1.0;
+    }
+    let mut value = 0.0f64;
+    while i < header.len() && header[i].is_ascii_digit() {
+        value = value * 10.0 + f64::from(header[i] - b'0');
+        i += 1;
+    }
+    value
+}
+
+#[no_mangle]
+pub extern "C" fn obs_scan_begin(format: i32) {
+    unsafe {
+        std::ptr::write(
+            std::ptr::addr_of_mut!(OBS),
+            Some(ObsScan {
+                format,
+                at_line_start: true,
+                offset: 0.0,
+                reading_header: false,
+                header: Vec::new(),
+                starts: Vec::new(),
+                steps: Vec::new(),
+            }),
+        );
+    }
+}
+
+/// Feeds one chunk. Chunks may split a line, and the first one that did left
+/// every step after it unread, so the header is accumulated across the seam
+/// rather than parsed per chunk.
+#[no_mangle]
+pub extern "C" fn obs_scan_feed(ptr: *const u8, len: usize) {
+    let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
+    let scan = match obs_mut() {
+        Some(s) => s,
+        None => return,
+    };
+
+    let mut i = 0usize;
+    while i < len {
+        if scan.reading_header {
+            // Gather to the end of the line, then read the step off it.
+            let start = i;
+            while i < len && bytes[i] != b'\n' {
+                i += 1;
+            }
+            scan.header.extend_from_slice(&bytes[start..i]);
+            if i < len {
+                let step = read_step(&scan.header);
+                scan.steps.push(step);
+                scan.header.clear();
+                scan.reading_header = false;
+                scan.at_line_start = true;
+                i += 1;
+            }
+            continue;
+        }
+
+        if scan.at_line_start {
+            let here = scan.offset + i as f64;
+            if scan.format == OBS_STEP_HEADERS {
+                if bytes[i] == b'#' {
+                    scan.starts.push(here);
+                    scan.reading_header = true;
+                    continue;
+                }
+            } else if scan.format == OBS_LINE_PER_STEP {
+                // Every line is one timestep. Blank ones included: in
+                // RaspberryPatchyBonds a step in which nothing was bonded is an
+                // empty line, and dropping it slides every later frame one step
+                // earlier. Which blank lines actually count is the parser's
+                // rule, not this pass's.
+                scan.starts.push(here);
+                scan.steps.push(-1.0);
+            }
+            scan.at_line_start = false;
+        }
+
+        // Jump to the next line rather than stepping a byte at a time.
+        match bytes[i..].iter().position(|&b| b == b'\n') {
+            Some(rel) => {
+                i += rel + 1;
+                scan.at_line_start = true;
+            }
+            None => i = len,
+        }
+    }
+
+    scan.offset += len as f64;
+}
+
+/// Closes the scan and returns how many blocks were found.
+#[no_mangle]
+pub extern "C" fn obs_scan_end() -> usize {
+    let scan = match obs_mut() {
+        Some(s) => s,
+        None => return 0,
+    };
+    // A file whose last line has no newline still ends a header.
+    if scan.reading_header {
+        let step = read_step(&scan.header);
+        scan.steps.push(step);
+        scan.header.clear();
+        scan.reading_header = false;
+    }
+    scan.starts.len()
+}
+
+/// Total bytes seen, which is where the last block ends.
+#[no_mangle]
+pub extern "C" fn obs_scan_size() -> f64 {
+    obs().map_or(0.0, |s| s.offset)
+}
+
+#[no_mangle]
+pub extern "C" fn obs_scan_offsets() -> *const f64 {
+    obs().map_or(std::ptr::null(), |s| s.starts.as_ptr())
+}
+
+#[no_mangle]
+pub extern "C" fn obs_scan_steps() -> *const f64 {
+    obs().map_or(std::ptr::null(), |s| s.steps.as_ptr())
+}
+
+/// Releases the index. It is one f64 pair per timestep — small for the file
+/// that prompted this (21,798 blocks, 350 KB) but there is no reason to hold it
+/// once JS has copied it out.
+#[no_mangle]
+pub extern "C" fn obs_scan_free() {
+    unsafe {
+        std::ptr::write(std::ptr::addr_of_mut!(OBS), None);
+    }
+}

@@ -26,7 +26,7 @@ export default function useKymograph() {
   const cancel = useCallback(() => { cancelRef.current = true; }, []);
   const clear = useCallback(() => setResult(null), []);
 
-  const compute = useCallback(async ({ epsilon, minPoints }) => {
+  const compute = useCallback(async ({ epsilon, minPoints, observable = null }) => {
     const {
       trajFile, configIndex, topData, currentBoxSize, positions, currentConfigIndex,
     } = useParticleStore.getState();
@@ -37,8 +37,8 @@ export default function useKymograph() {
 
     // A single-frame structure has no time axis to plot. Say so rather than
     // drawing a one-pixel-wide picture.
-    const frameCount = configIndex?.length ?? 0;
-    if (!trajFile || frameCount < 2) {
+    const frameCount = observable ? observable.frames.length : (configIndex?.length ?? 0);
+    if ((!trajFile && !observable) || frameCount < 2) {
       setResult({ error: 'This structure has only one frame, so there is nothing to show over time.' });
       return;
     }
@@ -61,7 +61,21 @@ export default function useKymograph() {
     try {
       for (let i = 0; i < frames.length; i++) {
         if (cancelRef.current) { setResult(null); return; }
-        setBusyMessage(`Clustering frame ${i + 1} of ${frames.length} for the time view`);
+        setBusyMessage(observable
+          ? `Reading frame ${i + 1} of ${frames.length} for the time view`
+          : `Clustering frame ${i + 1} of ${frames.length} for the time view`);
+
+        // An observable already states this frame's clusters, so neither the
+        // frame nor DBSCAN is needed.
+        if (observable) {
+          const clusters = observable.frames[frames[i]]?.clusters ?? [];
+          const tracked = assignLineages(clusters, particleCount, previous, nextLineage);
+          previous = tracked.lineageOf;
+          nextLineage = tracked.nextLineage;
+          columns.push(tracked.lineageOf);
+          if (frames[i] === currentConfigIndex) referenceColumn = columns.length - 1;
+          continue;
+        }
 
         let captured = null;
         let box = currentBoxSize;

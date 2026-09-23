@@ -73,6 +73,8 @@ src/
 | Trajectory | `.dat`, `.traj`, `.conf` | content keywords |
 | MGL Trajectory | `.mgl` with `.Box:` | **any** `.Box:` header, even one |
 | Clusters | `.json` | `clusters` array, or entries with `particles`/`indices`/`ids` |
+| Cluster/bond observable | `.txt`, `.dat` | `n -> (…)` arrows, a `# step n N n` header, or `((i p), (j p))` tuples |
+| Observables definition | `.json` | JSON with `cols` or `print_every`, and no particle list |
 
 File type priority: `traj > last > init > conf`
 
@@ -83,6 +85,9 @@ so an overlap makes `isMGLFile` unreachable — which it was, until
 `isMGLTrajectoryFile` stopped also matching `hasMGLContent && count >= 0` (true
 for any count). A single header is enough; a one-frame trajectory is still a
 trajectory.
+
+Cluster/bond observables are tested **before** trajectories: they arrive as
+`.txt` or `.dat`, and the trajectory fallback claims any `.dat` by name.
 
 Detection order in `analyzeTopologyFile`: SRS Springs → (2-token header check) → Raspberry → **oxDNA nucleotide** → Flavio → Lorenzo. Format extraction uses `type.split('-').slice(1).join('_')` so `topology-oxdna_nucleotide` → format `oxdna_nucleotide`.
 
@@ -585,12 +590,14 @@ from the table aborts the run rather than quietly fanning out to all seven.
 
 ## The compiled core (`wasm/`, `src/wasm/wasmCore.js`)
 
-Frame parsing and DBSCAN are built from Rust to WebAssembly and are the **default
-path**. Both are flat loops over numbers, which is what WebAssembly is good at:
+Frame parsing, DBSCAN and the cluster/bond observable index are built from Rust
+to WebAssembly and are the **default path**. All three are flat loops over bytes
+or numbers, which is what WebAssembly is good at:
 
 | | JavaScript | Rust |
 |---|---|---|
 | parse a 400,000-particle frame | 160 ms | **37 ms** |
+| index a 4.79 GB observable | 3,400 ms | **1,900 ms** |
 | DBSCAN, 10,000 particles | 252 ms | **14 ms** |
 | DBSCAN, 20,000 particles | 981 ms | **44 ms** |
 | DBSCAN, 50,000 particles | 6,230 ms | **274 ms** |
@@ -879,11 +886,156 @@ previous selection in place; those indices then addressed the computed clusters
 instead, so the scene stayed painted in cluster colours and the scheme never
 reappeared — which looked like the view control had stopped working.
 
+### Cluster/bond observables (`src/formats/observables/`)
+
+oxDNA's patchy-particle contrib plugins each ship a cluster or bond observable,
+and **the three share no output format whatsoever** — one line per step, a
+configuration-style block, and a bare tuple list. Each gets its own parser; they
+converge in `bondFrames.js`, which is the app's equivalent of the single
+`dict[timestep -> graph(s)]` shape pypatchy normalises them to.
+
+| Observable | Plugin | Paired format | Shape |
+|---|---|---|---|
+| `PLClusterTopology` | romano | flavio / josh_flavio / subhajit | one line per step: a count, then `( members ) [ adjacency ]` per cluster |
+| `PatchyBonds` | rovigatti | lorenzo | `# step n N n` then **two lines per particle**: per-patch counts, then a flat index list |
+| `RaspberryPatchyBonds` | evans | raspberry | one line per step of `((i p), (j p))` tuples |
+
+An observable only works with the plugin it is compiled into, so a system
+produces exactly one of the three; detection has nothing to disambiguate.
+
+**`PLClusterTopology`'s member list holds particle *types*, not indices.** The
+observable's `show_types` setting defaults to true, and nothing in the file says
+which it was — a file of forty particles of types 0 and 1 looks exactly like one
+recording particles 0 and 1. The `[ adjacency ]` block is always raw indices
+whatever that setting is, so clusters are read from there and only there, as
+pypatchy does. The cost is that a cluster member with no bonds of its own is
+invisible; it is also, by this observable's own definition, in no bond.
+
+**`PatchyBonds` hides its per-patch partition in a separate line**, and a
+particle bonded to nothing writes a **blank** one. Filtering empty lines — which
+every other reader here does — shifts every particle after it by one, so counts
+get read from an index line and the rest of the block is silently wrong. Lines
+are taken exactly two per particle. Indices are 1-indexed (`bonded_id + 1`).
+
+**Both directions of a bond are merged, and that is not just deduplication.**
+Two of the three formats report a bond once from each participating particle,
+and each report knows only its own end's patch — merging is the only way both
+patch ids become known. `dedupeBonds` takes directed half-bonds and normalises
+on `min`/`max`, so the two directions land on the same key.
+
+#### They are streamed, and they are matched on the step number
+
+Both of these replaced an earlier design, and the file that replaced it is worth
+naming: a 4.79 GB `clusters.txt` from a 4,800-particle run.
+
+**They cannot be read with `file.text()`.** That materialises the whole file as
+one JS string, and V8's maximum string length is 536,870,888 characters — the
+file above is **8.9x** that, so it fails at any amount of RAM, and
+`split('\n')` would then want an array of 209 million strings. They are
+streamed instead: `obs_scan_*` in the Rust core walks the bytes and records
+where each timestep starts, parsing nothing.
+
+| scanning that file | |
+|---|---|
+| decode + split + `startsWith`, as `buildTrajIndex` does | 10.2s (472 MB/s) |
+| a byte loop in JavaScript with `indexOf` | 3.4s (1,430 MB/s) |
+| **the Rust core** | **1.9s (2,501 MB/s)** |
+
+Offsets cross the boundary as `f64`, not `i32`. That file is past 2^32 bytes, so
+a 32-bit offset wraps a third of the way in and every block after that point is
+read from the wrong place.
+
+**The counts do not match, and they are not supposed to.** This was positional
+at first — entry *i* for frame *i*, refusing any mismatch — on the reasoning
+that one run writes both files. Real output says otherwise, because an
+observable prints far more often than configurations do:
+
+| | interval | count |
+|---|---|---|
+| `clusters.txt` | `print_every: 1e5` (observables.json) | **21,798** timesteps |
+| `trajectory.dat` | `print_conf_interval = 1e7` (input) | **217** frames |
+
+A hundred blocks per frame. Positional would have paired the observable's step
+1e5 with the trajectory's t = 2e7 and been wrong about every frame, silently —
+and strict positional refused the file outright. `alignment.js` matches on the
+**step number** instead, three ways, most reliable first: the step the file
+states (`PatchyBonds` writes one on every block); failing that `print_every`
+from `observables.json` or the input's own `data_output_N` blocks, so block *i*
+is taken to be step *i x print_every*; failing that, position.
+
+This is why `buildTrajIndex` now returns `{ offsets, times }`. It always read
+the `t =` header and threw the number away.
+
+**Only the matched blocks are ever parsed** — 217 of 21,798, about 47 MB — and
+each only once however many frames point at it. They are sliced out and handed
+to the ordinary format parser unchanged, which is why the three parsers know
+nothing about streaming, alignment or size. Same division as the trajectory: one
+index pass, then a frame at a time.
+
+**A frame with no block of its own is drawn without clusters or bonds.**
+Carrying the previous block forward would report a bonding the file does not
+claim for that time; refusing the whole file would throw away every frame that
+does match, and a partly-covered run — an observable started late, a job cut
+short — is ordinary.
+
+Measured end to end on that run: **11.1s** from drop to scene, for 5.08 GB
+across 24 files, and the clusters it reports (240 at t=1e7, 581 at t=2.17e9)
+match an independent pass over the raw file exactly.
+
+**Colours are decided once, over the whole file** (`colourFrames`). The
+`clusterIdentity` register is stateful and order-dependent, so computing them
+live as frames arrive would give a cluster a different colour depending on which
+direction you scrubbed from. It gets its own register, not the pane's, for the
+same reason the time view does.
+
+#### How a per-frame source reaches a frame-independent app
+
+An observable registers as an **ordinary `kind: 'clusters'` overlay** whose
+`clusters` and `colors` are rewritten as the trajectory moves
+(`hooks/useObservableFrame`, `utils/observableFrames.js`). At any instant it is
+indistinguishable from a loaded `clusters.json`, so the pane, `useClusterSource`,
+`useClusterColours`, `useClusterPublication`, the list, the histogram and all
+five renderers needed no changes — none of them has a time axis.
+
+Two guards matter. An overlay already showing the frame asked for is not
+rewritten: every overlay write re-renders all five renderers, this runs on each
+frame of playback, and the write feeds itself — the update changes the `overlays`
+identity and re-runs the effect, which then finds nothing to do. And the pane
+adopts a per-frame source the way it adopts DBSCAN, not the way it adopts a file:
+selecting everything and hiding the rest would hide every unbonded particle, and
+the selection is cluster *indices*, which go stale the moment the frame moves.
+
+#### Bonds are drawn from the pane's cluster source
+`components/Bonds` draws `particleStore.bonds` as grey instanced cylinders, the
+same geometry problem `Springs` solves — both now go through
+`cylinderBetween` in `rendering/transforms.js`. Grey rather than coloured by
+patch, because a bond has *two* patch ids and the particles it joins already
+carry the meaningful colour.
+
+Which observable's bonds appear follows `clusteringStore.clusterSourceId` — one
+rule, and it is the selector that already says which cluster set is being worked
+with. That is why `clusterSourceId` lives in the store rather than in
+`useClusterSource`: the renderer cannot reach a hook's `useState`. Drawing every
+loaded observable at once would stack cylinders in the same places with nothing
+to tell them apart.
+
+`uiStore.showBonds` toggles them, and the control only appears while there are
+bonds. **`clearClustering` deliberately leaves them alone**: bonds are geometry
+the file states, not a restriction anyone applied, and they have their own
+toggle.
+
+#### The time view is free here
+`useKymograph` normally runs DBSCAN once per frame — the two-minutes-over-fifty
+cost documented below. An observable already holds one grouping per frame, so
+that path skips `loadFrame` and `dbscan` entirely and reads
+`observable.frames[i].clusters`. Watching clusters merge and split over time is
+what these observables are *for*, so this is the case worth being fast.
+
 ### Additive drops
 `handleFilesReceived` classifies the drop **before** touching any state: a drop
-carrying no topology, trajectory or MGL file, but at least one cluster file, onto
-an already-loaded scene registers overlays and returns without resetting
-anything. Anything else replaces the scene as before.
+carrying no topology, trajectory or MGL file, but at least one cluster file or
+cluster/bond observable, onto an already-loaded scene registers overlays and
+returns without resetting anything. Anything else replaces the scene as before.
 
 ### Grouping and colouring are separate choices
 The pane's **Clusters** selector picks which cluster set to work with — computed
@@ -964,6 +1116,13 @@ PPView detects iframe mode (`window.self !== window.top`) and hides controls. Su
 (`analyzeTopologyFile` — note the detection order above) and the `categorizeFiles`
 switch. Format-specific store setup goes in the entry's `onLoad`, not in `App.js`.
 
+**New cluster/bond observable**: add a parser in `src/formats/observables/`
+converging on `bondFrames.js`, then one entry in that directory's `index.js`
+table. The entry states how the streaming scanner finds one timestep (`scan`)
+and what a blank line means for that format (`blanks`) — the scanner reports
+every line and the format decides, because the three disagree. Detection,
+categorisation, alignment and the drop paths all read that table.
+
 **New visual element**: render an `InstancedLayer` with a `write` callback. Call
 `useRegisterPickable` if it should be clickable, and run its colour and scale
 through `getClusterAppearance` so selection and clustering apply to it without
@@ -1036,6 +1195,26 @@ someone means by "only show me clusters of at least N". `withinSizeRange` filter
 **after** clustering, as a separate control, so moving it can only ever remove
 whole clusters, never break one. Both behaviours are pinned by a dumbbell fixture
 in `clustering.test.js`.
+
+**It applies to every cluster source, not only DBSCAN.** It was a DBSCAN-only
+control at first, disabled along with epsilon and "neighbours needed" whenever a
+file supplied the clusters — which left it greyed out for the case with the most
+to filter. A cluster/bond observable states hundreds of clusters per frame (581
+at the last frame of the run it was built for, most of them pairs), and the band
+is what makes that legible: a lower bound of 6 leaves 115. It filters a finished
+clustering, so it means the same thing whoever produced it. Only the two DBSCAN
+knobs are disabled for a file source, which is what `parameter-group.is-disabled`
+now wraps.
+
+`useClusterSource` filters the source's entries and the plain index arrays
+**together**. `clusterColorAt` reads `fileClusters[i].color` and `ClusterList`
+its name and visibility, so filtering one list and not the other shifts every
+entry after the first removal onto a neighbour's colour.
+
+**The slider's ceiling comes from the whole observable, not the frame on
+screen.** The ceiling positions the upper thumb, so reading it off the current
+frame would move the thumb as the trajectory plays — and a band set at one frame
+would quietly mean something else at the next.
 
 It is a **band**, with both ends, not a floor: "everything above N" is only half
 of what gets asked — isolating the mid-sized clusters, or looking at just the
@@ -1228,8 +1407,10 @@ identity rather than a boolean matters: re-selecting on every render would fight
 manual changes.
 
 Detection is by content (`isClusterFile`), not the `.json` extension alone, so
-an unrelated JSON file dropped with a simulation is not mistaken for clustering. While a file is loaded the DBSCAN controls are
-disabled, because they cannot change clusters that came from a file.
+an unrelated JSON file dropped with a simulation is not mistaken for clustering. While a file is loaded the two DBSCAN controls
+are disabled, because they cannot change clusters that came from a file — but
+the size band stays live, since it filters whatever clustering is in front of
+it.
 
 ```json
 { "clusters": [

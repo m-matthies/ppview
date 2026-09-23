@@ -91,3 +91,27 @@ describe('store independence', () => {
     expect(useClusteringStore.getState().clearClustering).toBeUndefined();
   });
 });
+
+describe('clearClustering and cluster/bond observables', () => {
+  it('leaves the cluster source alone, so the bonds stay drawn', () => {
+    // "Clear clustering" undoes what the pane did to the scene: the selection,
+    // the hiding, the highlight colours. It does not unload the file — bonds
+    // are geometry the observable states, not a restriction anyone applied, and
+    // they have a toggle of their own in the control bar.
+    useOverlayStore.getState().addOverlay(clusterOverlay('bonds.txt'));
+    const { id } = useOverlayStore.getState().overlays[0];
+    useClusteringStore.getState().setClusterSourceId(id);
+
+    clearClustering();
+
+    expect(useClusteringStore.getState().clusterSourceId).toBe(id);
+    expect(useOverlayStore.getState().activeOverlayId).toBe(COMPUTED_VIEW);
+  });
+
+  it('forgets the cluster source when a new structure is loaded', () => {
+    // It is an overlay id, and overlays do not survive a new simulation.
+    useClusteringStore.getState().setClusterSourceId('overlay-7');
+    useClusteringStore.getState().resetClusters();
+    expect(useClusteringStore.getState().clusterSourceId).toBeNull();
+  });
+});

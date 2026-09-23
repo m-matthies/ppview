@@ -6,6 +6,7 @@ import {
   isMGLFile,
   isMGLTrajectoryFile,
   isClusterFile,
+  isObservableFile,
 } from './signatures';
 
 const lines = (text) => text.trim().split('\n');
@@ -182,5 +183,53 @@ topology = system.top
 1.0 0.0 0.0
 `))).toBe(true);
     expect(isPatchFile(lines('patch_0_position = 0.0,0.0,1.0'))).toBe(false);
+  });
+});
+
+describe('cluster/bond observables', () => {
+  // These are the outputs of the patchy contrib plugins. They arrive as .txt or
+  // .dat beside a simulation, so they have to be told apart by content — and in
+  // particular must not be claimed by the trajectory predicate, which matches
+  // on name for .dat.
+  const PL = lines('2 ( 0 0 1 ) [0 -> (1 2), 1 -> (0), 2 -> (0)] ( 1 1 ) [3 -> (4), 4 -> (3)]');
+  const PATCHY = lines('# step 100 N 2\n1\n2\n1\n1');
+  const RASPBERRY = lines('((0 1), (2, 0)) ((2 3), (5, 1))');
+
+  it.each([
+    ['PLClusterTopology', PL],
+    ['PatchyBonds', PATCHY],
+    ['RaspberryPatchyBonds', RASPBERRY],
+  ])('recognises %s', (_name, file) => {
+    expect(isObservableFile(file)).toBe(true);
+  });
+
+  it.each([
+    ['an oxDNA trajectory', lines(`
+t = 0
+b = 20 20 20
+E = 0 0 0
+1 2 3 1 0 0 0 0 1 0 0 0 0 0 0
+`)],
+    ['a raspberry topology', lines(`
+40 2
+iP 0 1.0 0 0,0,0.5 0,0,1
+iR 0,0,0 0.5
+iC 0 40 0 0
+`)],
+    ['an SRS springs topology', SRS],
+    ['an oxDNA nucleotide topology', OXDNA],
+    ['an input file', lines('T = 0.1\nsteps = 1e6\ntopology = sim.top')],
+  ])('does not claim %s', (_name, file) => {
+    expect(isObservableFile(file)).toBe(false);
+  });
+
+  it('is not fooled by a trajectory whose energy line holds negative numbers', () => {
+    // The raspberry tuple pattern is the loosest of the three; nothing in an
+    // oxDNA configuration writes nested parenthesised pairs.
+    expect(isObservableFile(lines(`
+t = 1000
+b = 20 20 20
+E = -1.5 -0.5 -1.0
+`))).toBe(false);
   });
 });

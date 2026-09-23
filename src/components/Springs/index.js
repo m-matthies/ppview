@@ -3,7 +3,7 @@ import * as THREE from "three";
 import { useParticleStore } from "../../store/particleStore";
 import { useUIStore } from "../../store/uiStore";
 import InstancedLayer from "../../rendering/InstancedLayer";
-import { centreOnBox, crossesPeriodicBoundary } from "../../rendering/transforms";
+import { cylinderBetween, cylinderScratch } from "../../rendering/transforms";
 import useClusterVisuals from "../../rendering/useClusterVisuals";
 
 // Renders spring bonds between connected particles as instanced cylinders.
@@ -35,12 +35,7 @@ function Springs() {
   }), []);
 
   // Reused across instances rather than allocated per spring.
-  const scratch = useMemo(() => ({
-    up: new THREE.Vector3(0, 1, 0),
-    v1: new THREE.Vector3(),
-    v2: new THREE.Vector3(),
-    dir: new THREE.Vector3(),
-  }), []);
+  const scratch = useMemo(cylinderScratch, []);
 
   // A spring follows the cluster state of the particles it joins: it is drawn
   // only when both ends are. Springs once ignored clustering entirely and hung
@@ -56,25 +51,13 @@ function Springs() {
     const b = appearanceOf(p2, { allowSelectionColor: false });
     if (a.hidden || b.hidden) return false;
 
-    const pos1 = positions[p1];
-    const pos2 = positions[p2];
-    centreOnBox(scratch.v1, pos1, boxSize);
-    centreOnBox(scratch.v2, pos2, boxSize);
-
-    scratch.dir.copy(scratch.v2).sub(scratch.v1);
-    const distance = scratch.dir.length();
-
-    // Hide degenerate springs, and those that wrap a periodic boundary — those
-    // would otherwise be drawn straight across the whole box.
-    if (distance < 1e-6 || crossesPeriodicBoundary(distance, boxSize)) return false;
-
-    scratch.dir.normalize();
     // A dimmed spring thins with its particles rather than disappearing.
     const thickness = springRadius * Math.min(a.scaleFactor, b.scaleFactor);
-    dummy.position.copy(scratch.v1).addScaledVector(scratch.dir, distance / 2);
-    dummy.quaternion.setFromUnitVectors(scratch.up, scratch.dir);
-    dummy.scale.set(thickness, distance, thickness);
-    return true;
+    // Returns false for a degenerate spring, and for one that wraps a periodic
+    // boundary — which would be drawn straight across the whole box.
+    return cylinderBetween(
+      dummy, scratch, positions[p1], positions[p2], boxSize, thickness,
+    );
   }, [springConnections, positions, boxSize, springRadius, scratch, appearanceOf]);
 
   if (!springConnections || count === 0) return null;

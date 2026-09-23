@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
-import { clearClustering } from '../../store/commands';
+import { clearClustering, readObservableForScene } from '../../store/commands';
 import { useOverlayStore, COMPUTED_VIEW } from '../../store/overlayStore';
-import { clusterOverlayFromFile } from '../../utils/overlays';
+import { clusterOverlayFromFile, bondObservableOverlay } from '../../utils/overlays';
+import { detectObservable } from '../../formats/observables';
 import { useUIStore } from '../../store/uiStore';
 import DraggablePanel from '../DraggablePanel';
 import { generateHistogram } from '../../utils/clustering';
@@ -25,6 +26,8 @@ import './ClusteringPane.css';
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
+  // Only for the caption saying which frame an observable's clusters describe.
+  const currentConfigIndex = useParticleStore(state => state.currentConfigIndex);
   const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
   const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
   // Visibility belongs to the UI store, which is what the control-bar toggle
@@ -76,6 +79,10 @@ function ClusteringPane() {
   // as "no view" left its clusters with no colours at all.
   const colorByCluster = activeOverlayId === (clusterSourceId ?? COMPUTED_VIEW);
   const groupingName = clusterSource?.name ?? 'Computed clusters';
+  // A cluster/bond observable states one grouping per printed configuration, so
+  // what the pane is showing is the frame on screen and not the whole file.
+  const observable = clusterSource?.observable ?? null;
+  const isPerFrame = !!observable;
 
   const { clusterColorAt } = useClusterColours({
     clusters, colorScheme, fileClusters, colorOverrides,
@@ -104,7 +111,12 @@ function ClusteringPane() {
     adoptedOverlayRef.current = clusterSourceId;
     setColorOverrides({});
 
-    if (fileClusters) {
+    // A cluster file states one grouping, so selecting all of it and hiding
+    // everything else shows exactly what the file describes. An observable
+    // states a different grouping every frame: the same move would hide every
+    // unbonded particle, and the selection — which is cluster *indices* — would
+    // go stale the moment the trajectory moved. So it is adopted like DBSCAN.
+    if (fileClusters && !isPerFrame) {
       setSelectedClusters(new Set(fileClusters.map((_, i) => i)));
       // `"visible": false` in the file starts that cluster switched off.
       setHiddenClusters(new Set(
@@ -118,13 +130,43 @@ function ClusteringPane() {
     }
     // Store setters are stable references, so listing them costs nothing; the
     // ref guard above is what actually keeps this from fighting manual changes.
-  }, [clusterSourceId, fileClusters, setSelectedClusters, setHiddenClusters, setShowOnlySelected]);
+  }, [clusterSourceId, fileClusters, isPerFrame, setSelectedClusters, setHiddenClusters,
+      setShowOnlySelected]);
 
+  /**
+   * Loading clusters from a file, of either kind.
+   *
+   * A `clusters.json` states one grouping; a cluster/bond observable states one
+   * per printed configuration. Which it is comes from the content, not the
+   * extension — an observable is plain text, usually `.txt` or `.dat`, and
+   * nothing in the name distinguishes the three formats from each other.
+   */
   const handleClusterFile = useCallback(async (event) => {
     const file = event.target.files?.[0];
     event.target.value = '';           // allow re-picking the same file
     if (!file) return;
     try {
+      // Only the head, to name the format: an observable file can be
+      // gigabytes, far past what a string can hold.
+      const head = await file.slice(0, 8192).text();
+      const lines = head.split('\n').map(line => line.trim()).filter(line => line !== '');
+
+      if (detectObservable(lines)) {
+        // Streamed and matched against the trajectory's own step numbers; see
+        // `readObservableForScene`. The text read above is only the head.
+        const parsed = await readObservableForScene(file);
+        const entry = addOverlay(bondObservableOverlay({
+          name: file.name.replace(/\.[^.]+$/, ''),
+          observable: parsed,
+          colorScheme,
+        }));
+        // Both the grouping and what the bonds are drawn from.
+        setClusterSourceId(entry.id);
+        setFileError(null);
+        setFileWarnings(parsed.warnings);
+        return;
+      }
+
       const { clusters: loaded, warnings } = parseClusterFile(await file.text(), {
         particleCount: positions?.length ?? 0,
       });
@@ -136,10 +178,10 @@ function ClusteringPane() {
       setFileError(null);
       setFileWarnings(warnings);
     } catch (error) {
-      setFileError(error.message);
+      setFileError(`${file.name} was not loaded: ${error.message}`);
       setFileWarnings([]);
     }
-  }, [positions, addOverlay, colorScheme]);
+  }, [positions, addOverlay, colorScheme, setClusterSourceId]);
 
 
   // Compute statistics
@@ -294,8 +336,10 @@ function ClusteringPane() {
 
   const runKymograph = useCallback(() => {
     setShowKymograph(true);
-    computeKymograph({ epsilon, minPoints });
-  }, [computeKymograph, epsilon, minPoints, setShowKymograph]);
+    // With an observable there is nothing to cluster: it holds one grouping per
+    // frame already, so the picture costs a pass over an array.
+    computeKymograph({ epsilon, minPoints, observable });
+  }, [computeKymograph, epsilon, minPoints, observable, setShowKymograph]);
 
   // The time view outlives the panel deliberately, the same way the clustering
   // itself does: it costs a minute to build, and closing the controls that
@@ -351,6 +395,9 @@ function ClusteringPane() {
         hasClusters={clusters.length > 0}
         colorByCluster={colorByCluster}
         groupingName={groupingName}
+        observableLabel={observable?.label ?? null}
+        observableFrame={isPerFrame ? currentConfigIndex : null}
+        observableFrames={observable?.frames.length ?? 0}
       />
 
       <ClusterParameters
@@ -366,7 +413,7 @@ function ClusteringPane() {
           setMinClusterSize(low);
           setMaxClusterSize(high);
         }}
-        disabled={!!fileClusters}
+        dbscanDisabled={!!clusterSource}
       />
 
       <ClusterStatistics statistics={statistics} />
@@ -436,7 +483,9 @@ function ClusteringPane() {
               className="select-button"
               onClick={runKymograph}
               disabled={kymographRunning}
-              title="Cluster every frame and draw the result as time across, particles down"
+              title={isPerFrame
+                ? "Draw this observable's clusters over the whole trajectory"
+                : 'Cluster every frame and draw the result as time across, particles down'}
             >
               {kymographRunning ? 'Building the time view…' : 'Clusters over time'}
             </button>

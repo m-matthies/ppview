@@ -129,8 +129,9 @@
     border-bottom: 1px solid var(--line);
 }
 
-/* DBSCAN parameters cannot change clusters that came from a file. */
-.clustering-controls.is-disabled {
+/* DBSCAN parameters cannot change clusters that came from a file. The size
+   band below them can: it filters a finished clustering, whoever produced it. */
+.parameter-group.is-disabled {
     opacity: 0.4;
     pointer-events: none;
 }

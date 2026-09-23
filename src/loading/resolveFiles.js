@@ -20,15 +20,19 @@ const looksLikeTrajectory = (file) => {
 /**
  * What kind of drop this is.
  *
- * A drop carrying no simulation but at least one cluster file, onto a scene that
- * already has particles, adds to that scene instead of replacing it.
+ * A drop carrying no simulation but at least one cluster file or cluster/bond
+ * observable, onto a scene that already has particles, adds to that scene
+ * instead of replacing it.
  */
 export function classifyDrop(categorized, { sceneIsLoaded }) {
   const bringsSimulation = !!(
     categorized.topology || categorized.trajectory
     || categorized.mglFile || categorized.mglTrajectory
   );
-  if (!bringsSimulation && categorized.clusterFiles?.length && sceneIsLoaded) {
+  const bringsOverlays = !!(
+    categorized.clusterFiles?.length || categorized.observableFiles?.length
+  );
+  if (!bringsSimulation && bringsOverlays && sceneIsLoaded) {
     return 'overlays-only';
   }
   return 'simulation';

@@ -3,6 +3,7 @@ import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { OrbitControls } from "@react-three/drei/core/OrbitControls";
 import { Stats } from "@react-three/drei/core/Stats";
 import Springs from "../Springs";
+import Bonds from "../Bonds";
 import { rendererFor } from "../../formats/registry";
 import { EffectComposer, SSAO } from "@react-three/postprocessing";
 import * as THREE from "three";
@@ -365,6 +366,9 @@ const SceneContent = React.memo(function SceneContent({
       <PickingProvider onPick={handlePick} onFocus={handleFocus} onMiss={handleMiss}>
         <Renderer />
         <Springs />
+        {/* Bonds from a cluster/bond observable, which change every frame —
+            unlike springs, whose connections the topology fixes. */}
+        <Bonds />
       </PickingProvider>
 
       {/* Screen-space ambient occlusion */}

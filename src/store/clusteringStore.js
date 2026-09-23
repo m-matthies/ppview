@@ -65,6 +65,18 @@ export const useClusteringStore = create((set) => ({
   showOnlySelected: false,
   hiddenClusters: new Set(),
 
+  /**
+   * Which cluster set the pane works with: null for DBSCAN, otherwise the id of
+   * a cluster overlay.
+   *
+   * In the store rather than in the pane because a second consumer needs it:
+   * bonds from a cluster/bond observable are drawn for whichever observable is
+   * the source, and `Bonds` cannot reach a hook's `useState`. It is also the
+   * answer to "which cluster set is in use", which outlives the panel for the
+   * same reason the rest of this state does.
+   */
+  clusterSourceId: null,
+
   // Actions
   setHighlightedClusters: (clusters) => set({ highlightedClusters: clusters }),
   setShowOnlyHighlightedClusters: (show) => set({ showOnlyHighlightedClusters: show }),
@@ -74,6 +86,7 @@ export const useClusteringStore = create((set) => ({
   setSelectedClusters: (clusters) => set({ selectedClusters: clusters }),
   setShowOnlySelected: (show) => set({ showOnlySelected: show }),
   setHiddenClusters: (clusters) => set({ hiddenClusters: clusters }),
+  setClusterSourceId: (id) => set({ clusterSourceId: id }),
 
   // The clustering half of clearing the scene. The View also has to be pointed
   // away from a cluster overlay, which is a second store's business — see
@@ -98,6 +111,7 @@ export const useClusteringStore = create((set) => ({
 
   // Dropping a new simulation must also drop clusters computed for the old one.
   resetClusters: () => set({
+    clusterSourceId: null,
     highlightedClusters: new Set(),
     showOnlyHighlightedClusters: false,
     clusterColors: new Map(),

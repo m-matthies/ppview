@@ -189,3 +189,12 @@ export const ImpostorIcon = ({ size = 24, color = "currentColor" }) => (
     <path d="M7 8.5a6 6 0 0 1 3-2"></path>
   </svg>
 );
+
+// Two nodes joined by a link: the bonds a cluster/bond observable reports.
+export const BondIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="6" cy="18" r="3"></circle>
+    <circle cx="18" cy="6" r="3"></circle>
+    <line x1="8.1" y1="15.9" x2="15.9" y2="8.1"></line>
+  </svg>
+);

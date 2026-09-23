@@ -1,5 +1,6 @@
 import { parseTopology } from '../formats/registry';
 import { parseInputFile } from '../formats/detection';
+import { parseObservablesConfig } from '../formats/observables/config';
 import { createFileMap } from '../utils/fileLoader';
 import { buildTrajIndex } from '../utils/trajectoryLoader';
 import { readMGL, readMGLTrajectory, convertMGLToPPViewFormat } from '../utils/mglParser';
@@ -32,11 +33,34 @@ async function readInputFile(categorized, signal, scene, status) {
     if (params.PATCHY_radius !== undefined) {
       scene.setFormatParticleRadius(params.PATCHY_radius);
     }
+    // Observables can be defined inline here as `data_output_N` blocks, as
+    // well as in a separate file. Either way what is wanted is `print_every`:
+    // two of the three cluster/bond observables write no step numbers, so it is
+    // the only thing that can line them up with a trajectory printed on a
+    // different interval.
+    const inline = parseObservablesConfig(content);
+    if (inline.length > 0) scene.setObservableConfig(inline);
+
     return params;
   } catch (error) {
     if (error.name === 'StaleLoad') throw error;
     console.warn('Could not read the input file; continuing without it:', error.message);
     return {};
+  }
+}
+
+/** The separate observables file, named by `observables_file` in the input. */
+async function readObservablesConfig(categorized, signal, scene) {
+  if (!categorized.observablesConfig) return;
+  try {
+    const content = await step(signal, categorized.observablesConfig.text());
+    const outputs = parseObservablesConfig(content);
+    if (outputs.length > 0) scene.setObservableConfig(outputs);
+  } catch (error) {
+    if (error.name === 'StaleLoad') throw error;
+    // Only ever an aid to alignment; a file that states its own steps does not
+    // need it at all.
+    console.warn('Could not read the observables file:', error.message);
   }
 }
 
@@ -98,9 +122,10 @@ async function loadTrajectory(categorized, files, signal, scene, exclude, status
   scene.setTrajFile(file);
 
   status('Indexing the trajectory');
-  const index = await step(signal, buildTrajIndex(file));
-  scene.setConfigIndex(index);
-  scene.setTotalConfigs(index.length);
+  const { offsets, times } = await step(signal, buildTrajIndex(file));
+  scene.setConfigIndex(offsets);
+  scene.setConfigTimes(times);
+  scene.setTotalConfigs(offsets.length);
 }
 
 /**
@@ -122,10 +147,17 @@ export async function loadSimulation({ files, categorized, signal, scene, status
     return;
   }
 
+  await readObservablesConfig(categorized, signal, scene);
   await loadTopology(categorized, files, inputParams, signal, scene, status);
   // The topology and input files are spoken for; the name-based trajectory
   // fallback must not pick one of them.
-  const spokenFor = [pickTopologyFile(categorized, files)?.file, categorized.inputFile];
+  // Observable output is often named `bonds.dat`, which `looksLikeTrajectory`
+  // matches on extension alone.
+  const spokenFor = [
+    pickTopologyFile(categorized, files)?.file,
+    categorized.inputFile,
+    ...(categorized.observableFiles ?? []),
+  ];
   await loadTrajectory(categorized, files, signal, scene, spokenFor, status);
 
   if (categorized.unknown?.length) {

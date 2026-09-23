@@ -10,6 +10,8 @@ import {
   isMGLFile,
   isMGLTrajectoryFile,
   isClusterFile,
+  isObservableFile,
+  isObservablesConfigFile,
 } from './signatures';
 
 export async function detectFileType(file) {
@@ -28,6 +30,18 @@ export async function detectFileType(file) {
     // could claim it, but checking early keeps the intent obvious.
     if (isClusterFile(lines, file.name)) {
       return 'clusters';
+    }
+
+    // The observables definition file, which states the print interval an
+    // observable that writes no step numbers has to be lined up by.
+    if (isObservablesConfigFile(lines)) {
+      return 'observables-config';
+    }
+
+    // Cluster/bond observables before trajectories: these arrive as .txt or
+    // .dat, and the trajectory fallback claims any .dat by name.
+    if (isObservableFile(lines)) {
+      return 'observable';
     }
 
     // Check for trajectory file pattern

@@ -2,6 +2,9 @@ import { useClusteringStore } from './clusteringStore';
 import { useOverlayStore, COMPUTED_VIEW } from './overlayStore';
 import { useParticleStore } from './particleStore';
 import { useUIStore } from './uiStore';
+import { detectObservable } from '../formats/observables';
+import { printEveryFor } from '../formats/observables/config';
+import { readObservable } from '../loading/readObservable';
 
 /**
  * Actions that span more than one store.
@@ -66,4 +69,39 @@ export function goToFrame(index) {
     const sceneRef = useUIStore.getState().sceneRef;
     if (sceneRef?.invalidate) sceneRef.invalidate();
   }, 0);
+}
+
+/**
+ * Reads a cluster/bond observable against the loaded trajectory.
+ *
+ * Here rather than in `loading/` because it spans three stores — the frame
+ * times and the run's observable definitions are the particle store's, the
+ * progress caption is the UI store's — and `loadSimulation` is deliberately
+ * free of React. Here rather than in `App` because the clustering pane's own
+ * file picker needs exactly the same thing, and the two must not drift about
+ * how a file is lined up with the trajectory.
+ *
+ * Never `file.text()`. These run to gigabytes: the one that prompted the
+ * streaming path is 4.79 GB, nearly nine times V8's maximum string length, and
+ * holds 21,798 timesteps of which 217 are wanted.
+ */
+export async function readObservableForScene(file) {
+  const { configTimes, observableConfig } = useParticleStore.getState();
+
+  // Enough of the head to name the format; everything else is streamed.
+  const head = await file.slice(0, 8192).text();
+  const lines = head.split('\n').map(line => line.trim()).filter(Boolean);
+  const formatId = detectObservable(lines);
+  if (!formatId) throw new Error('not a recognised cluster/bond observable file.');
+
+  try {
+    return await readObservable(file, {
+      formatId,
+      frameTimes: configTimes,
+      printEvery: printEveryFor(observableConfig, { fileName: file.name, formatId }),
+      onStatus: useUIStore.getState().setBusyMessage,
+    });
+  } finally {
+    useUIStore.getState().setBusyMessage(null);
+  }
 }

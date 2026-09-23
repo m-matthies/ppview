@@ -6,10 +6,23 @@ export const DEFAULT_PARTICLE_RADIUS = 0.5;
 export const useParticleStore = create((set, get) => ({
   // Particle and trajectory data
   positions: [],
+  // The bonds of the frame on screen, from a cluster/bond observable, or null.
+  // Per-frame data like the positions themselves, which is why it lives here
+  // rather than with the clustering: it is what the file says is joined to
+  // what at this instant, not a decision anyone made about the scene.
+  bonds: null,
   currentBoxSize: [34.199520111084, 34.199520111084, 34.199520111084],
   topData: null,
   trajFile: null,
   configIndex: [],
+  // The simulation step each frame was printed at, from its `t =` header.
+  // Kept because a cluster/bond observable prints on its own interval, so
+  // lining one up with the trajectory means matching step numbers.
+  configTimes: [],
+  // The run's observable definitions, from observables.json or the input's own
+  // data_output blocks. Held because an observable that writes no step numbers
+  // can only be lined up with the trajectory through its print_every.
+  observableConfig: [],
   currentConfigIndex: 0,
   currentTime: 0,
   currentEnergy: [],
@@ -27,6 +40,8 @@ export const useParticleStore = create((set, get) => ({
   baseParticleRadius: DEFAULT_PARTICLE_RADIUS,
   
   // Actions
+  setBonds: (bonds) => set(state => (state.bonds === bonds ? state : { bonds })),
+
   setPositions: (positions) => {
     // Validate that positions is an array
     if (!Array.isArray(positions)) {
@@ -48,6 +63,8 @@ export const useParticleStore = create((set, get) => ({
   setTopData: (topData) => set({ topData }),
   setTrajFile: (trajFile) => set({ trajFile }),
   setConfigIndex: (index) => set({ configIndex: index }),
+  setConfigTimes: (times) => set({ configTimes: times }),
+  setObservableConfig: (outputs) => set({ observableConfig: outputs }),
   setCurrentConfigIndex: (index) => set({ currentConfigIndex: index }),
   setCurrentTime: (time) => set({ currentTime: time }),
   setCurrentEnergy: (energy) => set({ currentEnergy: energy }),

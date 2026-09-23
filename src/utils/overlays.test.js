@@ -1,5 +1,8 @@
 import * as THREE from 'three';
-import { clusterOverlayFromFile, overlayColorFor } from './overlays';
+import {
+  clusterOverlayFromFile, overlayColorFor, bondObservableOverlay, observableFrameView,
+} from './overlays';
+import { parsePLClusterTopology } from '../formats/observables/plClusterTopology';
 
 const cluster = (indices, color = null) => ({ name: 'c', color, visible: true, indices });
 
@@ -89,5 +92,67 @@ describe('overlayColorFor', () => {
     const first = overlayColorFor(new Map([[0, '#abcdef']]), 0, THREE);
     const second = overlayColorFor(new Map([[9, '#abcdef']]), 9, THREE);
     expect(second).toBe(first);
+  });
+});
+
+describe('bondObservableOverlay', () => {
+  const TWO_FRAMES = [
+    // Frame 0: {0,1,2} and {7,8}
+    '2 ( 0 0 0 ) [0 -> (1 2), 1 -> (0), 2 -> (0)] ( 0 0 ) [7 -> (8), 8 -> (7)]',
+    // Frame 1: the first cluster has lost particle 2, and they have swapped order
+    '2 ( 0 0 ) [7 -> (8), 8 -> (7)] ( 0 0 ) [0 -> (1), 1 -> (0)]',
+  ].join('\n');
+
+  const overlay = () => bondObservableOverlay({
+    name: 'bonds',
+    observable: parsePLClusterTopology(TWO_FRAMES),
+    colorScheme: 'default',
+  });
+
+  test('an observable overlay looks like a loaded cluster file at any one frame', () => {
+    const view = observableFrameView(overlay().observable, 0);
+    expect(view.clusters).toEqual([
+      expect.objectContaining({ indices: [0, 1, 2], visible: true }),
+      expect.objectContaining({ indices: [7, 8], visible: true }),
+    ]);
+  });
+
+  test('every particle in a cluster is coloured, and particles in none are not', () => {
+    const { colors } = observableFrameView(overlay().observable, 0);
+    expect(colors.get(0)).toBe(colors.get(1));
+    expect(colors.get(0)).not.toBe(colors.get(7));
+    expect(colors.has(4)).toBe(false);
+  });
+
+  test('a cluster keeps its colour when the frame changes', () => {
+    const observable = overlay().observable;
+    const before = observableFrameView(observable, 0);
+    const after = observableFrameView(observable, 1);
+    // {0,1,2} became {0,1} and moved from index 0 to index 1 in the list.
+    expect(after.colors.get(0)).toBe(before.colors.get(0));
+    expect(after.colors.get(7)).toBe(before.colors.get(7));
+  });
+
+  test('the frame carries its bonds for the renderer', () => {
+    const { bonds } = observableFrameView(overlay().observable, 0);
+    expect(Array.from(bonds.a)).toEqual([0, 0, 7]);
+    expect(Array.from(bonds.b)).toEqual([1, 2, 8]);
+  });
+
+  test('the overlay starts on the first frame, so it is never blank before a frame change', () => {
+    const built = overlay();
+    expect(built.clusters).toHaveLength(2);
+    expect(built.colors.size).toBe(5);
+    expect(built.kind).toBe('clusters');
+  });
+
+  test('the summary names the observable, since the three behave differently', () => {
+    expect(overlay().summary).toMatch(/PLClusterTopology/);
+  });
+
+  test('a frame index past the end yields nothing rather than throwing', () => {
+    const view = observableFrameView(overlay().observable, 99);
+    expect(view.clusters).toEqual([]);
+    expect(view.colors.size).toBe(0);
   });
 });
