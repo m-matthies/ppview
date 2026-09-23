@@ -539,3 +539,53 @@
     background: rgba(255, 255, 255, 0.16);
     background-clip: content-box;
 }
+
+/* ==========================================================================
+   Two bounds on one track
+   ========================================================================== */
+
+.range-slider {
+    position: relative;
+    height: 22px;
+}
+
+/* The inputs sit on top of each other; only their thumbs take the pointer, so
+   whichever thumb is under it is the one that moves. */
+.range-slider input[type="range"] {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    margin: 0;
+    background: none;
+    pointer-events: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.range-slider input[type="range"]::-webkit-slider-thumb {
+    pointer-events: auto;
+}
+
+.range-slider input[type="range"]::-moz-range-thumb {
+    pointer-events: auto;
+}
+
+/* Drawn here rather than by either input, which would each paint their own. */
+.range-slider-track {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 4px;
+    margin-top: -2px;
+    border-radius: 2px;
+    background: var(--line);
+}
+
+.range-slider-fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-radius: 2px;
+    background: var(--accent);
+}

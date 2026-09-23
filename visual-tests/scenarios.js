@@ -144,9 +144,12 @@ const SCENARIOS = {
 
     // Nothing is drawn until a cluster is chosen: the picture is one cluster's
     // history, not the whole system's, and which one has to be picked first.
+    // Waited for, because the walk is asynchronous — asserting the instant the
+    // panel appears tests how fast the machine is.
+    assert(await waitFor(() => document.querySelector('.kymograph-empty'), 30000),
+      'it says a cluster has to be selected first');
     assert(!document.querySelector('.kymograph-canvas'),
-      'no picture before a cluster is selected');
-    assert(document.querySelector('.kymograph-empty'), 'and it says so');
+      'and draws nothing until one is');
 
     document.querySelector('.cluster-item input[type=checkbox]').click();
     assert(await waitFor(() => document.querySelector('.kymograph-canvas'), 20000),
@@ -533,15 +536,42 @@ const SCENARIOS = {
     // density, so raising it pulls clusters apart at a thin waist, which was
     // reported as DBSCAN failing.
     const clusterCount = () => document.querySelectorAll('.cluster-item').length;
-    const sizeSlider = document.querySelector('#minsize-slider');
-    assert(sizeSlider, 'the pane offers a minimum cluster size');
+    const bars = () => document.querySelectorAll('.histogram-bar-container').length;
+    const listed = () => {
+      const row = [...document.querySelectorAll('.stat-row, .statistics-row, .cluster-statistics div')]
+        .find(r => r.textContent.includes('Total Clusters'));
+      return row ? row.textContent.replace(/[^0-9]/g, '') : String(clusterCount());
+    };
+    const lowThumb = document.querySelector('#minsize-slider');
+    const highThumb = lowThumb.parentElement.querySelectorAll('input[type=range]')[1];
+    assert(lowThumb && highThumb, 'the size filter has two bounds');
+
     const before = clusterCount();
-    setNative(sizeSlider, '9');          // every fixture cluster holds eight
+    const barsBefore = bars();
+
+    // Every cluster in this fixture holds eight, and the slider's ceiling is the
+    // largest cluster there is — so the lower bound clamps at 8 and cannot
+    // exclude them. The upper bound can, which is what proves it does its own
+    // work rather than riding along with the lower one. The band's arithmetic is
+    // pinned exhaustively in clustering.test.js; what matters here is that the
+    // control reaches the list, the histogram and the statistics.
+    setNative(highThumb, '7');
     assert(await waitFor(() => clusterCount() === 0, 8000),
-      'raising it past every cluster leaves none');
-    setNative(sizeSlider, '1');
+      'a band below every cluster keeps none');
+    assert(bars() === 0, 'and the histogram follows');
+    assert(listed() === '0', 'and so does the count');
+
+    setNative(highThumb, '8');
     assert(await waitFor(() => clusterCount() === before, 8000),
-      'and lowering it brings exactly the same clusters back');
+      'and widening it brings exactly the same clusters back');
+    assert(bars() === barsBefore, 'histogram included');
+
+    // The thumbs cannot cross: pushed past the other, a bound stops there
+    // rather than turning the range inside out.
+    setNative(lowThumb, '20');
+    await settle();
+    assert(clusterCount() === before, 'the lower bound cannot pass the upper one');
+    setNative(lowThumb, '1');
     await settle();
 
     return out;
@@ -609,6 +639,10 @@ const SCENARIOS = {
       return null;
     };
 
+    const readout = () => [...document.querySelectorAll('input[type=range]')]
+      .find(r => Number(r.max) > 0)?.value;
+    const startFrame = readout();
+
     const out = {};
     const hit = await pickSomething();
     assert(hit, 'clicking a particle must select it — tried ' + lastAttempt);
@@ -640,6 +674,31 @@ const SCENARIOS = {
     click(clusteredHit[0], clusteredHit[1], { ctrlKey: true });
     assert(await waitFor(() => selectedCount() === 0, 2000),
       'a modifier click on a selected particle must deselect it, not add another');
+
+    // Space frames what is selected. It is play/pause when nothing is, and both
+    // are the obvious thing to want from that key — which one is meant is never
+    // ambiguous, because with particles selected space is for looking at them.
+    //
+    // Last, because framing moves the camera and everything above picks by
+    // clicking where things currently are.
+    const toFrame = await pickSomething();
+    assert(toFrame, 'something to frame');
+    const before = measure();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    await settle();
+    const after = measure();
+    // The camera moved in, so the particle covers more of the frame.
+    assert(after.coloured > before.coloured + 10,
+      'space must bring the selection closer');
+    assert(readout() === startFrame, 'and must not have started playback instead');
+    await clear();
+
+    // With nothing selected it plays, as it always did.
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    await sleep(900);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+    await settle();
+    assert(readout() !== startFrame, 'space with no selection still plays');
 
     // Deliberately records no pixel signature: which particle a sweep lands on
     // varies between runs, and a selected particle is yellow, so any measurement

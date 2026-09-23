@@ -683,7 +683,7 @@ This means a trajectory frame update only re-renders `Particles.js` (or `OxDNANu
 
 | Key | Action |
 |-----|--------|
-| `Space` | Play / pause |
+| `Space` | Frame the selected particles, or play / pause when nothing is selected |
 | `←` / `→` | Step one frame (`Shift` for 10) |
 | `Home` / `End` | First / last frame |
 | `Ctrl`/`Cmd`+`O` | Open files (works before *and* after a scene is loaded) |
@@ -693,6 +693,19 @@ This means a trajectory frame update only re-renders `Particles.js` (or `OxDNANu
 | `E/D` | Shift particles on Z-axis |
 
 Ignored while a form field has focus.
+
+**`Space` does two things, and which one is never ambiguous.** With particles
+selected it frames them; with nothing selected it plays. Both are the obvious
+thing to want from that key, and clearing the selection — a click on empty space
+— hands it back to playback, which is also always reachable from the transport
+buttons and the arrow keys.
+
+Framing keeps the direction you were looking from (`rendering/frameCamera.js`):
+it computes a sphere around the selection and stands far enough back for the
+field of view to hold it. A double click frames the one particle under the
+pointer through the same path. That path used to place the camera five units
+along +Z from the particle, which framed nothing in particular — it ignored how
+big the thing was and swung the view to a fixed angle whatever you had lined up.
 
 `Ctrl`/`Cmd`+`O` lives in `FilePicker`, not `useKeyboardShortcuts` — that hook
 returns early on any modifier, and rightly so. `FileDropZone` has a chooser
@@ -1016,13 +1029,23 @@ only two or three cells across would otherwise visit a cell twice and count its
 points twice. A zero span — a flat structure, or a box carrying a zero dimension
 — gets one cell on that axis rather than a division by zero.
 
-**Neighbours needed and minimum cluster size are different questions.**
-`minPoints` is a density: raising it stops particles being core points, so a
-cluster held together through a thin waist comes apart. That is textbook DBSCAN
-and it is *not* what someone means by "only show me clusters of at least N".
-`useClusterSource` therefore filters by size **after** clustering, as a separate
-control — so raising it can only ever remove whole clusters, never break one.
-Both behaviours are pinned by a dumbbell fixture in `clustering.test.js`.
+**Neighbours needed and cluster size are different questions.** `minPoints` is a
+density: raising it stops particles being core points, so a cluster held together
+through a thin waist comes apart. That is textbook DBSCAN and it is *not* what
+someone means by "only show me clusters of at least N". `withinSizeRange` filters
+**after** clustering, as a separate control, so moving it can only ever remove
+whole clusters, never break one. Both behaviours are pinned by a dumbbell fixture
+in `clustering.test.js`.
+
+It is a **band**, with both ends, not a floor: "everything above N" is only half
+of what gets asked — isolating the mid-sized clusters, or looking at just the
+stragglers, needs an upper end too. `RangeSlider` is two overlaid
+`<input type="range">`s, since there is no two-thumb input; both stay real
+inputs so they keep their keyboard behaviour, and the thumbs stop at each other
+rather than swapping. The upper bound sitting at the largest cluster means "no
+upper bound", so it keeps working as clusters grow. The list, the histogram and
+the statistics all read the filtered set, so they cannot disagree about what is
+being shown.
 
 **Core, border and noise are the textbook definitions.** `minPoints` **counts the
 point itself**, so `minPoints: 3` means three particles within epsilon including

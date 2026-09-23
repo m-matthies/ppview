@@ -16,6 +16,7 @@ export function useKeyboardShortcuts({
   totalConfigs,
   shiftPositions,
   takeScreenshot,
+  focusSelection,
 }) {
   useEffect(() => {
     const handleKeyDown = (event) => {
@@ -27,7 +28,16 @@ export function useKeyboardShortcuts({
       if (event.metaKey || event.ctrlKey || event.altKey) return;
 
       const actions = {
-        ' ': () => togglePlayback(),
+        /**
+         * Space frames the selection, or plays if there is nothing selected.
+         *
+         * Both on one key because both are the obvious thing to want from it,
+         * and which one you mean is never ambiguous: with particles selected,
+         * space is for looking at them. Clearing the selection — a click on
+         * empty space — hands the key back to playback, and the transport
+         * buttons and the arrow keys never stop working.
+         */
+        ' ': () => (focusSelection() ? undefined : togglePlayback()),
         ArrowLeft: () => stepFrame(event.shiftKey ? -10 : -1),
         ArrowRight: () => stepFrame(event.shiftKey ? 10 : 1),
         Home: () => goToFrame(0),
@@ -57,7 +67,7 @@ export function useKeyboardShortcuts({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot]);
+  }, [togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot, focusSelection]);
 }
 
 export default useKeyboardShortcuts;

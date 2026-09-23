@@ -336,8 +336,22 @@ function App() {
       .then(() => useUIStore.getState().setShowClusteringPane(true));
   }, [pendingClusterFiles, particleCount, registerClusterOverlays]);
 
+  /**
+   * Bring the selected particles into view.
+   *
+   * Returns whether it had anything to frame, so the space key can fall through
+   * to play/pause when nothing is selected.
+   */
+  const focusSelection = useCallback(() => {
+    const selected = useUIStore.getState().selectedParticles;
+    if (!selected?.length || !sceneRef?.focusOn) return false;
+    sceneRef.focusOn(selected);
+    return true;
+  }, [sceneRef]);
+
   useKeyboardShortcuts({
     togglePlayback, stepFrame, goToFrame, totalConfigs, shiftPositions, takeScreenshot,
+    focusSelection,
   });
 
   // Particle size is a display choice as much as a data one — a radius read

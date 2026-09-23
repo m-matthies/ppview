@@ -12,7 +12,7 @@ import CoordinateAxis from "./CoordinateAxis";
 import SceneLighting from "./SceneLighting";
 import { isDarkBackground } from "../../lighting";
 import { PickingProvider, applySelection } from "../../rendering/pickingService";
-import { centredPosition } from "../../rendering/transforms";
+import { framingFor } from "../../rendering/frameCamera";
 
 /**
  * Occlusion that does not deepen as you zoom in.
@@ -180,13 +180,6 @@ const SceneContent = React.memo(function SceneContent({
     };
   }, [sceneBackground, isDark]);
 
-  // Provide complete scene data to parent component
-  useEffect(() => {
-    if (onSceneReady && scene && camera && gl) {
-      onSceneReady({ scene, camera, gl, invalidate });
-    }
-  }, [onSceneReady, scene, camera, gl, invalidate]);
-
   // Backdrop planes share one material description; keeping it in a single
   // memo avoids three near-identical prop lists drifting apart.
   // Matte, not glossy. These planes exist to catch shadow and give the
@@ -222,45 +215,60 @@ const SceneContent = React.memo(function SceneContent({
     if (useUIStore.getState().selectedParticles?.length) setSelectedParticles([]);
   }, [setSelectedParticles]);
 
-  // Framing a particle only needs its index: the position comes from the store,
-  // which removes the per-layer position bookkeeping the old code carried.
-  const handleFocus = useCallback((index) => {
-    const { positions, currentBoxSize } = useParticleStore.getState();
-    const particle = positions?.[index];
-    if (!particle) return;
-    animateCameraTo(centredPosition(particle, currentBoxSize));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  /**
+   * Brings a set of particles into view, keeping the direction you were looking
+   * from.
+   *
+   * One index or a hundred: the space key frames the whole selection and a
+   * double click frames the particle under the pointer, and both are the same
+   * question. It used to place the camera five units along +Z from the particle,
+   * which framed nothing in particular — it ignored how big the thing was and
+   * swung the view to a fixed angle whatever you had lined up.
+   */
+  const focusOn = useCallback((indices) => {
+    const { positions, currentBoxSize, particleRadius } = useParticleStore.getState();
+    const controls = controlsRef.current;
+    if (!controls) return;
 
-  const animateCameraTo = (particlePosition) => {
-    // Animate camera position towards the particle
-    const duration = 1; // Duration in seconds
+    const framing = framingFor({
+      particles: positions,
+      indices,
+      boxSize: currentBoxSize,
+      radius: particleRadius,
+      camera,
+      target: controls.target,
+    });
+    if (!framing) return;
+
+    const duration = 0.45;
     const startTime = performance.now();
     const startPosition = camera.position.clone();
-    const targetPosition = particlePosition
-      .clone()
-      .add(new THREE.Vector3(0, 0, 5)); // Adjust the offset as needed
+    const startTarget = controls.target.clone();
 
     const animate = (time) => {
-      const elapsed = (time - startTime) / 1000;
-      const t = Math.min(elapsed / duration, 1);
-
-      camera.position.lerpVectors(startPosition, targetPosition, t);
-      controlsRef.current.target.lerpVectors(
-        controlsRef.current.target,
-        particlePosition,
-        t,
-      );
-      controlsRef.current.update();
-      invalidate(); // Request a render
-
-      if (t < 1) {
-        requestAnimationFrame(animate);
-      }
+      const t = Math.min((time - startTime) / 1000 / duration, 1);
+      // Eased, because a linear move reads as a jolt at both ends.
+      const eased = t < 0.5 ? 2 * t * t : 1 - ((-2 * t + 2) ** 2) / 2;
+      camera.position.lerpVectors(startPosition, framing.position, eased);
+      controls.target.lerpVectors(startTarget, framing.target, eased);
+      controls.update();
+      invalidate();
+      if (t < 1) requestAnimationFrame(animate);
     };
-
     requestAnimationFrame(animate);
-  };
+  }, [camera, invalidate]);
+
+  // Provide complete scene data to parent component
+  useEffect(() => {
+    if (onSceneReady && scene && camera && gl) {
+      // focusOn travels with the rest: the keyboard handler lives in App and
+      // this is the channel App already has into the scene.
+      onSceneReady({ scene, camera, gl, invalidate, focusOn });
+    }
+  }, [onSceneReady, scene, camera, gl, invalidate, focusOn]);
+
+  /** A double click frames the one particle under the pointer. */
+  const handleFocus = useCallback((index) => focusOn([index]), [focusOn]);
 
   // postprocessing's EffectComposer does `renderer.autoClear = false` when it
   // takes ownership of the renderer (EffectComposer.setRenderer) and never puts

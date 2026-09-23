@@ -1,4 +1,4 @@
-import { dbscan, generateHistogram, maxMinimumImageRadius } from './clustering';
+import { dbscan, generateHistogram, maxMinimumImageRadius, withinSizeRange } from './clustering';
 
 const BOX = [20, 20, 20];
 
@@ -313,5 +313,42 @@ describe('minPoints and minimum size are different questions', () => {
     // make it fit, which is the whole difference from raising minPoints.
     expect(clusters).toContainEqual(kept[0]);
     expect(kept[0]).toHaveLength(28);
+  });
+});
+
+describe('withinSizeRange', () => {
+  const clusters = [[1], [1, 2], [1, 2, 3], [1, 2, 3, 4], [1, 2, 3, 4, 5]];
+  const sizes = (kept) => kept.map(c => c.length);
+
+  test('keeps everything when the band is open', () => {
+    expect(withinSizeRange(clusters)).toBe(clusters);
+    expect(withinSizeRange(clusters, 1, Infinity)).toBe(clusters);
+  });
+
+  test('a floor drops what is below it', () => {
+    expect(sizes(withinSizeRange(clusters, 3))).toEqual([3, 4, 5]);
+  });
+
+  // The half that a single "smallest cluster" control could not ask for.
+  test('a ceiling drops what is above it', () => {
+    expect(sizes(withinSizeRange(clusters, 1, 2))).toEqual([1, 2]);
+  });
+
+  test('and a band keeps what is between', () => {
+    expect(sizes(withinSizeRange(clusters, 2, 4))).toEqual([2, 3, 4]);
+  });
+
+  test('both ends are inclusive', () => {
+    expect(sizes(withinSizeRange(clusters, 3, 3))).toEqual([3]);
+  });
+
+  test('an impossible band keeps nothing rather than throwing', () => {
+    expect(withinSizeRange(clusters, 4, 2)).toEqual([]);
+  });
+
+  // Whole clusters, never parts of them: that is the difference from raising
+  // the neighbour count, which pulls a cluster apart at a thin waist.
+  test('every survivor is exactly as it came out of DBSCAN', () => {
+    withinSizeRange(clusters, 2, 4).forEach(c => expect(clusters).toContain(c));
   });
 });

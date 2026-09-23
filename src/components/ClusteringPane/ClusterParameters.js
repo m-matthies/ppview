@@ -1,4 +1,5 @@
 import React from 'react';
+import RangeSlider from './RangeSlider';
 
 /**
  * The two DBSCAN knobs, disabled while a file supplies the clusters — they
@@ -10,8 +11,14 @@ import React from 'react';
  */
 function ClusterParameters({
   epsilon, onEpsilonChange, epsilonLimit, minPoints, onMinPointsChange,
-  minClusterSize, onMinClusterSizeChange, disabled,
+  minClusterSize, maxClusterSize, largestCluster, onClusterSizeRangeChange, disabled,
 }) {
+  // The upper bound is open until someone moves it, so it is shown at the
+  // largest cluster there is rather than at Infinity.
+  const ceiling = Math.max(1, largestCluster);
+  const high = Number.isFinite(maxClusterSize) ? Math.min(maxClusterSize, ceiling) : ceiling;
+  const low = Math.min(minClusterSize, high);
+  const keepsEverything = low <= 1 && high >= ceiling;
   return (
   <div className={`clustering-controls ${disabled ? 'is-disabled' : ''}`}>
     <div className="parameter-control">
@@ -65,30 +72,35 @@ function ClusterParameters({
 
     <div className="parameter-control">
       <label htmlFor="minsize-slider">
-        Smallest cluster to keep: {minClusterSize === 1 ? 'all' : minClusterSize}
+        Cluster sizes kept: {keepsEverything ? 'all' : `${low} to ${high}`}
       </label>
-      <input
+      <RangeSlider
         id="minsize-slider"
-        type="range"
-        min="1"
-        max="50"
-        step="1"
-        value={minClusterSize}
-        onChange={(e) => onMinClusterSizeChange(parseInt(e.target.value, 10))}
-        className="parameter-slider"
+        min={1}
+        max={ceiling}
+        low={low}
+        high={high}
+        disabled={disabled}
+        onChange={(nextLow, nextHigh) =>
+          // An upper bound sitting at the largest cluster means "no upper
+          // bound", so it keeps working as clusters grow.
+          onClusterSizeRangeChange(nextLow, nextHigh >= ceiling ? Infinity : nextHigh)}
       />
       {/*
-        The question people reach for "neighbours needed" to ask, and it is a
-        different one: that is a density threshold, so raising it stops
-        particles being core points and a cluster held together through a thin
-        waist comes apart. Reported as DBSCAN failing, and it is not — but
-        nothing in the controls said the two were different questions. This one
-        runs after the clustering, so it can only ever remove whole clusters.
+        A band, not a floor. "Everything above N" is only half of what gets
+        asked — isolating the mid-sized clusters, or looking at just the
+        stragglers, needs an upper end too.
+
+        And this is the question people reach for "neighbours needed" to ask,
+        which is a different one: that is a density threshold, so raising it
+        stops particles being core points and a cluster held together through a
+        thin waist comes apart. This runs after the clustering, so it can only
+        ever remove whole clusters.
       */}
       <span className="checkbox-hint">
-        Clusters smaller than this are discarded. Applied after the clustering,
-        so raising it never breaks a cluster apart — it only stops small ones
-        being shown.
+        Only clusters in this size range are shown. Applied after the clustering,
+        so moving either end never breaks a cluster apart — it only changes which
+        ones are listed, counted and drawn.
       </span>
     </div>
   </div>

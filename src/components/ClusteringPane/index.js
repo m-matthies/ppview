@@ -59,7 +59,8 @@ function ClusteringPane() {
   const {
     clusters, clusterSource, clusterSourceId, setClusterSourceId, clusterOverlays,
     fileClusters, epsilon, setEpsilon, epsilonLimit, minPoints, setMinPoints,
-    minClusterSize, setMinClusterSize,
+    minClusterSize, setMinClusterSize, maxClusterSize, setMaxClusterSize,
+    largestCluster,
   } = useClusterSource();
 
   // Optional and explicitly asked for: this is DBSCAN once per frame.
@@ -359,7 +360,12 @@ function ClusteringPane() {
         minPoints={minPoints}
         onMinPointsChange={setMinPoints}
         minClusterSize={minClusterSize}
-        onMinClusterSizeChange={setMinClusterSize}
+        maxClusterSize={maxClusterSize}
+        largestCluster={largestCluster}
+        onClusterSizeRangeChange={(low, high) => {
+          setMinClusterSize(low);
+          setMaxClusterSize(high);
+        }}
         disabled={!!fileClusters}
       />
 

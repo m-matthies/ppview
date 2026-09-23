@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useParticleStore } from '../../store/particleStore';
 import { useClusteringStore, isSceneRestricted } from '../../store/clusteringStore';
+import { loadWasmCore } from '../../wasm/wasmCore';
 import { useUIStore } from '../../store/uiStore';
 import { useOverlayStore } from '../../store/overlayStore';
-import { dbscan, maxMinimumImageRadius } from '../../utils/clustering';
+import { dbscan, maxMinimumImageRadius, withinSizeRange } from '../../utils/clustering';
 
 /**
  * Where the pane's clusters come from: DBSCAN, or a file.
@@ -36,8 +37,9 @@ export default function useClusterSource() {
   const [clusterSourceId, setClusterSourceId] = useState(null);   // null = DBSCAN
   const [epsilon, setEpsilon] = useState(2.0);
   const [minPoints, setMinPoints] = useState(3);
-  // 1 keeps everything, which is the old behaviour and the default.
+  // A band, not a floor: [1, Infinity] keeps everything, which is the default.
   const [minClusterSize, setMinClusterSize] = useState(1);
+  const [maxClusterSize, setMaxClusterSize] = useState(Infinity);
 
   // Only a cluster overlay has clusters to list; a scalar-property overlay
   // colours particles without any grouping to show here.
@@ -91,7 +93,12 @@ export default function useClusterSource() {
     }
 
     let cancelled = false;
-    const handle = setTimeout(() => {
+    const handle = setTimeout(async () => {
+      if (cancelled) return;
+      // There is no JavaScript clustering to fall back to any more, so the core
+      // has to be there before the first frame is clustered — which can happen
+      // before the module has finished loading.
+      await loadWasmCore();
       if (cancelled) return;
       try {
         // Distances are measured under periodic boundaries: a cluster straddling
@@ -124,15 +131,23 @@ export default function useClusterSource() {
    * confused by, because nothing in the control said the two were different
    * questions.
    *
-   * This is the other question, asked separately: cluster first, then discard
-   * what is too small to be worth showing. Raising it can never break a cluster
+   * This is the other question, asked separately: cluster first, then keep the
+   * ones whose size falls in a band. Moving either end can never break a cluster
    * apart, because the clustering has already happened.
+   *
+   * A band rather than a floor because "everything above N" is only half of what
+   * gets asked — isolating the mid-sized clusters, or looking at just the
+   * stragglers, needs an upper end too.
    */
+  /** The largest cluster there is, which is where the upper bound starts. */
+  const largestCluster = useMemo(
+    () => computedClusters.reduce((most, c) => Math.max(most, c.length), 0),
+    [computedClusters],
+  );
+
   const keptClusters = useMemo(
-    () => (minClusterSize > 1
-      ? computedClusters.filter(cluster => cluster.length >= minClusterSize)
-      : computedClusters),
-    [computedClusters, minClusterSize],
+    () => withinSizeRange(computedClusters, minClusterSize, maxClusterSize),
+    [computedClusters, minClusterSize, maxClusterSize],
   );
 
   // A loaded file replaces the computed clusters while it is present, so the
@@ -187,5 +202,8 @@ export default function useClusterSource() {
     setMinPoints,
     minClusterSize,
     setMinClusterSize,
+    maxClusterSize,
+    setMaxClusterSize,
+    largestCluster,
   };
 }

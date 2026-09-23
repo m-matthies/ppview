@@ -79,7 +79,12 @@ async function run() {
   // srs/detail onwards, while each of them passed on its own. That is the suite
   // reporting an environment fault as fourteen regressions, which is worse than
   // useless. A fresh tab is a fresh context, so the job is retried in one.
-  const POISONED = /never drew any geometry/;
+  // A dead tab, however it announces itself. "Inspected target navigated or
+  // closed" and a navigate that times out are the same fault as a renderer that
+  // stopped drawing — the page is gone — and the same answer works: try again in
+  // a new one. Matching only the first message meant the other two still came
+  // out as regressions in a scenario that passes on its own.
+  const POISONED = /never drew any geometry|target navigated or closed|Page\.navigate timed out/i;
 
   const worker = async (id) => {
     let cdp = await connect(9222, await openPage(9222));

@@ -81,3 +81,21 @@ export function generateHistogram(clusterSizes) {
   
   return bins;
 }
+
+/**
+ * The clusters whose size falls in a band, discarding the rest.
+ *
+ * Applied **after** clustering, which is the whole point. `minPoints` looks like
+ * it should do this and does something quite different — it is a density, so
+ * raising it stops particles being core points and a cluster held together
+ * through a thin waist comes apart. Moving either end of this band can only
+ * remove whole clusters, never break one.
+ *
+ * A band rather than a floor because "everything above N" is only half of what
+ * gets asked: isolating the mid-sized clusters, or looking at just the
+ * stragglers, needs an upper end too. `Infinity` is the open upper bound.
+ */
+export function withinSizeRange(clusters, low = 1, high = Infinity) {
+  if (low <= 1 && !Number.isFinite(high)) return clusters;
+  return clusters.filter(cluster => cluster.length >= low && cluster.length <= high);
+}
