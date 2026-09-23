@@ -617,6 +617,16 @@ and says so plainly rather than failing further in.
 jsdom has no `fetch` — so a test of parsing or clustering is a test of the module
 the browser runs, not of a stand-in.
 
+**A `static mut` must be *replaced*, never overwritten.** `ptr::write` does not
+drop what was there, so every `parse_frame`, every `dbscan` and every scan leaked
+its predecessor's `Vec`s — 1.2 MB per frame. Past 2 GB of linear memory `alloc`
+returns an `i32` pointer with the top bit set, JS reads it as negative, and the
+viewer dies with `Start offset -2147186048 is outside the bounds of the buffer`,
+which mentions nothing about memory. Playback reached it in about 1,750 frames.
+`replace_static` reads the old value out so it drops; memory is then flat at
+8 MB over 2,600 frames. Every JS consumer copies out of module memory before the
+next call, so dropping cannot strand a live view.
+
 **No `wasm-bindgen`.** Everything crossing the boundary is a block of bytes in or
 a block of `f32`/`i32` out, so the generated glue would buy nothing and cost a
 bundler integration that Create React App cannot be given without ejecting.
@@ -966,6 +976,20 @@ is taken to be step *i x print_every*; failing that, position.
 This is why `buildTrajIndex` now returns `{ offsets, times }`. It always read
 the `t =` header and threw the number away.
 
+**Blank lines are judged by the scanner, not by a byte span.** `0` is what
+`PLClusterTopology` writes for a step with no clusters, and with its newline
+that is two bytes — the same span as a CRLF blank line. Deciding from the span
+dropped that step and read every later frame from the wrong block, so the
+scanner has a third mode that looks at the bytes (`OBS_LINE_PER_STEP_NONBLANK`).
+`RaspberryPatchyBonds` keeps every line, because there a blank one *is* a step
+with no bonds; only the file's own trailing newlines are trimmed.
+
+**The `print_every` origin is chosen by rate, not by count.** Whether block 0 is
+step 0 or step `print_every` is stated nowhere, so both are tried — but a
+trajectory that starts at `t = 0` hands origin 0 one free match the other cannot
+have, so comparing raw totals always picked origin 0 and the alternative could
+never win. Scored against the frames each origin could possibly reach instead.
+
 **Only the matched blocks are ever parsed** — 217 of 21,798, about 47 MB — and
 each only once however many frames point at it. They are sliced out and handed
 to the ordinary format parser unchanged, which is why the three parsers know
@@ -1007,10 +1031,38 @@ the selection is cluster *indices*, which go stale the moment the frame moves.
 
 #### Bonds are drawn from the pane's cluster source
 `components/Bonds` draws `particleStore.bonds` as grey instanced cylinders, the
-same geometry problem `Springs` solves — both now go through
-`cylinderBetween` in `rendering/transforms.js`. Grey rather than coloured by
-patch, because a bond has *two* patch ids and the particles it joins already
-carry the meaningful colour.
+same geometry problem `Springs` solves — both go through `rendering/transforms.js`.
+Grey rather than coloured by patch, because a bond has *two* patch ids and the
+particles it joins already carry the meaningful colour.
+
+**A bond runs patch to patch, not centre to centre.** A patchy bond *is* between
+two patches, and `PatchyBonds` and `RaspberryPatchyBonds` both say which. Drawn
+centre to centre the cylinder lies inside both spheres and emerges nowhere near
+the cones, which reads as the two being unrelated. Measured on one run: the two
+patches a bond names sit **0.083** apart while their particles are **1.077**
+apart. `uiStore.bondsCentreToCentre` switches back — that is what the graph means
+topologically, it is all `PLClusterTopology` can offer, and it stays readable
+with the cones hidden.
+
+`patchTip` in `transforms.js` is the single definition of where a patch is, used
+by `Patches` for the cone and by `Bonds` for the endpoint. They must not drift:
+a bond starting anywhere else stops appearing to leave its patch.
+
+**A patch id is not a slot.** `patchPositions[j]` pairs with `patches[j]`, but
+Lorenzo numbers patches sequentially per type (so id == slot) while raspberry's
+`iC` line names global `iP` ids — `iC 2 512 8,9` gives patches `[8, 9]` against
+two positions. Used as an index, 8 runs off the end and the bond silently falls
+back to the particle centre. `patchOffsetFor` looks the id up in `patches`,
+which is right for both.
+
+**A bond between minimum images is drawn as two cylinders, not hidden and not
+stretched across the box.** Particles are wrapped into the box, so two bonded
+neighbours either side of a wall are a hand's breadth apart through it and
+almost a box apart across it. The layer allocates **two instances per bond** —
+one `LEAVING` through the near wall, one `ARRIVING` from outside the far one,
+both at the bond's true length. The second instance of a bond that does not wrap
+is collapsed, and that is decided from the particle centres alone (`wrapsBetween`)
+before any patch lookup or cluster appearance, since almost none wrap.
 
 Which observable's bonds appear follows `clusteringStore.clusterSourceId` — one
 rule, and it is the selector that already says which cluster set is being worked
@@ -1023,6 +1075,16 @@ to tell them apart.
 bonds. **`clearClustering` deliberately leaves them alone**: bonds are geometry
 the file states, not a restriction anyone applied, and they have their own
 toggle.
+
+#### Bonds follow the frame that has *loaded*
+`particleStore.loadedConfigIndex` is the frame the positions in the store
+actually came from; `currentConfigIndex` is the one that was asked for. Reading a
+frame is asynchronous, so keying the observable on the requested frame drew the
+new frame's bonds against the old frame's coordinates for as long as the read
+took — cylinders flashing between unrelated particles on every transition, and
+cluster colours doing the same more quietly. It is written by `loadFrame` beside
+`setPositions`, so React commits the two together; the time view's capture bag
+omits it, which is why the call is optional.
 
 #### The time view is free here
 `useKymograph` normally runs DBSCAN once per frame — the two-minutes-over-fifty
@@ -1215,6 +1277,13 @@ entry after the first removal onto a neighbour's colour.
 screen.** The ceiling positions the upper thumb, so reading it off the current
 frame would move the thumb as the trajectory plays — and a band set at one frame
 would quietly mean something else at the next.
+
+**"Select all" is a mode, not a snapshot** (`clusteringStore.allClustersSelected`).
+An observable states a different number of clusters at every frame — 240 at the
+start of one run and 581 at the end — so a selection remembered as indices
+quietly became "the first 240 of 581", and the prune that keeps indices in range
+could only ever take more away. Any other selection clears the mode, so ticking
+every one of 240 boxes by hand stays a choice of those 240.
 
 It is a **band**, with both ends, not a floor: "everything above N" is only half
 of what gets asked — isolating the mid-sized clusters, or looking at just the

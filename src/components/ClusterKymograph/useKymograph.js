@@ -74,6 +74,11 @@ export default function useKymograph() {
           nextLineage = tracked.nextLineage;
           columns.push(tracked.lineageOf);
           if (frames[i] === currentConfigIndex) referenceColumn = columns.length - 1;
+          // Yield like the clustering branch below: without it the whole run is
+          // one synchronous block, so the progress caption never repaints and a
+          // stop is never noticed.
+          // eslint-disable-next-line no-await-in-loop
+          await new Promise(resolve => setTimeout(resolve, 0));
           continue;
         }
 

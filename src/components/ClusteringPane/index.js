@@ -26,8 +26,10 @@ import './ClusteringPane.css';
 function ClusteringPane() {
   // Get data from Zustand stores
   const positions = useParticleStore(state => state.positions);
-  // Only for the caption saying which frame an observable's clusters describe.
-  const currentConfigIndex = useParticleStore(state => state.currentConfigIndex);
+  // The frame whose positions are on screen — the same one the clusters below
+  // describe. Using the requested frame made the caption name frame N while the
+  // list, swatches and histogram described N-1 during a slow read.
+  const currentConfigIndex = useParticleStore(state => state.loadedConfigIndex);
   const dimNonSelectedClusters = useClusteringStore(state => state.dimNonSelectedClusters);
   const setDimNonSelectedClusters = useClusteringStore(state => state.setDimNonSelectedClusters);
   // Visibility belongs to the UI store, which is what the control-bar toggle
@@ -55,6 +57,7 @@ function ClusteringPane() {
   const setHiddenClusters = useClusteringStore(state => state.setHiddenClusters);
   const selectedClusters = useClusteringStore(state => state.selectedClusters);
   const setSelectedClusters = useClusteringStore(state => state.setSelectedClusters);
+  const selectAll = useClusteringStore(state => state.selectAllClusters);
   const showOnlySelected = useClusteringStore(state => state.showOnlySelected);
   const setShowOnlySelected = useClusteringStore(state => state.setShowOnlySelected);
   const sceneIsRestricted = useClusteringStore(isSceneRestricted);
@@ -233,10 +236,10 @@ function ClusteringPane() {
     setSelectedClusters(newSelected);
   }, [setSelectedClusters]);
 
-  // Select all clusters
-  const selectAllClusters = () => {
-    setSelectedClusters(new Set(clusters.map((_, index) => index)));
-  };
+  // Select all clusters — and keep selecting them all as the clusters change.
+  // With a cluster/bond observable the count is a property of the frame, so a
+  // remembered set of indices stops meaning "all" the moment the frame moves.
+  const selectAllClusters = () => selectAll(clusters.length);
 
   // Clear selection
   const clearSelection = () => {

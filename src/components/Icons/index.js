@@ -198,3 +198,12 @@ export const BondIcon = ({ size = 24, color = "currentColor" }) => (
     <line x1="8.1" y1="15.9" x2="15.9" y2="8.1"></line>
   </svg>
 );
+
+// Two nodes joined through their middles: bonds drawn centre to centre.
+export const CentreBondIcon = ({ size = 24, color = "currentColor" }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="6" cy="18" r="3"></circle>
+    <circle cx="18" cy="6" r="3"></circle>
+    <line x1="6" y1="18" x2="18" y2="6"></line>
+  </svg>
+);

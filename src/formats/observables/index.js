@@ -34,6 +34,7 @@ const RASPBERRY_MARK = /\(\s*\(\s*\d+\s*[,\s]\s*\d+\s*\)\s*,\s*\(\s*\d+\s*[,\s]\
  */
 export const SCAN_STEP_HEADERS = 'step-headers';
 export const SCAN_LINE_PER_STEP = 'line-per-step';
+export const SCAN_LINE_NONBLANK = 'line-per-step-nonblank';
 
 export const OBSERVABLES = [
   {
@@ -42,8 +43,9 @@ export const OBSERVABLES = [
     plugin: 'romano',
     matches: (lines) => lines.some(line => PL_MARK.test(line)),
     parse: parsePLClusterTopology,
-    scan: SCAN_LINE_PER_STEP,
-    blanks: 'skip',
+    // Every step states its cluster count, so a blank line is not a timestep.
+    scan: SCAN_LINE_NONBLANK,
+    blanks: 'keep',
   },
   {
     id: 'patchy_bonds',

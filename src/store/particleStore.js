@@ -24,6 +24,15 @@ export const useParticleStore = create((set, get) => ({
   // can only be lined up with the trajectory through its print_every.
   observableConfig: [],
   currentConfigIndex: 0,
+  /**
+   * The frame the positions in the store actually came from.
+   *
+   * `currentConfigIndex` is the frame that was *asked* for; reading it is
+   * asynchronous, so between the two the store holds one frame's positions and
+   * another frame's index. Anything drawn per particle has to follow this one,
+   * or it is drawn against coordinates it does not describe.
+   */
+  loadedConfigIndex: 0,
   currentTime: 0,
   currentEnergy: [],
   totalConfigs: 0,
@@ -66,6 +75,8 @@ export const useParticleStore = create((set, get) => ({
   setConfigTimes: (times) => set({ configTimes: times }),
   setObservableConfig: (outputs) => set({ observableConfig: outputs }),
   setCurrentConfigIndex: (index) => set({ currentConfigIndex: index }),
+  setLoadedConfigIndex: (index) => set(state =>
+    (state.loadedConfigIndex === index ? state : { loadedConfigIndex: index })),
   setCurrentTime: (time) => set({ currentTime: time }),
   setCurrentEnergy: (energy) => set({ currentEnergy: energy }),
   setTotalConfigs: (total) => set({ totalConfigs: total }),

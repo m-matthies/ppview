@@ -4,7 +4,7 @@ import { getColorForPatchID } from '../../utils/colorUtils';
 import { useParticleStore } from '../../store/particleStore';
 import { useUIStore } from '../../store/uiStore';
 import InstancedLayer from '../../rendering/InstancedLayer';
-import { centreOnBox, rotationMatrixOf } from '../../rendering/transforms';
+import { patchTip, patchScratch } from '../../rendering/transforms';
 import useClusterVisuals from '../../rendering/useClusterVisuals';
 
 /**
@@ -68,12 +68,9 @@ function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, 
   );
 
   const scratch = useMemo(() => ({
-    particlePosition: new THREE.Vector3(),
-    local: new THREE.Vector3(),
-    direction: new THREE.Vector3(),
+    ...patchScratch(),
     inward: new THREE.Vector3(),
     up: new THREE.Vector3(0, 1, 0),
-    rot: new THREE.Matrix3(),
   }), []);
 
   const write = useMemo(() => (index, dummy, setColor) => {
@@ -87,24 +84,13 @@ function Patches({ particles, globalIndices, patchPositions, patchIDs, boxSize, 
     if (entry?.hidden) return false;
     const clusterScale = entry?.scaleFactor ?? 1;
 
-    // Always normalise to the particle surface so the patch tip sits at
-    // radius=particleRadius regardless of whether the input vector is
-    // unit-length, sub-unit (Flavio ~0.5) or larger (Lorenzo/SRS > 1).
-    const length = Math.hypot(patchOffset.x, patchOffset.y, patchOffset.z);
-    if (length < 1e-9) return false; // degenerate
-
-    centreOnBox(scratch.particlePosition, particle, boxSize);
-    const rotation = rotationMatrixOf(particle, scratch.rot);
-
-    const surfaceScale = (particleRadius * clusterScale) / length;
-    scratch.local.set(patchOffset.x, patchOffset.y, patchOffset.z).multiplyScalar(surfaceScale);
-    scratch.direction.set(patchOffset.x, patchOffset.y, patchOffset.z).normalize();
-    if (rotation) {
-      scratch.local.applyMatrix3(rotation);
-      scratch.direction.applyMatrix3(rotation);
+    // Shared with Bonds, which starts a bond cylinder at this exact point —
+    // the two must not drift, or bonds stop appearing to leave their patches.
+    if (!patchTip(scratch, particle, patchOffset, boxSize, particleRadius * clusterScale)) {
+      return false;   // degenerate patch vector: no direction to face
     }
 
-    dummy.position.copy(scratch.local).add(scratch.particlePosition);
+    dummy.position.copy(scratch.tip);
     // The cone points +Y by default; aim it inward, at the particle centre.
     scratch.inward.copy(scratch.direction).negate();
     dummy.quaternion.setFromUnitVectors(scratch.up, scratch.inward);

@@ -66,6 +66,22 @@ export const useClusteringStore = create((set) => ({
   hiddenClusters: new Set(),
 
   /**
+   * True while **Select all** is in force, as opposed to a selection that
+   * happens to cover everything.
+   *
+   * Needed because a cluster/bond observable states a different number of
+   * clusters at every frame — 240 at the start of the run this was built for
+   * and 581 at the end. Remembering only the indices meant "select all" pressed
+   * at one frame quietly became "the first 240 of 581" at another, and the
+   * prune that keeps indices in range could never put them back.
+   *
+   * A mode rather than something inferred from `selectedClusters.size ===
+   * clusters.length`: ticking every one of 240 boxes by hand is a choice of
+   * those 240, and should not silently grow into 581.
+   */
+  allClustersSelected: false,
+
+  /**
    * Which cluster set the pane works with: null for DBSCAN, otherwise the id of
    * a cluster overlay.
    *
@@ -83,7 +99,19 @@ export const useClusteringStore = create((set) => ({
   setDimNonSelectedClusters: (dim) => set({ dimNonSelectedClusters: dim }),
   setHiddenParticles: (particles) => set({ hiddenParticles: particles }),
   setClusterCount: (count) => set({ clusterCount: count }),
-  setSelectedClusters: (clusters) => set({ selectedClusters: clusters }),
+  // Any explicit selection is a selection of *those* clusters, so it leaves
+  // "select all" behind. The one path that must not is the refill below, which
+  // goes through selectAllClusters.
+  setSelectedClusters: (clusters) => set({
+    selectedClusters: clusters,
+    allClustersSelected: false,
+  }),
+
+  /** Select every cluster, and keep selecting every cluster as they change. */
+  selectAllClusters: (count) => set({
+    selectedClusters: new Set(Array.from({ length: count }, (_, i) => i)),
+    allClustersSelected: true,
+  }),
   setShowOnlySelected: (show) => set({ showOnlySelected: show }),
   setHiddenClusters: (clusters) => set({ hiddenClusters: clusters }),
   setClusterSourceId: (id) => set({ clusterSourceId: id }),
@@ -93,6 +121,7 @@ export const useClusteringStore = create((set) => ({
   // store/commands.js, which owns the combined action.
   resetClusterState: () => set({
     selectedClusters: new Set(),
+    allClustersSelected: false,
     showOnlySelected: false,
     hiddenClusters: new Set(),
     highlightedClusters: new Set(),
@@ -118,6 +147,7 @@ export const useClusteringStore = create((set) => ({
     hiddenParticles: new Set(),
     clusterCount: 0,
     selectedClusters: new Set(),
+    allClustersSelected: false,
     showOnlySelected: false,
     hiddenClusters: new Set(),
   }),

@@ -194,6 +194,14 @@ export function dbscan(points, epsilon, minPoints, boxSize) {
 export const OBS_STEP_HEADERS = 0;
 /** Every line is one timestep, and no step number is written anywhere. */
 export const OBS_LINE_PER_STEP = 1;
+/**
+ * Every line with something on it; a blank line is not a timestep.
+ *
+ * Judged here rather than from a line's byte span, because "two bytes or fewer"
+ * cannot tell `\r\n` from `0\n` — and `0` is exactly what PLClusterTopology
+ * writes for a step with no clusters.
+ */
+export const OBS_LINE_PER_STEP_NONBLANK = 2;
 
 /** How much is copied into the module at a time. */
 const SCAN_CHUNK = 1 << 22;   // 4 MB

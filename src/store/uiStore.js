@@ -26,6 +26,18 @@ export const useUIStore = create((set) => ({
   // a drop that changed nothing visible would read as having failed. The toggle
   // is only rendered when there are bonds to draw.
   showBonds: true,
+  /**
+   * Draw bonds between particle centres rather than between the patches they
+   * join.
+   *
+   * Off by default: a patchy bond *is* between two patches, and both
+   * `PatchyBonds` and `RaspberryPatchyBonds` say which, so drawing it there is
+   * both truer and the only way it appears to leave the cones. Centre to centre
+   * is still worth having — it is what the bond graph means topologically, it
+   * is all `PLClusterTopology` can offer, and it stays readable when the patch
+   * cones are hidden or the particles are drawn small.
+   */
+  bondsCentreToCentre: false,
   showBackdropPlanes: true,
   showCoordinateAxis: true,
   showStats: false,
@@ -94,6 +106,7 @@ export const useUIStore = create((set) => ({
   setShowParticleLegend: (show) => set({ showParticleLegend: show }),
   setShowSimulationBox: (show) => set({ showSimulationBox: show }),
   setShowBonds: (show) => set({ showBonds: show }),
+  setBondsCentreToCentre: (on) => set({ bondsCentreToCentre: on }),
   setShowBackdropPlanes: (show) => set({ showBackdropPlanes: show }),
   setShowCoordinateAxis: (show) => set({ showCoordinateAxis: show }),
   setShowStats: (show) => set({ showStats: show }),

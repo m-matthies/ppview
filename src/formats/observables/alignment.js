@@ -76,11 +76,18 @@ export function alignBlocks({ frameTimes, blockSteps, printEvery = 0 }) {
   // run — so both are tried and whichever explains more frames is taken. A
   // wrong guess here would shift every frame by one block.
   if (printEvery > 0) {
+    // Compared on the frames each origin can *possibly* match, not on the raw
+    // count. A trajectory that starts at t = 0 — the usual case — hands origin 0
+    // one extra match that origin `printEvery` cannot have, so comparing totals
+    // always chose origin 0 and the alternative could never win. That is the
+    // "shift every frame by one block" this is here to avoid.
     let best = null;
     for (const origin of [0, printEvery]) {
+      const reachable = times.filter(t => t >= origin).length;
       const synthetic = steps.map((_, i) => origin + i * printEvery);
       const attempt = matchOnSteps(times, synthetic);
-      if (!best || attempt.matched > best.matched) best = attempt;
+      const score = reachable > 0 ? attempt.matched / reachable : 0;
+      if (!best || score > best.score) best = { ...attempt, score };
     }
     if (best && best.matched > 0) {
       return { ...best, method: 'interval', needed: neededBlocks(best.blockForFrame) };

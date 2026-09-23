@@ -108,11 +108,16 @@ const buffers = createFrameBuffers();
 const cache = createFrameCache();
 
 /** Everything the scene needs from a frame, cached or freshly parsed. */
-function handToScene(frame, topData, scene) {
+function handToScene(frame, frameNumber, topData, scene) {
   scene.setPositions(buildParticles(frame, topData));
   scene.setCurrentBoxSize(frame.boxSize);
   scene.setCurrentTime(frame.time);
   scene.setCurrentEnergy(frame.energy);
+  // Written here, beside the positions, so React commits the two together and
+  // nothing keyed to the frame — bonds, cluster colours, the pane's caption —
+  // is ever drawn against coordinates from a different one. Optional because
+  // the time view passes a capture bag that must not move the scene at all.
+  scene.setLoadedConfigIndex?.(frameNumber);
 }
 
 /** For tests, and for measuring whether the cache is earning its memory. */
@@ -128,6 +133,7 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
 
   if (file.mglTrajectoryData) {
     mglFrame(file, frameNumber, scene);
+    scene.setLoadedConfigIndex?.(frameNumber);
     return;
   }
 
@@ -137,7 +143,7 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   cache.useTrajectory(file);
   const cached = cache.get(frameNumber);
   if (cached) {
-    handToScene(cached, topData, scene);
+    handToScene(cached, frameNumber, topData, scene);
     return;
   }
 
@@ -162,5 +168,5 @@ export async function loadFrame({ file, index, frameNumber, topData, scene }) {
   centreAndWrap(frame);
   cache.put(frameNumber, frame);
 
-  handToScene(frame, topData, scene);
+  handToScene(frame, frameNumber, topData, scene);
 }

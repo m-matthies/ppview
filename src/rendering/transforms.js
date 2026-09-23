@@ -88,7 +88,105 @@ export function cylinderScratch() {
     v1: new THREE.Vector3(),
     v2: new THREE.Vector3(),
     dir: new THREE.Vector3(),
+    delta: new THREE.Vector3(),
+    start: new THREE.Vector3(),
   };
+}
+
+/** Lays a unit cylinder along an existing start point and direction. */
+function layCylinder(dummy, scratch, start, direction, length, thickness) {
+  if (length < 1e-6) return false;
+  scratch.dir.copy(direction).divideScalar(length);
+  dummy.position.copy(start).addScaledVector(scratch.dir, length / 2);
+  dummy.quaternion.setFromUnitVectors(scratch.up, scratch.dir);
+  dummy.scale.set(thickness, length, thickness);
+  return true;
+}
+
+/** One axis of a separation, brought to its nearest image. */
+function minimumImage(delta, length) {
+  if (!(length > 0)) return delta;
+  return delta - length * Math.round(delta / length);
+}
+
+/**
+ * Whether a bond crosses a periodic wall, from the particle centres alone.
+ *
+ * Cheap, and free of the patch lookups and cluster appearance a bond's real
+ * endpoints need — so the second instance of the great majority of bonds, which
+ * do not wrap, can be dismissed before any of that work is done.
+ */
+export function wrapsBetween(scratch, posA, posB, boxSize) {
+  centreOnBox(scratch.v1, posA, boxSize);
+  centreOnBox(scratch.v2, posB, boxSize);
+  return minimumImage(scratch.v2.x - scratch.v1.x, boxSize[0]) !== scratch.v2.x - scratch.v1.x
+    || minimumImage(scratch.v2.y - scratch.v1.y, boxSize[1]) !== scratch.v2.y - scratch.v1.y
+    || minimumImage(scratch.v2.z - scratch.v1.z, boxSize[2]) !== scratch.v2.z - scratch.v1.z;
+}
+
+/** The two halves of a bond that crosses a periodic wall. */
+export const LEAVING = 0;
+export const ARRIVING = 1;
+
+/**
+ * Draws a bond under the **minimum image convention**.
+ *
+ * Particles are wrapped into the box, so two bonded neighbours either side of a
+ * wall sit at opposite edges — a hand's breadth apart through the wall, and
+ * almost a whole box apart across it. Drawing the straight line between them
+ * sweeps the entire scene and reads as a connection that is not there, which is
+ * why such bonds were simply hidden. Hiding them is also a lie of a quieter
+ * kind: the bond exists, and in a dense system a great many bonds sit on a wall.
+ *
+ * So it is drawn as the two halves you would actually see: one **leaving** the
+ * first particle and passing out through the near wall, and one **arriving** at
+ * the second from outside the far wall. Both carry the bond's true length, so
+ * the pair reads as one bond seen through the boundary rather than as two short
+ * stubs.
+ *
+ * A bond that does not wrap has nothing to draw for `ARRIVING`, and returns
+ * false there — the caller allocates two instances per bond and this collapses
+ * the unused one.
+ */
+export function cylinderBetweenPeriodic(
+  dummy, scratch, posA, posB, boxSize, thickness, image,
+) {
+  centreOnBox(scratch.v1, posA, boxSize);
+  centreOnBox(scratch.v2, posB, boxSize);
+  return cylinderBetweenImages(dummy, scratch, scratch.v1, scratch.v2, boxSize, thickness, image);
+}
+
+/**
+ * The same, between two points already in scene space.
+ *
+ * A bond is drawn patch tip to patch tip where the observable names both
+ * patches, and centre to centre where it does not, so the periodic halving has
+ * to work on whatever endpoints it is given.
+ */
+export function cylinderBetweenImages(dummy, scratch, a, b, boxSize, thickness, image) {
+  scratch.delta.copy(b).sub(a);
+
+  // Nearest whole number of box lengths subtracted per axis — the same rule the
+  // clustering measures distance by, so the two cannot disagree about which
+  // particles are neighbours.
+  // Written out rather than looped over an axis array: this runs twice per bond
+  // per frame, and `['x','y','z']` plus the index lookup allocated four objects
+  // each time — in the one function whose scratch exists to avoid exactly that.
+  let wraps = false;
+  const dx = minimumImage(scratch.delta.x, boxSize[0]);
+  const dy = minimumImage(scratch.delta.y, boxSize[1]);
+  const dz = minimumImage(scratch.delta.z, boxSize[2]);
+  if (dx !== scratch.delta.x || dy !== scratch.delta.y || dz !== scratch.delta.z) wraps = true;
+  scratch.delta.set(dx, dy, dz);
+
+  if (image === ARRIVING && !wraps) return false;
+
+  const length = scratch.delta.length();
+  // The segment leaving A runs from A; the one arriving at B ends at B, so it
+  // starts a bond's length back from it, outside the opposite wall.
+  scratch.start.copy(image === LEAVING ? a : b);
+  if (image === ARRIVING) scratch.start.sub(scratch.delta);
+  return layCylinder(dummy, scratch, scratch.start, scratch.delta, length, thickness);
 }
 
 /**
@@ -108,13 +206,72 @@ export function cylinderBetween(dummy, scratch, posA, posB, boxSize, thickness) 
   centreOnBox(scratch.v1, posA, boxSize);
   centreOnBox(scratch.v2, posB, boxSize);
 
-  scratch.dir.copy(scratch.v2).sub(scratch.v1);
-  const distance = scratch.dir.length();
+  scratch.delta.copy(scratch.v2).sub(scratch.v1);
+  const distance = scratch.delta.length();
   if (distance < 1e-6 || crossesPeriodicBoundary(distance, boxSize)) return false;
 
-  scratch.dir.normalize();
-  dummy.position.copy(scratch.v1).addScaledVector(scratch.dir, distance / 2);
-  dummy.quaternion.setFromUnitVectors(scratch.up, scratch.dir);
-  dummy.scale.set(thickness, distance, thickness);
+  return layCylinder(dummy, scratch, scratch.v1, scratch.delta, distance, thickness);
+}
+
+/** Scratch for `patchTip`, one set per renderer. */
+export function patchScratch() {
+  return {
+    centre: new THREE.Vector3(),
+    tip: new THREE.Vector3(),
+    direction: new THREE.Vector3(),
+    rot: new THREE.Matrix3(),
+  };
+}
+
+/**
+ * Where a patch sits in scene space, and which way it faces.
+ *
+ * One definition, because two layers draw the same patch: `Patches` puts a cone
+ * tip there, and `Bonds` starts a bond cylinder there. They have to agree
+ * exactly — a bond that starts anywhere else reads as not coming out of the
+ * patch at all, which is how the two came to look unrelated.
+ *
+ * **The patch vector's length is normalised away**, so the tip lands at
+ * `radius` whatever the file's convention. Patch files in this space hold unit
+ * directions in some formats and absolute positions in others — one run's
+ * Lorenzo patch files are cube edge-midpoints at length 0.7071 — and nothing in
+ * the file says which. Normalising is what keeps the cone on the sphere it is
+ * attached to; it does mean a patch stated as a position is drawn nearer the
+ * centre than the simulation puts it.
+ *
+ * Writes `scratch.tip` and `scratch.direction` (outward, unit). Returns false
+ * for a degenerate vector, which has no direction to face.
+ */
+export function patchTip(scratch, particle, patchOffset, boxSize, radius) {
+  const length = Math.hypot(patchOffset.x, patchOffset.y, patchOffset.z);
+  if (length < 1e-9) return false;
+
+  centreOnBox(scratch.centre, particle, boxSize);
+  const rotation = rotationMatrixOf(particle, scratch.rot);
+
+  scratch.direction.set(patchOffset.x, patchOffset.y, patchOffset.z).divideScalar(length);
+  if (rotation) scratch.direction.applyMatrix3(rotation);
+
+  scratch.tip.copy(scratch.direction).multiplyScalar(radius).add(scratch.centre);
   return true;
+}
+
+/**
+ * The patch offset a bond's patch id names, or null.
+ *
+ * `patchPositions[j]` pairs with `patches[j]` — that pairing is what `Patches`
+ * draws by — but the two formats number patches differently. Lorenzo assigns
+ * sequential ids per type, so an id *is* its slot; raspberry's `iC` line names
+ * global `iP` ids (`iC 2 512 8,9` gives patches `[8, 9]` against two positions),
+ * so using the id as an index reads off the end and the bond silently falls
+ * back to the particle centre. Looking the id up in `patches` is right for
+ * both.
+ */
+export function patchOffsetFor(particleType, patchId) {
+  if (patchId < 0) return null;
+  const offsets = particleType?.patchPositions;
+  if (!offsets?.length) return null;
+  const ids = particleType.patches;
+  const slot = Array.isArray(ids) ? ids.indexOf(patchId) : patchId;
+  return slot >= 0 ? (offsets[slot] ?? null) : null;
 }

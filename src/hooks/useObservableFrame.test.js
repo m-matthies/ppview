@@ -18,14 +18,16 @@ const register = () => useOverlayStore.getState().addOverlay(bondObservableOverl
 }));
 
 const overlayNow = (id) => useOverlayStore.getState().overlays.find(o => o.id === id);
+// What the app does once a frame's positions are in the store. Bonds follow the
+// frame that has *loaded*, not the one that was asked for.
 const goToFrame = (index) => act(() => {
-  useParticleStore.setState({ currentConfigIndex: index });
+  useParticleStore.setState({ currentConfigIndex: index, loadedConfigIndex: index });
 });
 
 beforeEach(() => {
   useOverlayStore.getState().clearOverlays();
   useClusteringStore.getState().resetClusters();
-  useParticleStore.setState({ currentConfigIndex: 0, bonds: null });
+  useParticleStore.setState({ currentConfigIndex: 0, loadedConfigIndex: 0, bonds: null });
 });
 
 test('the overlay follows the frame on screen', async () => {
@@ -94,4 +96,21 @@ test('settling on a frame stops rewriting the overlay', async () => {
   const settled = overlayNow(id);
   await new Promise(resolve => setTimeout(resolve, 20));
   expect(overlayNow(id)).toBe(settled);
+});
+
+test('bonds wait for the positions they describe', async () => {
+  // Reading a frame is asynchronous. Following the requested frame drew the new
+  // frame's bonds against the old frame's coordinates for as long as the read
+  // took, which is the flashing seen on every transition.
+  const { id } = register();
+  renderHook(() => useObservableFrame());
+  act(() => useClusteringStore.getState().setClusterSourceId(id));
+  await waitFor(() => expect(useParticleStore.getState().bonds).not.toBeNull());
+
+  act(() => { useParticleStore.setState({ currentConfigIndex: 1 }); });
+  await new Promise(resolve => setTimeout(resolve, 20));
+  expect(overlayNow(id).frameIndex).toBe(0);
+
+  act(() => { useParticleStore.setState({ loadedConfigIndex: 1 }); });
+  await waitFor(() => expect(overlayNow(id).frameIndex).toBe(1));
 });

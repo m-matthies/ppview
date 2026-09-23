@@ -1,5 +1,6 @@
-import { renderHook, act } from '@testing-library/react';
+import { renderHook, act, waitFor } from '@testing-library/react';
 import useClusterSource from './useClusterSource';
+import useObservableFrame from '../../hooks/useObservableFrame';
 import { useOverlayStore } from '../../store/overlayStore';
 import { useClusteringStore } from '../../store/clusteringStore';
 import { useParticleStore } from '../../store/particleStore';
@@ -28,7 +29,7 @@ const useObservableSource = () => {
 beforeEach(() => {
   useOverlayStore.getState().clearOverlays();
   useClusteringStore.getState().resetClusters();
-  useParticleStore.setState({ positions: [], currentConfigIndex: 0 });
+  useParticleStore.setState({ positions: [], currentConfigIndex: 0, loadedConfigIndex: 0 });
 });
 
 describe('the size band applies to clusters from a file, not only to DBSCAN', () => {
@@ -105,5 +106,76 @@ describe('the slider ceiling', () => {
     useClusteringStore.getState().setClusterSourceId(entry.id);
     const { result } = renderHook(() => useClusterSource());
     expect(result.current.largestCluster).toBe(3);
+  });
+});
+
+// Frame 0 holds two clusters, frame 1 holds three — the shape of an observable,
+// where the cluster count is a property of the frame.
+const GROWING = parsePLClusterTopology([
+  '2 ( 0 0 ) [0 -> (1), 1 -> (0)] ( 0 0 ) [2 -> (3), 3 -> (2)]',
+  '3 ( 0 0 ) [0 -> (1), 1 -> (0)] ( 0 0 ) [2 -> (3), 3 -> (2)]'
+  + ' ( 0 0 ) [4 -> (5), 5 -> (4)]',
+].join('\n'));
+
+describe('"Select all" keeps meaning all as the frame changes', () => {
+  const mount = () => {
+    const entry = useOverlayStore.getState().addOverlay(bondObservableOverlay({
+      name: 'bonds', observable: GROWING, colorScheme: 'default',
+    }));
+    useClusteringStore.getState().setClusterSourceId(entry.id);
+    return renderHook(() => {
+      useObservableFrame();
+      return useClusterSource();
+    });
+  };
+  const selected = () => [...useClusteringStore.getState().selectedClusters];
+  // Both, because the overlay follows the frame whose positions have loaded.
+  const goToFrame = (i) => act(() => {
+    useParticleStore.setState({ currentConfigIndex: i, loadedConfigIndex: i });
+  });
+
+  test('a cluster appearing is selected too', async () => {
+    const { result } = mount();
+    expect(result.current.clusters).toHaveLength(2);
+    act(() => useClusteringStore.getState().selectAllClusters(2));
+
+    goToFrame(1);
+    await waitFor(() => expect(result.current.clusters).toHaveLength(3));
+    // Without the latch this stayed [0, 1] — "select all" pressed at one frame
+    // silently becoming "the first two of three".
+    expect(selected()).toEqual([0, 1, 2]);
+  });
+
+  test('and going back again narrows it to what is there', async () => {
+    const { result } = mount();
+    goToFrame(1);
+    await waitFor(() => expect(result.current.clusters).toHaveLength(3));
+    act(() => useClusteringStore.getState().selectAllClusters(3));
+
+    goToFrame(0);
+    await waitFor(() => expect(result.current.clusters).toHaveLength(2));
+    expect(selected()).toEqual([0, 1]);
+    expect(useClusteringStore.getState().allClustersSelected).toBe(true);
+  });
+
+  test('a selection of some clusters is not grown behind your back', async () => {
+    const { result } = mount();
+    act(() => useClusteringStore.getState().setSelectedClusters(new Set([0, 1])));
+
+    goToFrame(1);
+    await waitFor(() => expect(result.current.clusters).toHaveLength(3));
+    // Every cluster was selected, but by choosing them — not by asking for all.
+    expect(selected()).toEqual([0, 1]);
+  });
+
+  test('indices that no longer name a cluster are still pruned', async () => {
+    const { result } = mount();
+    goToFrame(1);
+    await waitFor(() => expect(result.current.clusters).toHaveLength(3));
+    act(() => useClusteringStore.getState().setSelectedClusters(new Set([0, 2])));
+
+    goToFrame(0);
+    await waitFor(() => expect(result.current.clusters).toHaveLength(2));
+    expect(selected()).toEqual([0]);
   });
 });

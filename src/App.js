@@ -65,7 +65,7 @@ function App() {
   // Setters are stable for the life of the store, so one shallow pick of them
   // never causes a render on its own.
   const { setPositions, setCurrentBoxSize, setTopData, setTrajFile, setConfigIndex,
-          setConfigTimes, setObservableConfig,
+          setConfigTimes, setObservableConfig, setLoadedConfigIndex,
           setCurrentConfigIndex, setCurrentTime, setCurrentEnergy, setTotalConfigs,
           setParticleRadius, setFormatParticleRadius,
           resetParticleRadius } = useParticleStore(useShallow(state => ({
@@ -76,6 +76,7 @@ function App() {
     setConfigIndex: state.setConfigIndex,
     setConfigTimes: state.setConfigTimes,
     setObservableConfig: state.setObservableConfig,
+    setLoadedConfigIndex: state.setLoadedConfigIndex,
     setCurrentConfigIndex: state.setCurrentConfigIndex,
     setCurrentTime: state.setCurrentTime,
     setCurrentEnergy: state.setCurrentEnergy,
@@ -91,20 +92,20 @@ function App() {
   const sceneWriters = useMemo(() => ({
     setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
     setConfigIndex, setConfigTimes, setTotalConfigs, setTrajFile, setFormatParticleRadius,
-    setObservableConfig,
+    setObservableConfig, setLoadedConfigIndex,
   }), [setTopData, setPositions, setCurrentBoxSize, setCurrentTime, setCurrentEnergy,
        setConfigIndex, setConfigTimes, setTotalConfigs, setTrajFile, setFormatParticleRadius,
-       setObservableConfig]);
+       setObservableConfig, setLoadedConfigIndex]);
 
   // Same again for the UI store: a value at a time, shallow-compared, so an
   // unrelated toggle no longer re-renders the whole application.
   const {
-    showPatchLegend, showParticleLegend, showSimulationBox, showBackdropPlanes, showBonds,
+    showPatchLegend, showParticleLegend, showSimulationBox, showBackdropPlanes, showBonds, bondsCentreToCentre,
     showCoordinateAxis, showStats, isControlsVisible, showClusteringPane,
     filesDropped, isLoading, busyMessage, sceneRef, isIframeMode,
     isDragDropEnabled, isPlaying, playbackSpeed, isSpeedPopupVisible,
     isLightingControlsModalOpen, setShowPatchLegend, setShowParticleLegend, setShowSimulationBox,
-    setShowBackdropPlanes, setShowBonds, setShowCoordinateAxis, setShowStats, setIsControlsVisible,
+    setShowBackdropPlanes, setShowBonds, setBondsCentreToCentre, setShowCoordinateAxis, setShowStats, setIsControlsVisible,
     setShowClusteringPane, setFilesDropped, setIsLoading, setPlaybackSpeed,
     setIsSpeedPopupVisible, setIsLightingControlsModalOpen, sphereSegments, setSphereSegments,
   } = useUIStore(useShallow(state => ({
@@ -113,6 +114,7 @@ function App() {
     showSimulationBox: state.showSimulationBox,
     showBackdropPlanes: state.showBackdropPlanes,
     showBonds: state.showBonds,
+    bondsCentreToCentre: state.bondsCentreToCentre,
     showCoordinateAxis: state.showCoordinateAxis,
     showStats: state.showStats,
     isControlsVisible: state.isControlsVisible,
@@ -132,6 +134,7 @@ function App() {
     setShowSimulationBox: state.setShowSimulationBox,
     setShowBackdropPlanes: state.setShowBackdropPlanes,
     setShowBonds: state.setShowBonds,
+    setBondsCentreToCentre: state.setBondsCentreToCentre,
     setShowCoordinateAxis: state.setShowCoordinateAxis,
     setShowStats: state.setShowStats,
     setIsControlsVisible: state.setIsControlsVisible,
@@ -262,9 +265,10 @@ function App() {
     setConfigTimes([]);
     setObservableConfig([]);
     setCurrentConfigIndex(0);
+    setLoadedConfigIndex(0);
     setTotalConfigs(0);
   }, [resetParticleRadius, setTopData, setPositions, setTrajFile, setConfigIndex, setConfigTimes,
-      setObservableConfig,
+      setObservableConfig, setLoadedConfigIndex,
       setCurrentConfigIndex, setTotalConfigs]);
 
   const handleFilesReceived = useCallback(async (files) => {
@@ -481,6 +485,7 @@ function App() {
           showCoordinateAxis={showCoordinateAxis} setShowCoordinateAxis={setShowCoordinateAxis}
           showBackdropPlanes={showBackdropPlanes} setShowBackdropPlanes={setShowBackdropPlanes}
           showBonds={showBonds} setShowBonds={setShowBonds}
+          bondsCentreToCentre={bondsCentreToCentre} setBondsCentreToCentre={setBondsCentreToCentre}
           showParticleLegend={showParticleLegend} setShowParticleLegend={setShowParticleLegend}
           showPatchLegend={showPatchLegend} setShowPatchLegend={setShowPatchLegend}
           showClusteringPane={showClusteringPane} setShowClusteringPane={setShowClusteringPane}

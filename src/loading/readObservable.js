@@ -1,9 +1,11 @@
 import {
-  observableById, SCAN_STEP_HEADERS,
+  observableById, SCAN_STEP_HEADERS, SCAN_LINE_NONBLANK,
 } from '../formats/observables';
 import { alignBlocks } from '../formats/observables/alignment';
 import { makeFrame } from '../formats/observables/bondFrames';
-import { scanObservable, OBS_STEP_HEADERS, OBS_LINE_PER_STEP } from '../wasm/wasmCore';
+import {
+  scanObservable, OBS_STEP_HEADERS, OBS_LINE_PER_STEP, OBS_LINE_PER_STEP_NONBLANK,
+} from '../wasm/wasmCore';
 
 /**
  * Reads a cluster/bond observable against a loaded trajectory.
@@ -20,8 +22,14 @@ import { scanObservable, OBS_STEP_HEADERS, OBS_LINE_PER_STEP } from '../wasm/was
  * nothing about any of this.
  */
 
-/** A line of one or two bytes is blank: "\n", or "\r\n". */
-const isBlankLine = (offsets, i, size) =>
+/**
+ * A span of one or two bytes holds no bond tuples, whatever is in it.
+ *
+ * Only used to trim the file's own trailing newlines. Deciding whether an
+ * *interior* line is blank is the scanner's job — it has the bytes, and a byte
+ * span cannot tell `\r\n` from `0\n`.
+ */
+const isEmptySpan = (offsets, i, size) =>
   (i + 1 < offsets.length ? offsets[i + 1] : size) - offsets[i] <= 2;
 
 /**
@@ -35,15 +43,11 @@ function timestepBlocks(entry, index) {
   const all = Array.from(index.offsets, (offset, i) => i);
   if (entry.blanks === 'keep') return all;
 
-  if (entry.blanks === 'skip') {
-    return all.filter(i => !isBlankLine(index.offsets, i, index.size));
-  }
-
   // 'trailing': an interior blank line is a step in which nothing was bonded,
   // but the file's own trailing newlines are not timesteps — and nothing
   // distinguishes them, so the likelier reading wins.
   let end = all.length;
-  while (end > 0 && isBlankLine(index.offsets, end - 1, index.size)) end--;
+  while (end > 0 && isEmptySpan(index.offsets, end - 1, index.size)) end--;
   return all.slice(0, end);
 }
 
@@ -56,7 +60,10 @@ export async function readObservable(file, {
   const total = file.size ?? 0;
   const index = await scanObservable(
     file.stream(),
-    entry.scan === SCAN_STEP_HEADERS ? OBS_STEP_HEADERS : OBS_LINE_PER_STEP,
+    // eslint-disable-next-line no-nested-ternary
+    entry.scan === SCAN_STEP_HEADERS ? OBS_STEP_HEADERS
+      : entry.scan === SCAN_LINE_NONBLANK ? OBS_LINE_PER_STEP_NONBLANK
+        : OBS_LINE_PER_STEP,
     {
       onProgress: (done) => {
         if (!onStatus) return;

@@ -129,3 +129,29 @@ describe('readObservable, formats that state no step', () => {
     })).rejects.toThrow(/3 timesteps.*2 frames/i);
   });
 });
+
+describe('a PLClusterTopology step with no clusters', () => {
+  // The line is just its cluster count: "0". Two bytes with the newline, which
+  // is also the length of a CRLF blank line — so judging blankness by the byte
+  // span dropped the step and read every later frame from the wrong block.
+  const PL = [
+    '1 ( 0 0 ) [0 -> (1), 1 -> (0)]',
+    '0',
+    '1 ( 0 0 ) [4 -> (5), 5 -> (4)]',
+  ].join('\n') + '\n';
+
+  test('is a timestep, and does not shift the ones after it', async () => {
+    const result = await readObservable(fileOf(PL), {
+      formatId: 'pl_cluster_topology', frameTimes: [0, 1, 2],
+    });
+    expect(result.frames.map(f => f.clusters)).toEqual([[[0, 1]], [], [[4, 5]]]);
+  });
+
+  test('a genuinely blank line is still not a timestep', async () => {
+    const withBlank = PL.replace('0\n', '\n0\n');
+    const result = await readObservable(fileOf(withBlank), {
+      formatId: 'pl_cluster_topology', frameTimes: [0, 1, 2],
+    });
+    expect(result.frames.map(f => f.clusters)).toEqual([[[0, 1]], [], [[4, 5]]]);
+  });
+});

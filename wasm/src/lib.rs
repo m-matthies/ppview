@@ -13,6 +13,23 @@
 
 use std::mem;
 
+/// Replaces a `static mut`, **dropping what was there**.
+///
+/// `ptr::write` overwrites without dropping, which leaks whatever the static
+/// was holding. Every result here is a `Vec`, and every one of them was leaked
+/// on each call: 1.2 MB per frame parsed, so playback passed 2 GB of linear
+/// memory after about 1,750 frames. Past that, `alloc` returns an `i32`
+/// pointer with the top bit set, JS reads it as negative, and building a view
+/// over it fails with "Start offset -2147186048 is outside the bounds of the
+/// buffer" — a long way from anything that mentions memory.
+///
+/// A raw pointer rather than a reference because taking a reference to a
+/// `static mut` is what the 2024 lint objects to; `ptr::replace` reads the old
+/// value out so it can be dropped normally.
+unsafe fn replace_static<T>(slot: *mut T, value: T) {
+    drop(std::ptr::replace(slot, value));
+}
+
 // ---------------------------------------------------------------- memory
 //
 // JS allocates a buffer here, writes the frame into it, and hands back the
@@ -250,7 +267,7 @@ pub extern "C" fn parse_frame(ptr: *const u8, len: usize) -> usize {
     ];
 
     unsafe {
-        std::ptr::write(
+        replace_static(
             std::ptr::addr_of_mut!(FRAME),
             Some(Frame { positions, a1, a3, meta }),
         );
@@ -527,7 +544,7 @@ pub extern "C" fn dbscan(
     }
 
     unsafe {
-        std::ptr::write(std::ptr::addr_of_mut!(LABELS), label);
+        replace_static(std::ptr::addr_of_mut!(LABELS), label);
     }
     clusters
 }
@@ -559,6 +576,13 @@ pub extern "C" fn cluster_labels() -> *const i32 {
 const OBS_STEP_HEADERS: i32 = 0;
 /// Every line is a block, and no step is stated.
 const OBS_LINE_PER_STEP: i32 = 1;
+/// Every line with something on it; blank ones are not timesteps.
+///
+/// Decided here rather than from the byte span of a line, because "a line of
+/// two bytes or fewer is blank" cannot tell `\r\n` from `0\n` — and `0` is
+/// exactly what PLClusterTopology writes for a step with no clusters, so that
+/// step was dropped and every later one read from the wrong place.
+const OBS_LINE_PER_STEP_NONBLANK: i32 = 2;
 
 struct ObsScan {
     format: i32,
@@ -567,6 +591,8 @@ struct ObsScan {
     /// Collecting a header line that may span a chunk boundary.
     reading_header: bool,
     header: Vec<u8>,
+    /// A line whose first chunk held only spaces, still to be judged.
+    pending_line: Option<f64>,
     starts: Vec<f64>,
     steps: Vec<f64>,
 }
@@ -605,7 +631,7 @@ fn read_step(header: &[u8]) -> f64 {
 #[no_mangle]
 pub extern "C" fn obs_scan_begin(format: i32) {
     unsafe {
-        std::ptr::write(
+        replace_static(
             std::ptr::addr_of_mut!(OBS),
             Some(ObsScan {
                 format,
@@ -613,6 +639,7 @@ pub extern "C" fn obs_scan_begin(format: i32) {
                 offset: 0.0,
                 reading_header: false,
                 header: Vec::new(),
+                pending_line: None,
                 starts: Vec::new(),
                 steps: Vec::new(),
             }),
@@ -620,9 +647,11 @@ pub extern "C" fn obs_scan_begin(format: i32) {
     }
 }
 
-/// Feeds one chunk. Chunks may split a line, and the first one that did left
-/// every step after it unread, so the header is accumulated across the seam
-/// rather than parsed per chunk.
+/// Feeds one chunk.
+///
+/// Chunks may split a line anywhere, and the first one that did left every step
+/// after it unread — so both the header and the "is this line blank" decision
+/// are carried across the seam rather than made per chunk.
 #[no_mangle]
 pub extern "C" fn obs_scan_feed(ptr: *const u8, len: usize) {
     let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
@@ -631,15 +660,27 @@ pub extern "C" fn obs_scan_feed(ptr: *const u8, len: usize) {
         None => return,
     };
 
+    /// How far to the first non-space on this line, and whether the line ended.
+    fn scan_line(bytes: &[u8], from: usize) -> (bool, bool) {
+        let mut j = from;
+        while j < bytes.len() && bytes[j] != b'\n' {
+            if !bytes[j].is_ascii_whitespace() {
+                return (true, false); // something on the line
+            }
+            j += 1;
+        }
+        (false, j < bytes.len()) // nothing on it; did it end in this chunk?
+    }
+
     let mut i = 0usize;
     while i < len {
         if scan.reading_header {
             // Gather to the end of the line, then read the step off it.
-            let start = i;
+            let from = i;
             while i < len && bytes[i] != b'\n' {
                 i += 1;
             }
-            scan.header.extend_from_slice(&bytes[start..i]);
+            scan.header.extend_from_slice(&bytes[from..i]);
             if i < len {
                 let step = read_step(&scan.header);
                 scan.steps.push(step);
@@ -651,6 +692,22 @@ pub extern "C" fn obs_scan_feed(ptr: *const u8, len: usize) {
             continue;
         }
 
+        // A line whose opening chunk held only spaces, still to be judged.
+        if let Some(here) = scan.pending_line {
+            let (has_content, ended) = scan_line(bytes, i);
+            if has_content {
+                scan.starts.push(here);
+                scan.steps.push(-1.0);
+                scan.pending_line = None;
+            } else if ended {
+                scan.pending_line = None; // blank after all: not a timestep
+            } else {
+                i = len; // still undecided
+                continue;
+            }
+            scan.at_line_start = false;
+        }
+
         if scan.at_line_start {
             let here = scan.offset + i as f64;
             if scan.format == OBS_STEP_HEADERS {
@@ -660,13 +717,21 @@ pub extern "C" fn obs_scan_feed(ptr: *const u8, len: usize) {
                     continue;
                 }
             } else if scan.format == OBS_LINE_PER_STEP {
-                // Every line is one timestep. Blank ones included: in
+                // Every line is one timestep, blank ones included: in
                 // RaspberryPatchyBonds a step in which nothing was bonded is an
                 // empty line, and dropping it slides every later frame one step
-                // earlier. Which blank lines actually count is the parser's
-                // rule, not this pass's.
+                // earlier.
                 scan.starts.push(here);
                 scan.steps.push(-1.0);
+            } else if scan.format == OBS_LINE_PER_STEP_NONBLANK {
+                let (has_content, ended) = scan_line(bytes, i);
+                if has_content {
+                    scan.starts.push(here);
+                    scan.steps.push(-1.0);
+                } else if !ended {
+                    // Ran out of chunk with only spaces: decide next time.
+                    scan.pending_line = Some(here);
+                }
             }
             scan.at_line_start = false;
         }
@@ -723,6 +788,6 @@ pub extern "C" fn obs_scan_steps() -> *const f64 {
 #[no_mangle]
 pub extern "C" fn obs_scan_free() {
     unsafe {
-        std::ptr::write(std::ptr::addr_of_mut!(OBS), None);
+        replace_static(std::ptr::addr_of_mut!(OBS), None);
     }
 }

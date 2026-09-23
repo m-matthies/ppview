@@ -146,3 +146,30 @@ describe('loadFrame', () => {
     })).rejects.toThrow(/1 frames/);
   });
 });
+
+describe('the frame the scene is showing', () => {
+  it('is recorded beside the positions, not after them', async () => {
+    // Bonds, cluster colours and the pane's caption all key off this. Written
+    // in a later microtask it lagged the positions by a commit, so the new
+    // frame's bonds were drawn against the old frame's coordinates.
+    const order = [];
+    const scene = {
+      ...sceneOf(),
+      setPositions: () => order.push('positions'),
+      setLoadedConfigIndex: (n) => order.push(`frame:${n}`),
+    };
+    await loadFrame({
+      file: trajectoryFile(), index: [0, secondFrameAt], frameNumber: 1,
+      topData: TOP_DATA, scene,
+    });
+    expect(order).toEqual(['positions', 'frame:1']);
+  });
+
+  it('is left alone by a bag that does not ask for it', async () => {
+    // The time view captures frames without moving the scene.
+    await expect(loadFrame({
+      file: trajectoryFile(), index: [0, secondFrameAt], frameNumber: 0,
+      topData: TOP_DATA, scene: sceneOf(),
+    })).resolves.toBeUndefined();
+  });
+});

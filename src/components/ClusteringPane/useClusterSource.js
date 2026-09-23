@@ -215,12 +215,23 @@ export default function useClusterSource() {
    */
   useEffect(() => {
     const count = clusters.length;
-    const { selectedClusters, hiddenClusters } = useClusteringStore.getState();
+    const store = useClusteringStore.getState();
+    const { selectedClusters, hiddenClusters, allClustersSelected } = store;
     const inRange = (set) => new Set([...set].filter(index => index < count));
 
-    const prunedSelection = inRange(selectedClusters);
-    if (prunedSelection.size !== selectedClusters.size) {
-      useClusteringStore.getState().setSelectedClusters(prunedSelection);
+    if (allClustersSelected) {
+      // "Select all" is a standing instruction, not a snapshot of the indices
+      // that existed when it was pressed. An observable states a different
+      // number of clusters at every frame — 240 at the start of one run and 581
+      // at the end — so without this, selecting all at one frame quietly became
+      // "the first 240 of 581" at another, and the prune below could only ever
+      // take indices away.
+      if (selectedClusters.size !== count) store.selectAllClusters(count);
+    } else {
+      const prunedSelection = inRange(selectedClusters);
+      if (prunedSelection.size !== selectedClusters.size) {
+        store.setSelectedClusters(prunedSelection);
+      }
     }
     const prunedHidden = inRange(hiddenClusters);
     if (prunedHidden.size !== hiddenClusters.size) {

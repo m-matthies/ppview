@@ -8,7 +8,7 @@ import {
   PlayIcon, PauseIcon, ResetIcon, SpeedIcon, TagIcon, CircleIcon,
   LayersIcon, ChartIcon, CameraIcon, DownloadIcon, BoxIcon, RulerIcon,
   ChevronUpIcon, ChevronDownIcon, CloseIcon, AxisIcon, LightbulbIcon,
-  StepBackIcon, StepForwardIcon, ActivityIcon, BondIcon,
+  StepBackIcon, StepForwardIcon, ActivityIcon, BondIcon, CentreBondIcon,
 } from '../Icons';
 
 /**
@@ -69,6 +69,7 @@ function ControlBar(props) {
     showCoordinateAxis, setShowCoordinateAxis,
     showBackdropPlanes, setShowBackdropPlanes,
     showBonds, setShowBonds,
+    bondsCentreToCentre, setBondsCentreToCentre,
     showParticleLegend, setShowParticleLegend,
     showPatchLegend, setShowPatchLegend,
     showClusteringPane, setShowClusteringPane,
@@ -233,6 +234,15 @@ function ControlBar(props) {
                 <ToggleBtn checked={showBackdropPlanes} onChange={setShowBackdropPlanes} icon={<LayersIcon size={17} />} label="Backdrop planes" />
                 {hasBonds && (
                   <ToggleBtn checked={showBonds} onChange={setShowBonds} icon={<BondIcon size={17} />} label="Bonds" />
+                )}
+                {/* Only meaningful while bonds are being drawn. */}
+                {hasBonds && showBonds && (
+                  <ToggleBtn
+                    checked={bondsCentreToCentre}
+                    onChange={setBondsCentreToCentre}
+                    icon={<CentreBondIcon size={17} />}
+                    label="Bonds centre to centre"
+                  />
                 )}
               </div>
 

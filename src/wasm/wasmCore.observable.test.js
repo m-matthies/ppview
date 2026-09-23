@@ -76,3 +76,26 @@ describe('progress', () => {
     expect(seen[seen.length - 1][0]).toBe(bytes(BLOCKS).length);
   });
 });
+
+describe('scanObservable, lines that are timesteps only when they hold something', () => {
+  const { OBS_LINE_PER_STEP_NONBLANK } = require('./wasmCore');
+  // "0" is what PLClusterTopology writes for a step with no clusters, and with
+  // its newline that is two bytes — the same span as a CRLF blank line. Judging
+  // by the span dropped the step and shifted every later frame.
+  const PL = '1 ( 0 0 ) [0 -> (1)]\n0\n\n1 ( 0 0 ) [4 -> (5)]\n';
+
+  test('a lone cluster count is a timestep; a blank line is not', async () => {
+    const index = await scanObservable(inChunks(PL, 4096), OBS_LINE_PER_STEP_NONBLANK);
+    expect(Array.from(index.offsets).map(o => PL.slice(o, PL.indexOf('\n', o))))
+      .toEqual(['1 ( 0 0 ) [0 -> (1)]', '0', '1 ( 0 0 ) [4 -> (5)]']);
+  });
+
+  test('and the answer does not depend on where the chunks fall', async () => {
+    const whole = await scanObservable(inChunks(PL, 1 << 20), OBS_LINE_PER_STEP_NONBLANK);
+    for (const size of [1, 2, 3, 7, 21, 22, 23]) {
+      // eslint-disable-next-line no-await-in-loop
+      const index = await scanObservable(inChunks(PL, size), OBS_LINE_PER_STEP_NONBLANK);
+      expect(Array.from(index.offsets)).toEqual(Array.from(whole.offsets));
+    }
+  });
+});
