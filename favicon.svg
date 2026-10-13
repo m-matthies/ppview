@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="1"/>
+      <feOffset dx="0.5" dy="0.5" result="offsetblur"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.3"/>
+      </feComponentTransfer>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="64" height="64" fill="#2a2a2a"/>
+  
+  <!-- Main particle (gray sphere) -->
+  <circle cx="32" cy="32" r="18" fill="#b0b0b0" filter="url(#shadow)"/>
+  <circle cx="32" cy="32" r="18" fill="url(#particleGradient)"/>
+  
+  <!-- Gradient for 3D effect on main particle -->
+  <defs>
+    <radialGradient id="particleGradient" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#e0e0e0;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#b0b0b0;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#808080;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <!-- Yellow patch (top-left) -->
+  <circle cx="22" cy="22" r="5.5" fill="#ffd700" filter="url(#shadow)"/>
+  <circle cx="22" cy="22" r="5.5" fill="url(#yellowGradient)"/>
+  
+  <!-- Red patch (bottom-right) -->
+  <circle cx="42" cy="42" r="5.5" fill="#e74c3c" filter="url(#shadow)"/>
+  <circle cx="42" cy="42" r="5.5" fill="url(#redGradient)"/>
+  
+  <!-- Blue patch (top-right) -->
+  <circle cx="40" cy="24" r="5" fill="#3498db" filter="url(#shadow)"/>
+  <circle cx="40" cy="24" r="5" fill="url(#blueGradient)"/>
+  
+  <!-- Green patch (left) -->
+  <circle cx="18" cy="36" r="5" fill="#2ecc71" filter="url(#shadow)"/>
+  <circle cx="18" cy="36" r="5" fill="url(#greenGradient)"/>
+  
+  <!-- Patch gradients for 3D effect -->
+  <defs>
+    <radialGradient id="yellowGradient" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#ffeb3b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#ffd700;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="redGradient" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#ff6b6b;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e74c3c;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="blueGradient" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#5dade2;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#3498db;stop-opacity:1" />
+    </radialGradient>
+    <radialGradient id="greenGradient" cx="40%" cy="40%">
+      <stop offset="0%" style="stop-color:#58d68d;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#2ecc71;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+</svg>

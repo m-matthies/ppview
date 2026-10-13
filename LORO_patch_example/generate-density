@@ -1,0 +1,102 @@
+##############################
+####  PROGRAM PARAMETERS  ####
+##############################
+backend = CUDA
+CUDA_list = verlet
+backend_precision = mixed
+#debug = 1
+#seed = 4982
+
+DPS_KF_cosmax = 0.97
+DPS_KF_delta = 0.2
+DPS_patch_power = 20
+##############################
+####    SIM PARAMETERS    ####
+##############################
+sim_type = MD
+ensemble = NVT
+
+#steps = 1000000
+newtonian_steps = 53 #103
+diff_coeff = 1.00
+#pt = 0.1
+thermostat = brownian
+
+box_type = cubic
+cells_auto_optimisation = false
+energy_threshold=0.5
+max_density_multiplier = 10
+
+use_barostat = false
+barostat_probability = 0.1
+P = 0
+delta_L = 0.1
+
+T = 0.095
+dt = 0.002
+verlet_skin = 0.2
+
+steps = 1e10
+check_energy_every = 10000
+check_energy_threshold = 1.e-4
+
+interaction_type = DetailedPatchySwapInteraction
+DPS_lambda = 1
+DPS_interaction_matrix_file = LORO.interaction_matrix.txt
+DPS_is_KF = 1
+##############################
+####    INPUT / OUTPUT    ####
+##############################
+topology = LORO.lorenzo.topology.top
+conf_file = last_conf.dat
+trajectory_file = trajectory.dat
+refresh_vel = true
+#log_file = log.dat
+no_stdout_energy = 0
+restart_step_counter = 0
+energy_file = energy.dat
+print_conf_interval = 10000000
+#print_conf_ppc = 51
+print_energy_every = 100000
+time_scale = linear
+
+#external_forces = true
+#external_forces_file = forces.ext
+
+plugin_search_path = /home/petr/projects/rome/oxdna-github-rovigatti/oxDNA/contrib/rovigatti
+#data_output_1 = {
+#	      name = dist.dat
+#	      print_every = 1000
+#	      col_1 = {
+#	      	    type = distance
+#		    particle_1 = 0
+#		    particle_2 = 1
+#	      }
+#}
+
+data_output_1 = {
+              name = bonds.dat
+              only_last = true
+              print_every = 500000
+              col_1 = {
+                    type = PatchyBonds
+                    print_bonds = true
+              }
+}
+
+data_output_2 = {
+              name = last_backup.dat
+              only_last = true
+              print_every = 500000
+              col_1 = {
+                    type = configuration
+              }
+}
+data_output_3 = {
+              name = pressure.dat
+              only_last = false
+              print_every = 100000
+              col_1 = {
+                    type = pressure
+              }
+}
